@@ -16,9 +16,24 @@ Bu fayl promtdan ustun turadi: farq bo'lsa, shu yerdagi qaror amal qiladi.
 | Telegram Premium 1 oy | bor | bor (2 tur) | Marketapp'da yo'q, admin qo'lda bajaradi |
 | Telegram Stars | bor | bor (2 tur) | Marketapp `/v1/fragment/stars/` |
 
-- Stars: 1 star = 250 so'm, eng kamida 50 star.
-- Premium narxi (3/6/12 oy): `(Marketapp narxi + 0.1) × 2 × 19000` so'm, Marketapp narxi TON'da. Qiymatlar admin sozlamalarida.
-- Premium 1 oy: narxni admin belgilaydi.
+- Stars: 1 star = 240 so'm, eng kamida 50 star.
+- Premium naqd narxlari (qat'iy, admin sozlamalarida o'zgartiriladi):
+  - 1 oy — 42 000 so'm (admin qo'lda)
+  - 3 oy — 171 600 so'm
+  - 6 oy — 231 000 so'm
+  - 12 oy, akkauntga kirib — 297 000 so'm (admin mijoz akkauntiga kirib faollashtiradi, qo'lda)
+  - 12 oy, akkauntga kirmasdan — 418 000 so'm
+- Premium bo'lib to'lash: saytda narx ko'rsatilmaydi, "Narxni admin aytadi"; admin mijoz bilan kelishadi.
+- Avvalgi Premium formulasi `(P + 0.1) × 2 × 19000` bekor qilindi.
+- "Narx Marketapp asosida" degan yozuv saytda ko'rsatilmaydi.
+
+## Sayt tuzilishi
+
+- Birinchi ekranda faqat xizmatlar (katta tugmalar): NFT sovg'a sotib olish, NFT sovg'a ijarasi, Username ijarasi, Anonim raqam ijarasi, Telegram Premium, Telegram Stars.
+- Pastda doimiy menyu: Xizmatlar, Xaridlarim, Balans.
+- Har bir xizmat alohida sahifada ochiladi, bitta sahifada hamma narsa pastga cho'zilmaydi (Marketapp kabi).
+- Xizmat sahifasida qadamma-qadam: har qadamda bitta savol, pastda bitta asosiy tugma.
+- To'lov tugmalari oddiy so'z bilan: "Hozir to'liq to'layman" va "Oyma-oy bo'lib to'layman".
 
 ## Bo'lib to'lash turlari
 
