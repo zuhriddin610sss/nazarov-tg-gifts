@@ -1,0 +1,44 @@
+{
+  "name": "nazarov-tg-gifts",
+  "version": "1.0.0",
+  "description": "NAZAROVtggifts: sayt, Telegram bot va admin panel",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "migrate": "tsx src/migrate.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zuhriddin610sss/nazarov-tg-gifts.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zuhriddin610sss/nazarov-tg-gifts/issues"
+  },
+  "homepage": "https://github.com/zuhriddin610sss/nazarov-tg-gifts#readme",
+  "dependencies": {
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/static": "^8.3.0",
+    "fastify": "^5.12.8",
+    "grammy": "^1.46.0",
+    "jose": "^5.10.0",
+    "pg": "^8.23.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  }
+}
