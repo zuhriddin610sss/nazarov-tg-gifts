@@ -229,6 +229,7 @@ export default async function customerRoutes(app: FastifyInstance) {
       card: { number: st.card_number, holder: st.card_holder },
       instructions: st.payment_instructions[(c.lang as "uz") ?? "uz"] ?? st.payment_instructions.uz,
       adminContact: st.admin_contact,
+      receiptContact: st.receipt_contact,
     };
   });
 

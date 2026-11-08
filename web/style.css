@@ -123,6 +123,8 @@ button,input,select{font:inherit;color:inherit}
 .bal b{font-family:var(--f-display);font-size:2rem;font-variant-numeric:tabular-nums}
 .box{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px;margin-top:14px}
 .cardno{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.warnbox{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad);border:1.5px solid var(--bad);border-radius:12px;padding:12px 14px;font-weight:800;font-size:.93rem;line-height:1.45}
+.rc-line{font-weight:800;font-size:1rem;text-align:center}
 .cardno code{font:800 1.15rem var(--f-display);letter-spacing:.06em;user-select:all;word-break:break-all}
 .led{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.9rem}
 .led:last-child{border-bottom:0}

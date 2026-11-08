@@ -577,7 +577,9 @@ async function viewBalance(v) {
           ${b.card.holder ? `<br><small class="hint">${esc(t("card_holder"))}: ${esc(b.card.holder)}</small>` : ""}</div>
           <button class="btn btn-ghost btn-sm" id="copy" type="button">${esc(t("copy"))}</button></div>`
         : `<p class="alert">${esc(t("card_missing"))}</p>`}
-      <p class="hint">${esc(b.instructions)}</p>
+      ${b.instructions ? `<p class="warnbox">${esc(b.instructions)}</p>` : ""}
+      ${b.receiptContact ? `<p class="rc-line">${esc(t("send_receipt_to", { u: "@" + b.receiptContact.replace(/^@/, "") }))}</p>
+        <a class="btn btn-primary" href="https://t.me/${esc(b.receiptContact.replace(/^@/, ""))}" target="_blank" rel="noopener">@${esc(b.receiptContact.replace(/^@/, ""))}</a>` : ""}
       <form id="rcForm" class="opts" novalidate>
         <div class="field"><label for="amt">${esc(t("amount"))}</label><input class="input" id="amt" inputmode="numeric" autocomplete="off"></div>
         <div class="field"><label>${esc(t("receipt"))}</label>

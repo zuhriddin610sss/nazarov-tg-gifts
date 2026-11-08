@@ -8,6 +8,7 @@ export const SettingsSchema = z.object({
   card_holder: z.string().max(80),
   payment_instructions: L,
   admin_contact: z.string().max(64),            // Telegram username, @ belgisisiz
+  receipt_contact: z.string().max(64),          // chek yuboriladigan Telegram username
   stars_price: z.number().positive(),           // 1 star narxi, so'm
   stars_min: z.number().int().min(1),
   premium_prices: z.object({                    // naqd narxlar, so'm
@@ -27,14 +28,15 @@ export type Settings = z.infer<typeof SettingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = {
   card_number: "",
-  card_holder: "",
+  card_holder: "Nazarov Z",
   payment_instructions: {
-    uz: "Kartaga pul o'tkazing va chek rasmini yuklang. Admin tekshirgach, summa balansingizga tushadi.",
-    ru: "Переведите деньги на карту и загрузите фото чека. После проверки сумма поступит на баланс.",
-    en: "Transfer money to the card and upload a photo of the receipt. Once checked, the amount is added to your balance.",
-    zh: "请转账至该银行卡并上传收据截图。审核通过后金额将计入您的余额。",
+    uz: "CLICK (Click ilovasi, Click bot va boshqa Click), ALIF, PAYME va 3-shaxsdan pul qabul qilinmaydi!!! Tashlangan pul qaytarilmaydi.",
+    ru: "Переводы через CLICK (приложение Click, Click-бот и другие сервисы Click), ALIF, PAYME и от третьих лиц не принимаются!!! Отправленные деньги не возвращаются.",
+    en: "Payments via CLICK (Click app, Click bot or any other Click service), ALIF, PAYME or from third parties are not accepted!!! Money sent this way is not refunded.",
+    zh: "不接受通过 CLICK（Click 应用、Click 机器人及其他 Click 服务）、ALIF、PAYME 或第三方的付款！！！已转出的款项不予退还。",
   },
   admin_contact: "",
+  receipt_contact: "chat_bilan",
   stars_price: 240,
   stars_min: 50,
   premium_prices: { m1: 42000, m3: 171600, m6: 231000, m12_login: 297000, m12: 418000 },

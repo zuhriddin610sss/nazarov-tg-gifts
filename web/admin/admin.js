@@ -317,8 +317,9 @@ async function settings(v) {
     <div class="section"><h2>To'lov</h2><div class="form">
       <div class="field"><label>Karta raqami</label><input class="input" name="card_number" value="${esc(s.card_number)}"></div>
       <div class="field"><label>Karta egasi</label><input class="input" name="card_holder" value="${esc(s.card_holder)}"></div>
+      <div class="field"><label>Chek yuboriladigan username</label><input class="input" name="receipt_contact" value="${esc(s.receipt_contact)}" placeholder="chat_bilan"></div>
       <div class="field"><label>Admin Telegram username</label><input class="input" name="admin_contact" value="${esc(s.admin_contact)}" placeholder="username (@ siz)"></div>
-      ${L.map((l) => `<div class="field full"><label>To'lov yo'riqnomasi (${l.toUpperCase()})</label><textarea class="input" name="pi_${l}" rows="2">${esc(s.payment_instructions[l])}</textarea></div>`).join("")}
+      ${L.map((l) => `<div class="field full"><label>Karta ostidagi ogohlantirish (${l.toUpperCase()})</label><textarea class="input" name="pi_${l}" rows="2">${esc(s.payment_instructions[l])}</textarea></div>`).join("")}
     </div></div>
     <div class="section"><h2>Narxlar</h2><div class="form">
       <div class="field"><label>1 star narxi (so'm)</label><input class="input" name="stars_price" value="${esc(s.stars_price)}"></div>
@@ -339,7 +340,7 @@ async function settings(v) {
     const f = new FormData(e.target);
     const n = (k) => Number(String(f.get(k)).replace(/[\s,]/g, ""));
     const body = {
-      card_number: String(f.get("card_number")).trim(), card_holder: String(f.get("card_holder")).trim(), admin_contact: String(f.get("admin_contact")).trim().replace(/^@/, ""),
+      card_number: String(f.get("card_number")).trim(), card_holder: String(f.get("card_holder")).trim(), admin_contact: String(f.get("admin_contact")).trim().replace(/^@/, ""), receipt_contact: String(f.get("receipt_contact")).trim().replace(/^@/, ""),
       payment_instructions: Object.fromEntries(L.map((l) => [l, String(f.get("pi_" + l))])),
       stars_price: n("stars_price"), stars_min: n("stars_min"),
       premium_prices: Object.fromEntries(["m1", "m3", "m6", "m12_login", "m12"].map((k) => [k, n("pp_" + k)])),
