@@ -8,7 +8,6 @@ export const SettingsSchema = z.object({
   card_holder: z.string().max(80),
   payment_instructions: L,
   admin_contact: z.string().max(64),            // Telegram username, @ belgisisiz
-  receipt_contact: z.string().max(64),          // chek yuboriladigan Telegram username
   stars_price: z.number().positive(),           // 1 star narxi, so'm
   stars_min: z.number().int().min(1),
   premium_prices: z.object({                    // naqd narxlar, so'm
@@ -36,7 +35,6 @@ export const DEFAULT_SETTINGS: Settings = {
     zh: "不接受通过 CLICK（Click 应用、Click 机器人及其他 Click 服务）、ALIF、PAYME 或第三方的付款！！！已转出的款项不予退还。",
   },
   admin_contact: "",
-  receipt_contact: "chat_bilan",
   stars_price: 240,
   stars_min: 50,
   premium_prices: { m1: 42000, m3: 171600, m6: 231000, m12_login: 297000, m12: 418000 },

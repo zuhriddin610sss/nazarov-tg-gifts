@@ -22,6 +22,8 @@ const T = {
     write_admin: "✉️ Adminga yozish",
     help: "Buyruqlar:\n/start — xizmatlar\n/balance — balans\n/orders — xaridlarim\n/admin — admin bilan bog'lanish",
     admin_contact: "Admin: @{u}",
+    rent_ending: "⏰ Ijara muddati tugayapti: {title}\nTugash vaqti: {end}\nMuddat tugagach, {what} sizdan qaytib oladi. Uzaytirmoqchi bo'lsangiz, admin bilan bog'laning.",
+    rent_what_gift: "sovg'a", rent_what_username: "username", rent_what_number: "raqam (va unga ulangan kirish)",
   },
   ru: {
     welcome: "Здравствуйте! NAZAROVtggifts — подарки Telegram.\nНажмите кнопку ниже, чтобы выбрать услугу.",
@@ -44,6 +46,8 @@ const T = {
     write_admin: "✉️ Написать админу",
     help: "Команды:\n/start — услуги\n/balance — баланс\n/orders — мои покупки\n/admin — связаться с админом",
     admin_contact: "Администратор: @{u}",
+    rent_ending: "⏰ Срок аренды заканчивается: {title}\nОкончание: {end}\nПосле окончания срока {what} вернётся владельцу. Чтобы продлить, свяжитесь с администратором.",
+    rent_what_gift: "подарок", rent_what_username: "username", rent_what_number: "номер (и вход по нему)",
   },
   en: {
     welcome: "Hello! NAZAROVtggifts — Telegram gifts.\nTap the button below to choose a service.",
@@ -66,6 +70,8 @@ const T = {
     write_admin: "✉️ Message the admin",
     help: "Commands:\n/start — services\n/balance — balance\n/orders — my purchases\n/admin — contact the admin",
     admin_contact: "Admin: @{u}",
+    rent_ending: "⏰ Your rental is ending: {title}\nEnds: {end}\nWhen it ends, the {what} goes back to its owner. To extend it, contact the admin.",
+    rent_what_gift: "gift", rent_what_username: "username", rent_what_number: "number (and the login tied to it)",
   },
   zh: {
     welcome: "您好！NAZAROVtggifts — Telegram 礼物。\n点击下方按钮选择服务。",
@@ -88,6 +94,8 @@ const T = {
     write_admin: "✉️ 联系管理员",
     help: "命令：\n/start — 服务\n/balance — 余额\n/orders — 我的购买\n/admin — 联系管理员",
     admin_contact: "管理员：@{u}",
+    rent_ending: "⏰ 您的租期即将结束：{title}\n结束时间：{end}\n到期后{what}将归还给所有者。如需续租，请联系管理员。",
+    rent_what_gift: "礼物", rent_what_username: "用户名", rent_what_number: "号码（及其登录）",
   },
 } as const;
 

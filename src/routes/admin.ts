@@ -12,6 +12,7 @@ import * as inst from "../services/installments.js";
 import { uploadPath } from "../uploads.js";
 import { notifyOrderClosed, notifyReceiptReviewed } from "../bot.js";
 import { pool } from "../db.js";
+import * as promo from "../services/promo.js";
 
 const Id = z.object({ id: z.coerce.number().int().positive() });
 const Money = z.number().finite();
@@ -44,8 +45,9 @@ export default async function adminRoutes(app: FastifyInstance) {
     const agreements = await inst.listAgreements({ status: "active" });
     const debt = agreements.reduce((s, a) => s + a.summary.remaining, 0);
     const overdue = agreements.filter((a) => a.summary.overdue).length;
-    const [r] = await q("SELECT count(*)::int AS pending_receipts FROM topup_receipts WHERE status = 'pending'");
-    return { orders: o, customers: c.customers, liabilities: c.liabilities, installments: { ...p, outstandingDebt: debt, overdue, active: agreements.length }, pendingReceipts: r.pending_receipts };
+    const [r] = await q(`SELECT (SELECT count(*)::int FROM topup_receipts WHERE status = 'pending') AS pending_receipts,
+                                (SELECT count(*)::int FROM reviews WHERE status = 'pending') AS pending_reviews`);
+    return { orders: o, customers: c.customers, liabilities: c.liabilities, installments: { ...p, outstandingDebt: debt, overdue, active: agreements.length }, pendingReceipts: r.pending_receipts, pendingReviews: r.pending_reviews };
   });
 
   // --- Navbat va buyurtmalar ---
@@ -172,6 +174,35 @@ export default async function adminRoutes(app: FastifyInstance) {
     const before = await getSettings();
     await saveSettings(s);
     await audit(pool, actor(req), "settings.update", null, { before, after: s });
+    return { ok: true };
+  });
+
+  // --- Promo-kodlar ---
+  const PromoBody = z.object({
+    code: z.string().min(3).max(32), kind: z.enum(["percent", "fixed"]), value: Money.positive(),
+    services: z.array(z.enum(["nft_gift", "gift_rent", "username_rent", "number_rent", "premium", "stars"])).nullable().default(null),
+    expiresAt: z.string().max(40).nullable().default(null), maxUses: z.number().int().positive().nullable().default(null), active: z.boolean().default(true),
+  });
+  app.get("/api/admin/promos", async () => promo.listPromos());
+  app.post("/api/admin/promos", async (req) => { await promo.upsertPromo(PromoBody.parse(req.body), actor(req)); return { ok: true }; });
+  app.put("/api/admin/promos/:id", async (req) => {
+    const { id } = Id.parse(req.params);
+    await promo.upsertPromo({ ...PromoBody.parse(req.body), id }, actor(req));
+    return { ok: true };
+  });
+
+  // --- Sharhlar (moderatsiya) ---
+  app.get("/api/admin/reviews", async (req) => {
+    const { status } = z.object({ status: z.enum(["pending", "published", "rejected"]).optional() }).parse(req.query);
+    return q(`SELECT r.*, o.public_id, o.title, c.username FROM reviews r JOIN orders o ON o.id = r.order_id JOIN customers c ON c.id = r.customer_id
+               WHERE ($1::text IS NULL OR r.status = $1) ORDER BY r.created_at DESC LIMIT 200`, [status ?? null]);
+  });
+  app.post("/api/admin/reviews/:id/:action", async (req) => {
+    const { id, action } = z.object({ id: z.coerce.number().int(), action: z.enum(["publish", "reject"]) }).parse(req.params);
+    const st = action === "publish" ? "published" : "rejected";
+    const r = await q("UPDATE reviews SET status = $2, reviewed_at = now() WHERE id = $1 RETURNING id", [id, st]);
+    if (!r.length) throw new AppError("NOT_FOUND", 404);
+    await audit(pool, actor(req), "review." + action, String(id));
     return { ok: true };
   });
 

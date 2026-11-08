@@ -16,6 +16,8 @@ const { approveReceipt, createReceipt, adminAdjust } = await import("../src/serv
 const inst = await import("../src/services/installments.js");
 const { verifyWebAppInitData, verifyLoginWidget } = await import("../src/telegramAuth.js");
 const { rentCustomerPrice, rentTotalTon } = await import("../src/pricing.js");
+const promo = await import("../src/services/promo.js");
+const { sendRentReminders } = await import("../src/jobs.js");
 
 let n = 0;
 async function customer(balance = 0, phone: string | null = "+998901234567") {
@@ -31,7 +33,7 @@ const bal = async (cid: number) => Number((await one("SELECT balance FROM custom
 
 beforeAll(async () => { await migrate(); });
 beforeEach(async () => {
-  await pool.query("TRUNCATE installment_payments, installment_agreements, topup_receipts, balance_ledger, orders, customers, audit_log, notifications_sent RESTART IDENTITY CASCADE");
+  await pool.query("TRUNCATE reviews, promo_redemptions, promo_codes, installment_payments, installment_agreements, topup_receipts, balance_ledger, orders, customers, audit_log, notifications_sent RESTART IDENTITY CASCADE");
 });
 afterAll(async () => { await pool.end(); });
 
@@ -187,5 +189,69 @@ describe("Telegram autentifikatsiya", () => {
     const hash = createHmac("sha256", createHash("sha256").update(token).digest()).update(dcs).digest("hex");
     expect(verifyLoginWidget({ ...data, hash }, token)?.id).toBe(42);
     expect(verifyLoginWidget({ ...data, id: "43", hash }, token)).toBeNull();
+  });
+});
+
+describe("promo-kodlar", () => {
+  const promoOrder = (cid: number, key: string, code: string) =>
+    createOrder({ customerId: cid, service: "stars", paymentMethod: "cash", title: "Stars", details: {}, price: 100_000, idempotencyKey: key, promoCode: code });
+
+  it("foizli chegirma narxdan ayiriladi va balansdan kamroq yechiladi", async () => {
+    await promo.upsertPromo({ code: "yangi10", kind: "percent", value: 10, services: null, expiresAt: null, maxUses: null, active: true }, "a");
+    const c = await customer(200_000);
+    const o = await promoOrder(c, "promo-key-1", "YANGI10");
+    const row = await one("SELECT price, discount, paid_amount, promo_code FROM orders WHERE id = $1", [o.id]);
+    expect([Number(row.price), Number(row.discount), Number(row.paid_amount), row.promo_code]).toEqual([90_000, 10_000, 90_000, "YANGI10"]);
+    expect(await bal(c)).toBe(110_000);
+  });
+
+  it("bitta mijoz bitta kodni bir marta ishlatadi", async () => {
+    await promo.upsertPromo({ code: "BIR", kind: "fixed", value: 5000, services: null, expiresAt: null, maxUses: null, active: true }, "a");
+    const c = await customer(500_000);
+    await promoOrder(c, "promo-key-2", "BIR");
+    await expect(promoOrder(c, "promo-key-3", "BIR")).rejects.toMatchObject({ code: "PROMO_ALREADY_USED" });
+    expect(await bal(c)).toBe(405_000);
+  });
+
+  it("parallel so'rovlarda ham ishlatish limiti oshmaydi", async () => {
+    await promo.upsertPromo({ code: "LIMIT2", kind: "fixed", value: 1000, services: null, expiresAt: null, maxUses: 2, active: true }, "a");
+    const cs = await Promise.all([1, 2, 3, 4, 5].map(() => customer(500_000)));
+    const res = await Promise.allSettled(cs.map((c, i) => promoOrder(c, `lim-key-${i}xx`, "LIMIT2")));
+    expect(res.filter((r) => r.status === "fulfilled").length).toBe(2);
+    expect((await one("SELECT used_count FROM promo_codes WHERE code = 'LIMIT2'")).used_count).toBe(2);
+  });
+
+  it("muddati o'tgan va boshqa xizmatga mo'ljallangan kod rad etiladi", async () => {
+    await promo.upsertPromo({ code: "ESKI", kind: "fixed", value: 1000, services: null, expiresAt: "2020-01-01T00:00:00Z", maxUses: null, active: true }, "a");
+    await promo.upsertPromo({ code: "PREM", kind: "fixed", value: 1000, services: ["premium"], expiresAt: null, maxUses: null, active: true }, "a");
+    const c = await customer(500_000);
+    await expect(promoOrder(c, "promo-key-4", "ESKI")).rejects.toMatchObject({ code: "PROMO_EXPIRED" });
+    await expect(promoOrder(c, "promo-key-5", "PREM")).rejects.toMatchObject({ code: "PROMO_NOT_FOR_SERVICE" });
+    expect(await bal(c)).toBe(500_000);
+  });
+
+  it("bekor qilinganda chegirmali summa qaytadi", async () => {
+    await promo.upsertPromo({ code: "QAYT", kind: "fixed", value: 20_000, services: null, expiresAt: null, maxUses: null, active: true }, "a");
+    const c = await customer(100_000);
+    const o = await promoOrder(c, "promo-key-6", "QAYT");
+    expect(await bal(c)).toBe(20_000);
+    await closeOrder(o.id, "cancelled", "t");
+    expect(await bal(c)).toBe(100_000);
+  });
+});
+
+describe("ijara eslatmalari", () => {
+  it("tugashiga 72 va 24 soat qolganda bittadan eslatma yuboriladi", async () => {
+    const c = await customer(0);
+    const r = await createOrder({ customerId: c, service: "gift_rent", paymentMethod: "installment", title: "Gift #1 — 3 kun", details: { days: 3 }, price: null, idempotencyKey: "rent-key-1" });
+    await closeOrder(r.id, "completed", "t");
+    const closed = new Date((await one("SELECT closed_at FROM orders WHERE id = $1", [r.id])).closed_at);
+    const at = (h: number) => new Date(closed.getTime() + (72 - h) * 3_600_000);
+    await sendRentReminders(at(60));
+    await sendRentReminders(at(50));
+    await sendRentReminders(at(20));
+    await sendRentReminders(at(10));
+    const keys = (await q("SELECT key FROM notifications_sent WHERE key LIKE 'rent:%' ORDER BY key")).map((x: any) => x.key);
+    expect(keys).toEqual([`rent:${r.id}:24h`, `rent:${r.id}:72h`]);
   });
 });

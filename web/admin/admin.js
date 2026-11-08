@@ -107,6 +107,7 @@ function orderSheet(o) {
       <span>To'lov</span><b>${o.payment_method === "cash" ? "Naqd" : "Bo'lib to'lash" + (o.installment_type ? " · " + esc(IT[o.installment_type] || o.installment_type) : "")}</b>
       <span>Narx</span><b>${o.price != null ? esc(money(o.price)) : "admin belgilaydi"}</b>
       ${o.cost != null ? `<span>Tannarx</span><b>${esc(money(o.cost))}</b><span>Foyda</span><b>${o.price != null ? esc(money(Number(o.price) - Number(o.cost))) : "—"}</b>` : ""}
+      ${Number(o.discount) > 0 ? `<span>Promo-kod</span><b>${esc(o.promo_code)} · −${esc(money(o.discount))}</b>` : ""}
       <span>Yechilgan</span><b>${esc(money(o.paid_amount))}</b>
       <span>Mijoz</span><b>${o.customer_username ? "@" + esc(o.customer_username) : "—"} · ${esc(o.customer_phone || "—")}</b>
       ${o.recipient ? `<span>Qabul qiluvchi</span><b>@${esc(o.recipient)}</b>` : ""}
@@ -317,7 +318,6 @@ async function settings(v) {
     <div class="section"><h2>To'lov</h2><div class="form">
       <div class="field"><label>Karta raqami</label><input class="input" name="card_number" value="${esc(s.card_number)}"></div>
       <div class="field"><label>Karta egasi</label><input class="input" name="card_holder" value="${esc(s.card_holder)}"></div>
-      <div class="field"><label>Chek yuboriladigan username</label><input class="input" name="receipt_contact" value="${esc(s.receipt_contact)}" placeholder="chat_bilan"></div>
       <div class="field"><label>Admin Telegram username</label><input class="input" name="admin_contact" value="${esc(s.admin_contact)}" placeholder="username (@ siz)"></div>
       ${L.map((l) => `<div class="field full"><label>Karta ostidagi ogohlantirish (${l.toUpperCase()})</label><textarea class="input" name="pi_${l}" rows="2">${esc(s.payment_instructions[l])}</textarea></div>`).join("")}
     </div></div>
@@ -340,7 +340,7 @@ async function settings(v) {
     const f = new FormData(e.target);
     const n = (k) => Number(String(f.get(k)).replace(/[\s,]/g, ""));
     const body = {
-      card_number: String(f.get("card_number")).trim(), card_holder: String(f.get("card_holder")).trim(), admin_contact: String(f.get("admin_contact")).trim().replace(/^@/, ""), receipt_contact: String(f.get("receipt_contact")).trim().replace(/^@/, ""),
+      card_number: String(f.get("card_number")).trim(), card_holder: String(f.get("card_holder")).trim(), admin_contact: String(f.get("admin_contact")).trim().replace(/^@/, ""),
       payment_instructions: Object.fromEntries(L.map((l) => [l, String(f.get("pi_" + l))])),
       stars_price: n("stars_price"), stars_min: n("stars_min"),
       premium_prices: Object.fromEntries(["m1", "m3", "m6", "m12_login", "m12"].map((k) => [k, n("pp_" + k)])),
@@ -351,6 +351,63 @@ async function settings(v) {
   };
 }
 
+async function promos(v) {
+  const rows = await api("/api/admin/promos");
+  v.innerHTML = `<h1>Promo-kodlar</h1>
+    <p class="hint" style="margin-bottom:12px">Promo-kod faqat naqd buyurtmalarga ishlaydi. Har bir mijoz bitta kodni bir marta ishlata oladi.</p>
+    <button class="btn btn-primary btn-sm" id="new" type="button" style="margin-bottom:12px">+ Yangi promo-kod</button>
+    <div class="tbl-wrap"><table><thead><tr><th>Kod</th><th>Chegirma</th><th>Xizmatlar</th><th>Muddat</th><th>Ishlatilgan</th><th>Jami chegirma</th><th>Holat</th><th></th></tr></thead><tbody>
+    ${rows.map((p) => `<tr><td><code>${esc(p.code)}</code></td><td>${p.kind === "percent" ? esc(Number(p.value)) + "%" : esc(money(p.value))}</td>
+      <td>${p.services ? p.services.map((s) => esc(SVC[s])).join(", ") : "Hammasi"}</td><td>${p.expires_at ? esc(dt(p.expires_at)) : "Cheksiz"}</td>
+      <td class="num">${p.used_count}${p.max_uses ? " / " + p.max_uses : ""}</td><td class="num">${esc(money(p.total_discount))}</td>
+      <td>${p.active ? "Faol" : "O'chirilgan"}</td><td><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button></td></tr>`).join("") || `<tr><td colspan="8" class="empty">Promo-kod yo'q</td></tr>`}
+    </tbody></table></div>`;
+  $("#new").onclick = () => promoForm({});
+  v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => promoForm(rows.find((p) => String(p.id) === b.dataset.ed))));
+}
+function promoForm(p) {
+  const edit = Boolean(p.id);
+  const exp = p.expires_at ? new Date(p.expires_at).toISOString().slice(0, 10) : "";
+  sheet(`<h2>${edit ? "Promo-kodni tahrirlash" : "Yangi promo-kod"}</h2>
+    <form class="form" id="pf">
+      <div class="field"><label>Kod</label><input class="input" name="code" required value="${esc(p.code || "")}" placeholder="YANGIYIL" style="text-transform:uppercase"></div>
+      <div class="field"><label>Turi</label><select class="input" name="kind"><option value="percent" ${p.kind !== "fixed" ? "selected" : ""}>Foiz (%)</option><option value="fixed" ${p.kind === "fixed" ? "selected" : ""}>Qat'iy summa (so'm)</option></select></div>
+      <div class="field"><label>Qiymati</label><input class="input" name="value" required inputmode="decimal" value="${esc(p.value ? Number(p.value) : "")}"></div>
+      <div class="field"><label>Amal qilish muddati</label><input class="input" type="date" name="expires" value="${esc(exp)}"></div>
+      <div class="field"><label>Necha marta ishlatiladi (bo'sh: cheksiz)</label><input class="input" name="maxUses" inputmode="numeric" value="${esc(p.max_uses || "")}"></div>
+      <div class="field"><label>Holat</label><select class="input" name="active"><option value="1" ${p.active !== false ? "selected" : ""}>Faol</option><option value="0" ${p.active === false ? "selected" : ""}>O'chirilgan</option></select></div>
+      <div class="field full"><label>Qaysi xizmatlarga (hech biri belgilanmasa: hammasiga)</label>
+        <div class="acts">${Object.entries(SVC).map(([k, l]) => `<label class="chip"><input type="checkbox" name="svc" value="${k}" ${p.services && p.services.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div></div>
+      <button class="btn btn-primary full" type="submit">Saqlash</button>
+    </form>`);
+  $("#pf").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const svcs = f.getAll("svc");
+    const body = {
+      code: String(f.get("code")).trim().toUpperCase(), kind: f.get("kind"), value: Number(String(f.get("value")).replace(/[\s,]/g, "")),
+      expiresAt: f.get("expires") ? f.get("expires") + "T23:59:59+05:00" : null,
+      maxUses: f.get("maxUses") ? Number(f.get("maxUses")) : null, active: f.get("active") === "1", services: svcs.length ? svcs : null,
+    };
+    try { await api("/api/admin/promos" + (edit ? "/" + p.id : ""), { method: edit ? "PUT" : "POST", body }); closeSheet(); toast("Saqlandi"); render(); }
+    catch (er) { toast(er.code === "PROMO_CODE_EXISTS" ? "Bunday kod allaqachon bor" : er.code === "PROMO_CODE_FORMAT" ? "Kod 3–32 belgi: lotin harflari, raqamlar, - va _" : er.message); }
+  };
+}
+
+async function reviews(v) {
+  const st = reviews.st ?? "pending";
+  const rows = await api("/api/admin/reviews" + (st ? "?status=" + st : ""));
+  v.innerHTML = `<h1>Sharhlar</h1>
+    <div class="filters">${[["pending", "Tekshirilmagan"], ["published", "E'lon qilingan"], ["rejected", "Rad etilgan"], ["", "Hammasi"]].map(([k, l]) => `<button class="chip" data-s="${k}" aria-pressed="${st === k}" type="button">${l}</button>`).join("")}</div>
+    <div class="list">${rows.map((r) => `<article class="item"><div class="item-h"><b>${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)} · ${r.username ? "@" + esc(r.username) : "—"}</b><span class="hint">${esc(r.public_id)} · ${esc(dt(r.created_at))}</span></div>
+      <p>${esc(r.text)}</p><p class="hint">${esc(r.title)}</p>
+      ${r.status === "pending" ? `<div class="acts"><button class="btn btn-primary btn-sm" data-pub="${r.id}" type="button">E'lon qilish</button><button class="btn btn-ghost btn-sm" data-rej="${r.id}" type="button">Rad etish</button></div>` : ""}</article>`).join("") || `<p class="empty">Sharh yo'q</p>`}</div>`;
+  v.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { reviews.st = b.dataset.s; render(); }));
+  const act = async (id, a) => { try { await api(`/api/admin/reviews/${id}/${a}`, { body: {} }); toast(a === "publish" ? "E'lon qilindi" : "Rad etildi"); render(); } catch (e) { toast(e.message); } };
+  v.querySelectorAll("[data-pub]").forEach((b) => (b.onclick = () => act(b.dataset.pub, "publish")));
+  v.querySelectorAll("[data-rej]").forEach((b) => (b.onclick = () => act(b.dataset.rej, "reject")));
+}
+
 async function logs(v) {
   const [a, er] = await Promise.all([api("/api/admin/audit"), api("/api/admin/errors")]);
   v.innerHTML = `<h1>Jurnallar</h1>
@@ -358,7 +415,7 @@ async function logs(v) {
     <div class="section"><h2>Admin harakatlari</h2><div class="det">${a.map((x) => `${dt(x.created_at)} · ${x.actor} · ${x.action}${x.target ? " · " + x.target : ""}`).map(esc).join("\n") || "—"}</div></div>`;
 }
 
-const VIEWS = { dashboard, queue, orders, receipts, customers, installments, settings, logs };
+const VIEWS = { dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs };
 async function render() {
   if (!(await ensureAuth())) return;
   const r = location.hash.slice(1) || "dashboard";
@@ -370,6 +427,7 @@ async function render() {
     const q = $("#cQueue"), c = $("#cRc");
     q.textContent = s.orders.queued; q.hidden = !s.orders.queued;
     c.textContent = s.pendingReceipts; c.hidden = !s.pendingReceipts;
+    const rv = $("#cRv"); rv.textContent = s.pendingReviews; rv.hidden = !s.pendingReviews;
   }).catch(() => {});
 }
 window.addEventListener("hashchange", render);

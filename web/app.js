@@ -182,14 +182,36 @@ async function placeOrder(body, cashAmount) {
   if (body.paymentMethod !== "cash") return go();
   await loadMe();
   const bal = Number(S.me ? S.me.balance : 0);
-  if (bal < cashAmount) return insufficient(cashAmount);
-  sheet(`<h2>${esc(t("confirm_title"))}</h2>
-    <p>${esc(t("confirm_debit", { a: money(cashAmount) }))}</p>
-    <p class="hint">${esc(t("your_balance", { b: money(bal) }))}</p>
-    <button class="btn btn-primary" id="cfOk" type="button">${esc(t("confirm"))}</button>
-    <button class="btn btn-ghost" id="cfNo" type="button">${esc(t("cancel"))}</button>`);
-  $("#cfOk").onclick = (e) => go(e.currentTarget);
-  $("#cfNo").onclick = closeSheet;
+  let toPay = cashAmount;
+  const draw = (promoLine) => {
+    sheet(`<h2>${esc(t("confirm_title"))}</h2>
+      <div class="row2" style="grid-template-columns:1fr auto">
+        <input class="input" id="promo" placeholder="${esc(t("promo_ph"))}" value="${esc(body.promoCode || "")}" autocapitalize="characters" autocomplete="off">
+        <button class="btn btn-ghost btn-sm" id="promoBtn" type="button">${esc(t("apply"))}</button>
+      </div>
+      ${promoLine || ""}
+      <p>${esc(t("confirm_debit", { a: money(toPay) }))}</p>
+      <p class="hint">${esc(t("your_balance", { b: money(bal) }))}</p>
+      ${bal < toPay ? `<p class="alert">${esc(t("insufficient"))}</p><a class="btn btn-primary" href="#balance" id="goTop">${esc(t("topup"))}</a>`
+                    : `<button class="btn btn-primary" id="cfOk" type="button">${esc(t("confirm"))}</button>`}
+      <button class="btn btn-ghost" id="cfNo" type="button">${esc(t("cancel"))}</button>`);
+    const ok = $("#cfOk"); if (ok) ok.onclick = (e) => go(e.currentTarget);
+    const top = $("#goTop"); if (top) top.onclick = closeSheet;
+    $("#cfNo").onclick = closeSheet;
+    $("#promoBtn").onclick = async () => {
+      const code = $("#promo").value.trim();
+      if (!code) { delete body.promoCode; toPay = cashAmount; return draw(); }
+      try {
+        const r = await api("/api/promo/check", { body: { code, service: body.service, price: cashAmount } });
+        body.promoCode = r.code; toPay = Number(r.finalPrice);
+        draw(`<p class="hint" style="color:var(--ok);font-weight:800">${esc(t("promo_ok", { d: som(r.discount) }))}</p>`);
+      } catch (e) {
+        delete body.promoCode; toPay = cashAmount;
+        draw(`<p class="err">${esc(errText(e))}</p>`);
+      }
+    };
+  };
+  draw();
 }
 function insufficient(amount) {
   sheet(`<h2>${esc(t("insufficient"))}</h2>
@@ -247,7 +269,8 @@ function viewHome(v) {
   const en = (S.cfg && S.cfg.services) || {};
   const list = ["nft_gift", "gift_rent", "username_rent", "number_rent", "premium", "stars"].filter((s) => en[s] !== false);
   v.innerHTML = `<h1 class="page-title">${esc(t("choose_service"))}</h1>
-    <div class="tiles">${list.map((s) => `<a class="tile" href="#${ROUTE[s]}"><span class="ic metal">${ICONS[s]}</span><b>${esc(t("svc_" + s))}</b></a>`).join("")}</div>`;
+    <div class="tiles">${list.map((s) => `<a class="tile" href="#${ROUTE[s]}"><span class="ic metal">${ICONS[s]}</span><b>${esc(t("svc_" + s))}</b></a>`).join("")}</div>
+    <p style="text-align:center;margin-top:22px"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
 }
 
 function viewPremium(v) {
@@ -542,7 +565,10 @@ async function viewOrders(v) {
       <div class="item-h"><b>${esc(o.title)}</b><span class="badge b-${esc(o.status)}">${esc(t("st_" + o.status))}</span></div>
       <div class="meta"><code>${esc(o.publicId)}</code><span>${esc(date(o.createdAt))}</span><span>${esc(t("pm_" + o.paymentMethod))}</span>
         ${o.price != null ? `<span>${esc(som(o.price))}</span>` : ""}${o.recipient ? `<span>@${esc(o.recipient)}</span>` : ""}</div>
+      ${o.rentEndsAt ? `<div class="kv"><span>${esc(t("rent_ends"))}</span><b>${esc(date(o.rentEndsAt))}</b></div>` : ""}
       ${o.paymentMethod === "installment" ? (o.installment ? instBlock(o.installment) : `<p class="hint">${esc(t("inst_pending"))}</p>`) : ""}
+      ${o.canReview ? `<button class="btn btn-ghost btn-sm" type="button" data-rev="${esc(o.publicId)}">${esc(t("leave_review"))}</button>`
+        : o.reviewStatus === "pending" ? `<p class="hint">${esc(t("review_pending"))}</p>` : o.reviewStatus === "published" ? `<p class="hint">${esc(t("review_published"))}</p>` : ""}
     </article>`);
   const legacy = data.agreements.map((a) => `<article class="item">
       <div class="item-h"><b>${esc(a.title)}</b><span class="badge ${a.active ? "b-queued" : "b-completed"}">${esc(t("pm_installment"))}</span></div>
@@ -550,6 +576,24 @@ async function viewOrders(v) {
   const all = cards.concat(legacy);
   v.innerHTML = `<h1 class="page-title">${esc(t("orders_title"))}</h1>
     ${all.length ? `<div class="list">${all.join("")}</div>` : `<div class="empty"><p>${esc(t("no_orders"))}</p><p style="margin-top:14px"><a class="btn btn-primary" href="#home">${esc(t("choose_service"))}</a></p></div>`}`;
+  v.querySelectorAll("[data-rev]").forEach((b) => b.addEventListener("click", () => {
+    let rating = 5;
+    const draw = () => {
+      sheet(`<h2>${esc(t("review_title"))}</h2>
+        <div class="chips" role="radiogroup">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="chip" data-r="${n}" aria-pressed="${n <= rating}">★</button>`).join("")}</div>
+        <textarea class="input" id="rvText" rows="4" maxlength="1000" placeholder="${esc(t("review_ph"))}"></textarea>
+        <button class="btn btn-primary" id="rvSend" type="button">${esc(t("send"))}</button>`);
+      $("#sheet").querySelectorAll("[data-r]").forEach((c) => (c.onclick = () => { const txt = $("#rvText").value; rating = Number(c.dataset.r); draw(); $("#rvText").value = txt; }));
+      $("#rvSend").onclick = async (e) => {
+        const text = $("#rvText").value.trim();
+        if (text.length < 2) return $("#rvText").focus();
+        e.currentTarget.disabled = true;
+        try { await api(`/api/orders/${b.dataset.rev}/review`, { body: { rating, text } }); closeSheet(); toast(t("review_sent")); render(); }
+        catch (er) { e.currentTarget.disabled = false; toast(errText(er)); }
+      };
+    };
+    draw();
+  }));
   v.querySelectorAll("[data-pay]").forEach((b) => b.addEventListener("click", () => {
     const id = b.dataset.pay, k = key();
     sheet(`<h2>${esc(t("pay_monthly"))}</h2><p>${esc(t("pay_monthly_confirm"))}</p>
@@ -578,8 +622,7 @@ async function viewBalance(v) {
           <button class="btn btn-ghost btn-sm" id="copy" type="button">${esc(t("copy"))}</button></div>`
         : `<p class="alert">${esc(t("card_missing"))}</p>`}
       ${b.instructions ? `<p class="warnbox">${esc(b.instructions)}</p>` : ""}
-      ${b.receiptContact ? `<p class="rc-line">${esc(t("send_receipt_to", { u: "@" + b.receiptContact.replace(/^@/, "") }))}</p>
-        <a class="btn btn-primary" href="https://t.me/${esc(b.receiptContact.replace(/^@/, ""))}" target="_blank" rel="noopener">@${esc(b.receiptContact.replace(/^@/, ""))}</a>` : ""}
+      <p class="rc-line">${esc(t("upload_below"))}</p>
       <form id="rcForm" class="opts" novalidate>
         <div class="field"><label for="amt">${esc(t("amount"))}</label><input class="input" id="amt" inputmode="numeric" autocomplete="off"></div>
         <div class="field"><label>${esc(t("receipt"))}</label>
@@ -614,11 +657,42 @@ async function viewBalance(v) {
   });
 }
 
+async function viewHelp(v) {
+  const admin = S.cfg && S.cfg.adminContact ? S.cfg.adminContact.replace(/^@/, "") : "";
+  v.innerHTML = `<h1 class="page-title">${esc(t("track_title"))}</h1>
+    <form class="row2" id="trk" style="grid-template-columns:1fr auto" novalidate>
+      <input class="input" id="trkId" placeholder="${esc(t("track_ph"))}" autocapitalize="characters" autocomplete="off">
+      <button class="btn btn-primary btn-sm" type="submit">${esc(t("track_btn"))}</button>
+    </form>
+    <div id="trkRes"></div>
+    <h1 class="page-title">${esc(t("help_title"))}</h1>
+    <div class="list">${[1, 2, 3, 4, 5, 6].map((n) => `<details class="item"><summary style="cursor:pointer;font-weight:800">${esc(t("q" + n))}</summary><p class="hint" style="margin-top:8px">${esc(t("a" + n))}</p></details>`).join("")}</div>
+    ${admin ? `<p style="margin-top:16px"><a class="btn btn-ghost" href="https://t.me/${esc(admin)}" target="_blank" rel="noopener">${esc(t("write_admin"))}</a></p>` : ""}
+    <h1 class="page-title">${esc(t("reviews_title"))}</h1>
+    <div class="list" id="revs"><div class="spin"></div></div>`;
+  $("#trk", v).addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = $("#trkId", v).value.trim().toUpperCase();
+    const out = $("#trkRes", v);
+    if (!/^NG-[A-Z0-9]{6}$/.test(id)) { out.innerHTML = `<p class="err">${esc(t("err_ORDER_NOT_FOUND"))}</p>`; return; }
+    try {
+      const r = await api("/api/track/" + id);
+      out.innerHTML = `<article class="item" style="margin-top:10px"><div class="item-h"><b>${esc(r.title)}</b><span class="badge b-${esc(r.status)}">${esc(t("st_" + r.status))}</span></div>
+        <div class="meta"><code>${esc(r.publicId)}</code><span>${esc(date(r.createdAt))}</span></div></article>`;
+    } catch (er) { out.innerHTML = `<p class="err">${esc(errText(er))}</p>`; }
+  });
+  try {
+    const rv = await api("/api/reviews");
+    $("#revs", v).innerHTML = rv.length ? rv.map((r) => `<article class="item"><div class="item-h"><b>${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</b><span class="hint">${esc(r.name)} · ${esc(date(r.createdAt))}</span></div><p>${esc(r.text)}</p></article>`).join("")
+      : `<p class="empty">${esc(t("no_reviews"))}</p>`;
+  } catch { $("#revs", v).innerHTML = ""; }
+}
+
 // ---------- marshrutlash ----------
 const VIEWS = {
   home: viewHome, premium: viewPremium, stars: viewStars, nft: viewNft,
   "rent-gifts": (v) => viewRent(v, "rent-gifts"), "rent-usernames": (v) => viewRent(v, "rent-usernames"), "rent-numbers": (v) => viewRent(v, "rent-numbers"),
-  "rent-item": viewRentItem, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin,
+  "rent-item": viewRentItem, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
 const TOP = new Set(["home", "orders", "balance", "login", "done"]);
 const PARENT = { "rent-item": () => (S.rentPick ? S.rentPick.route : "home") };

@@ -108,11 +108,14 @@ Ishlaydi:
 - Naqd buyurtmada pul darhol yechiladi, bekor qilinsa avtomatik qaytadi.
 - Premium (qat'iy narxlar), Stars (240 so'm, kamida 50), NFT sovg'a so'rovi, ijara katalogi (Marketapp, formula bilan).
 - Xaridlarim: bo'lib to'lashda faqat 3 ta ma'lumot ko'rsatiladi. Oylik to'lovni mijoz o'zi tasdiqlab balansdan to'laydi.
-- Admin: statistika, navbat, buyurtmalar, cheklar, mijozlar va balans tuzatish, bo'lib to'lash (eski shartnomalar ham), sozlamalar, jurnallar.
+- Admin: statistika, navbat, buyurtmalar, cheklar, mijozlar va balans tuzatish, bo'lib to'lash (eski shartnomalar ham), promo-kodlar, sharhlar, sozlamalar, jurnallar.
+- Promo-kodlar (foiz yoki summa, muddat, ishlatish limiti, xizmat bo'yicha cheklov; faqat naqd buyurtmalar uchun).
+- Ijara tugashidan 72 va 24 soat oldin mijozga va adminga eslatma.
+- Savollar sahifasi, buyurtmani ID orqali tekshirish, mijoz sharhlari (admin tasdiqlagach ko'rinadi).
 
 Hali qilinmagan:
 - **Naqd buyurtmani Marketapp'ga avtomatik yuborish.** Buning uchun alohida TON hamyon va tranzaksiyani imzolash kerak. Hozircha naqd buyurtmalar ham navbatda turadi va admin qo'lda bajaradi.
 - Ijara narxida Marketapp'ning kunlik chegirmasi (`discount_per_day`) hisobga olinmagan: haqiqiy ma'lumot bilan tekshirish kerak.
-- Ijara tugashi haqida eslatmalar, promo-kodlar, referal tizimi, sharhlar, FAQ sahifasi.
+- Referal tizimi.
 - Admin panel hozircha faqat o'zbek tilida.
 - Admin uchun ikki bosqichli (TOTP) tekshiruv.

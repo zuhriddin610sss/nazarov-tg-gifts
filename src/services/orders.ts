@@ -4,6 +4,7 @@ import { AppError } from "../errors.js";
 import { newPublicId } from "../publicId.js";
 import { applyLedger } from "./balance.js";
 import { audit } from "../audit.js";
+import { applyPromo, recordRedemption, type PromoResult } from "./promo.js";
 
 export type Service = "nft_gift" | "gift_rent" | "username_rent" | "number_rent" | "premium" | "stars";
 
@@ -18,6 +19,7 @@ export interface NewOrder {
   price: number | null;          // naqd uchun majburiy; bo'lib to'lashda null (admin aytadi)
   cost?: number | null;
   idempotencyKey: string;
+  promoCode?: string | null;     // faqat naqd buyurtmalar uchun
 }
 
 export interface CreatedOrder { id: number; publicId: string; duplicate: boolean; queuePosition: number }
@@ -43,22 +45,30 @@ export async function createOrder(o: NewOrder): Promise<CreatedOrder> {
           return { id: d.id, publicId: d.public_id, duplicate: true, queuePosition: await position(c, d.id) };
         }
 
+        let promo: PromoResult | null = null;
+        let price = o.price;
+        if (o.promoCode && o.paymentMethod === "cash") {
+          promo = await applyPromo(c, o.promoCode, o.customerId, o.service, o.price!, true);
+          price = promo.finalPrice;
+        }
+
         const publicId = newPublicId();
         const ins = await c.query(
           `INSERT INTO orders (public_id, customer_id, service, payment_method, installment_type, title, details, recipient,
-                               price, cost, customer_username, customer_phone, idempotency_key)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+                               price, cost, customer_username, customer_phone, idempotency_key, promo_code, discount)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
           [publicId, o.customerId, o.service, o.paymentMethod, o.installmentType ?? null, o.title, o.details,
-           o.recipient ?? null, o.price, o.cost ?? null, username, phone, o.idempotencyKey],
+           o.recipient ?? null, price, o.cost ?? null, username, phone, o.idempotencyKey, promo?.code ?? null, promo?.discount ?? 0],
         );
         const id = ins.rows[0].id as number;
+        if (promo) await recordRedemption(c, promo, o.customerId, id);
 
         if (o.paymentMethod === "cash") {
           await applyLedger(c, {
-            customerId: o.customerId, amount: -o.price!, kind: "order_payment",
+            customerId: o.customerId, amount: -price!, kind: "order_payment",
             key: `order:${id}:pay`, refType: "order", refId: id, note: publicId,
           });
-          await c.query("UPDATE orders SET paid_amount = $2 WHERE id = $1", [id, o.price]);
+          await c.query("UPDATE orders SET paid_amount = $2 WHERE id = $1", [id, price]);
         }
         return { id, publicId, duplicate: false, queuePosition: await position(c, id) };
       });

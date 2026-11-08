@@ -12,10 +12,13 @@ import { payFromBalance } from "../services/installments.js";
 import { PREMIUM_PLANS, rentCost, rentCustomerPrice, rentTotalTon, starsPrice } from "../pricing.js";
 import * as mk from "../marketapp.js";
 import { saveUpload } from "../uploads.js";
+import { applyPromo } from "../services/promo.js";
+import { pool } from "../db.js";
 import { notifyNewOrder, notifyNewReceipt } from "../bot.js";
 
 const USERNAME = /^[A-Za-z][A-Za-z0-9_]{3,31}$/;
 const IdemKey = z.string().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/);
+const PromoCode = z.string().trim().max(32).optional();
 const cleanUser = (s: string) => s.trim().replace(/^@/, "").replace(/^https?:\/\/t\.me\//i, "");
 
 const RENT_CATEGORY = { gift_rent: "gifts", username_rent: "usernames", number_rent: "numbers" } as const;
@@ -113,16 +116,16 @@ export default async function customerRoutes(app: FastifyInstance) {
   const Recipient = z.object({ self: z.boolean(), username: z.string().max(64).optional() });
   const OrderBody = z.discriminatedUnion("service", [
     z.object({ service: z.literal("premium"), plan: z.enum(PREMIUM_PLANS), paymentMethod: z.enum(["cash", "installment"]),
-      installmentType: z.enum(["plan2", "uzum"]).optional(), recipient: Recipient, idempotencyKey: IdemKey }),
+      installmentType: z.enum(["plan2", "uzum"]).optional(), recipient: Recipient, idempotencyKey: IdemKey, promoCode: PromoCode }),
     z.object({ service: z.literal("stars"), quantity: z.number().int().max(1_000_000), paymentMethod: z.enum(["cash", "installment"]),
-      installmentType: z.enum(["plan2", "uzum"]).optional(), recipient: Recipient, idempotencyKey: IdemKey }),
+      installmentType: z.enum(["plan2", "uzum"]).optional(), recipient: Recipient, idempotencyKey: IdemKey, promoCode: PromoCode }),
     z.object({ service: z.literal("nft_gift"), paymentMethod: z.literal("installment"), installmentType: z.enum(["plan1", "plan2", "uzum"]),
       giftName: z.string().max(120).optional(), giftLink: z.string().max(300).optional(), giftImage: z.string().max(80).optional(),
       collectionAddress: z.string().max(80).optional(),
-      model: z.string().max(80), backdrop: z.string().max(80), idempotencyKey: IdemKey }),
+      model: z.string().max(80), backdrop: z.string().max(80), idempotencyKey: IdemKey, promoCode: PromoCode }),
     ...(["gift_rent", "username_rent", "number_rent"] as const).map((sv) => z.object({
       service: z.literal(sv), address: z.string().min(10).max(100), days: z.number().int().min(1).max(3650),
-      paymentMethod: z.enum(["cash", "installment"]), idempotencyKey: IdemKey })),
+      paymentMethod: z.enum(["cash", "installment"]), idempotencyKey: IdemKey, promoCode: PromoCode })),
   ] as any);
 
   app.post("/api/orders", { config: { rateLimit: { max: 15, timeWindow: "1 minute" } } }, async (req) => {
@@ -140,7 +143,7 @@ export default async function customerRoutes(app: FastifyInstance) {
     };
 
     let o: NewOrder;
-    const base = { customerId: sess.cid, idempotencyKey: b.idempotencyKey, paymentMethod: b.paymentMethod, installmentType: b.paymentMethod === "installment" ? b.installmentType ?? null : null };
+    const base = { customerId: sess.cid, idempotencyKey: b.idempotencyKey, promoCode: b.paymentMethod === "cash" && b.promoCode ? b.promoCode : null, paymentMethod: b.paymentMethod, installmentType: b.paymentMethod === "installment" ? b.installmentType ?? null : null };
 
     if (b.service === "premium") {
       if (b.paymentMethod === "installment" && !b.installmentType) throw new AppError("INSTALLMENT_TYPE_REQUIRED");
@@ -181,13 +184,25 @@ export default async function customerRoutes(app: FastifyInstance) {
     return { publicId: r.publicId, duplicate: r.duplicate, paymentMethod: o.paymentMethod };
   });
 
+  // --- Promo-kodni oldindan tekshirish (narx ko'rsatish uchun) ---
+  app.post("/api/promo/check", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req) => {
+    const s = await requireCustomer(req);
+    const b = z.object({ code: z.string().trim().min(1).max(32), service: z.string().max(30), price: z.number().positive() }).parse(req.body);
+    const r = await applyPromo(pool, b.code, s.cid, b.service, b.price, false);
+    return { code: r.code, discount: r.discount, finalPrice: r.finalPrice };
+  });
+
   // --- Xaridlarim (navbat raqami va ichki hisob ko'rsatilmaydi) ---
   app.get("/api/orders", async (req) => {
     const s = await requireCustomer(req);
     const rows = await q(
-      `SELECT o.public_id, o.service, o.title, o.payment_method, o.status, o.price, o.recipient, o.created_at, o.details,
+      `SELECT o.public_id, o.service, o.title, o.payment_method, o.status, o.price, o.discount, o.recipient, o.created_at, o.details,
+              CASE WHEN o.status = 'completed' AND o.service IN ('gift_rent','username_rent','number_rent')
+                   THEN o.closed_at + make_interval(days => (o.details->>'days')::int) END AS rent_ends_at,
+              rv.status AS review_status,
               a.id AS agreement_id, a.start_date, a.monthly_payment, a.final_date, a.status AS agreement_status
          FROM orders o LEFT JOIN installment_agreements a ON a.order_id = o.id
+         LEFT JOIN reviews rv ON rv.order_id = o.id
         WHERE o.customer_id = $1 ORDER BY o.created_at DESC LIMIT 200`, [s.cid]);
     const legacy = await q(
       `SELECT id AS agreement_id, product_name AS title, start_date, monthly_payment, final_date, status AS agreement_status, created_at
@@ -195,7 +210,9 @@ export default async function customerRoutes(app: FastifyInstance) {
     return {
       orders: rows.map((r) => ({
         publicId: r.public_id, service: r.service, title: r.title, paymentMethod: r.payment_method, status: r.status,
-        price: r.payment_method === "cash" ? r.price : null, recipient: r.recipient, createdAt: r.created_at,
+        price: r.payment_method === "cash" ? r.price : null, discount: Number(r.discount) > 0 ? r.discount : null,
+        recipient: r.recipient, createdAt: r.created_at, rentEndsAt: r.rent_ends_at,
+        canReview: r.status === "completed" && !r.review_status, reviewStatus: r.review_status ?? null,
         image: r.details?.address && r.service !== "nft_gift" ? { service: r.service, name: r.details.name } : null,
         installment: r.agreement_id ? {
           id: r.agreement_id, purchasedAt: r.start_date, monthlyPayment: r.monthly_payment, finalDate: r.final_date,
@@ -207,6 +224,29 @@ export default async function customerRoutes(app: FastifyInstance) {
         active: a.agreement_status === "active",
       })),
     };
+  });
+
+  // --- Sharhlar: faqat bajarilgan buyurtmaga, bitta buyurtmaga bitta; admin tasdiqlagach ko'rinadi ---
+  app.post("/api/orders/:publicId/review", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req) => {
+    const s = await requireCustomer(req);
+    const { publicId } = z.object({ publicId: z.string().regex(/^NG-[A-Z0-9]{6}$/) }).parse(req.params);
+    const b = z.object({ rating: z.number().int().min(1).max(5), text: z.string().trim().min(2).max(1000) }).parse(req.body);
+    const o = await one("SELECT id, status FROM orders WHERE public_id = $1 AND customer_id = $2", [publicId, s.cid]);
+    if (!o) throw new AppError("ORDER_NOT_FOUND", 404);
+    if (o.status !== "completed") throw new AppError("REVIEW_NOT_ALLOWED", 409);
+    const r = await q("INSERT INTO reviews (order_id, customer_id, rating, text) VALUES ($1,$2,$3,$4) ON CONFLICT (order_id) DO NOTHING RETURNING id",
+      [o.id, s.cid, b.rating, b.text]);
+    if (!r.length) throw new AppError("REVIEW_EXISTS", 409);
+    return { ok: true };
+  });
+
+  app.get("/api/reviews", async () => {
+    const rows = await q(`SELECT r.rating, r.text, r.created_at, c.first_name, o.service FROM reviews r
+                            JOIN customers c ON c.id = r.customer_id JOIN orders o ON o.id = r.order_id
+                           WHERE r.status = 'published' ORDER BY r.created_at DESC LIMIT 30`);
+    // Ism qisqartiriladi: shaxsiy ma'lumot oshkor qilinmaydi
+    return rows.map((r) => ({ rating: r.rating, text: r.text, createdAt: r.created_at, service: r.service,
+      name: r.first_name ? String(r.first_name).slice(0, 1).toUpperCase() + "***" : "***" }));
   });
 
   // Buyurtmani ID orqali kuzatish (shaxsiy ma'lumotsiz)
@@ -229,7 +269,6 @@ export default async function customerRoutes(app: FastifyInstance) {
       card: { number: st.card_number, holder: st.card_holder },
       instructions: st.payment_instructions[(c.lang as "uz") ?? "uz"] ?? st.payment_instructions.uz,
       adminContact: st.admin_contact,
-      receiptContact: st.receipt_contact,
     };
   });
 

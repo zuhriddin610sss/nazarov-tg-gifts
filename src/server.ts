@@ -13,6 +13,7 @@ import customerRoutes from "./routes/customer.js";
 import adminRoutes from "./routes/admin.js";
 import { bot } from "./bot.js";
 import { pool } from "./db.js";
+import { startJobs } from "./jobs.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -75,7 +76,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   } else {
     console.warn("BOT_TOKEN berilmagan: bot va Telegram orqali kirish o'chirilgan");
   }
-  const stop = async () => { await bot?.stop().catch(() => {}); await app.close(); await pool.end(); process.exit(0); };
+  const jobs = startJobs();
+  const stop = async () => { clearInterval(jobs); await bot?.stop().catch(() => {}); await app.close(); await pool.end(); process.exit(0); };
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);
 }

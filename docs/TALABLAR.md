@@ -98,3 +98,14 @@ O'zbek, rus, ingliz, xitoy. Xitoycha tarjimani ona tilida so'zlashuvchi tekshiri
 ## Infratuzilma
 
 Server va domen bor. Kod: GitHub `zuhriddin610sss/nazarov-tg-gifts`.
+
+## Balansni to'ldirish
+
+- Karta raqami ostida: karta egasi "Nazarov Z" va qizil ogohlantirish: "CLICK (Click ilovasi, Click bot va boshqa Click), ALIF, PAYME va 3-shaxsdan pul qabul qilinmaydi!!! Tashlangan pul qaytarilmaydi." (admin sozlamalarida o'zgartiriladi).
+- Chek **faqat sayt orqali** yuklanadi (C varianti); @chat_bilan tugmasi olib tashlangan.
+
+## Promo-kodlar, sharhlar, eslatmalar
+
+- Promo-kod faqat naqd buyurtmalarga; foiz yoki qat'iy summa; muddat, ishlatish limiti, xizmat bo'yicha cheklov. Bitta mijoz bitta kodni bir marta ishlatadi. Narx kamida 1 so'm qoladi.
+- Sharh faqat bajarilgan buyurtmaga, bitta buyurtmaga bitta; admin tasdiqlagach "Savollar" sahifasida ko'rinadi (ism qisqartiriladi).
+- Ijara admin "Amalga oshirildi" qilgan paytdan hisoblanadi; tugashidan 72 va 24 soat oldin eslatma.
