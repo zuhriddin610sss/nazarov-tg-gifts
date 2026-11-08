@@ -54,7 +54,7 @@ export async function notifyNewOrder(orderId: number) {
     `To'lov: ${o.payment_method === "cash" ? "Naqd (balansdan yechildi)" : "Bo'lib to'lash" + (o.installment_type ? ` — ${o.installment_type}` : "")}`,
     `Narx: ${o.price != null ? money(o.price) + " so'm" : "admin belgilaydi"}`,
     o.cost != null ? `Tannarx: ${money(o.cost)} so'm` : null,
-    `Sana: ${new Date(o.created_at).toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`,
+    `Sana: ${new Date(o.created_at).toLocaleString("ru-RU", { timeZone: "Asia/Tashkent" })}`,
   ].filter(Boolean).join("\n");
   const kb = new InlineKeyboard().url("Admin panel", `${config.PUBLIC_URL}/admin/#queue`);
   for (const id of config.adminIds) await send(id, lines, { reply_markup: kb });

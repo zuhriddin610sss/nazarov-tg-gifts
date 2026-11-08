@@ -1,0 +1,5 @@
+# example.uz o'rniga o'z domeningizni yozing
+example.uz {
+	encode gzip
+	reverse_proxy app:3000
+}

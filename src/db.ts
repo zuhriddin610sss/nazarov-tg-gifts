@@ -3,6 +3,8 @@ import { config } from "./config.js";
 
 // NUMERIC -> string (aniqlik yo'qolmasin), BIGINT -> number (ID'lar uchun xavfsiz diapazon)
 pg.types.setTypeParser(20, (v) => Number(v));
+// DATE -> "YYYY-MM-DD" (vaqt mintaqasiga bog'liq siljish bo'lmasin)
+pg.types.setTypeParser(1082, (v) => v);
 
 export const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 10 });
 

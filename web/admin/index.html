@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Admin · NAZAROVtggifts</title>
+<link rel="icon" href="/assets/logo-mark.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+body{padding-bottom:24px}
+.adm{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.side{background:var(--paper);border-right:1px solid var(--line);padding:16px 12px;display:grid;align-content:start;gap:4px;position:sticky;top:0;height:100vh}
+.side a{padding:10px 12px;border-radius:10px;text-decoration:none;color:var(--ink);font-weight:700;font-size:.93rem;display:flex;justify-content:space-between}
+.side a[aria-current="page"]{background:var(--sage-soft);color:var(--sage-deep)}
+.side .cnt{background:var(--warn);color:#fff;border-radius:999px;font-size:.72rem;padding:1px 7px}
+.main{padding:20px max(16px,env(safe-area-inset-right,0px)) 40px 24px;min-width:0}
+.main h1{margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:4px}
+.stat small{color:var(--muted);font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em}
+.stat b{font:800 1.3rem var(--f-display);font-variant-numeric:tabular-nums}
+.stat.liab{border-color:var(--warn)}
+.tbl-wrap{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.qn{font:800 1.05rem var(--f-display);color:var(--sage-deep)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filters .input{width:auto;flex:1 1 150px;padding:9px 11px}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.form .full{grid-column:1/-1}
+.section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;margin-bottom:16px}
+.det{white-space:pre-wrap;font-size:.85rem;color:var(--muted);word-break:break-word}
+.over{color:var(--bad);font-weight:800}
+.menu-btn{display:none}
+@media (max-width:860px){
+  .adm{grid-template-columns:1fr}
+  .side{position:fixed;inset:0 30% 0 0;z-index:20;height:auto;transform:translateX(-105%);transition:transform .2s}
+  .side.open{transform:none}
+  .menu-btn{display:inline-flex;margin-bottom:12px}
+  .main{padding-left:max(16px,env(safe-area-inset-left,0px))}
+}
+</style>
+</head>
+<body>
+<div class="adm">
+  <nav class="side" id="side">
+    <a href="#dashboard" data-r="dashboard">Boshqaruv paneli</a>
+    <a href="#queue" data-r="queue">Navbat <span class="cnt" id="cQueue" hidden></span></a>
+    <a href="#orders" data-r="orders">Buyurtmalar</a>
+    <a href="#receipts" data-r="receipts">Cheklar <span class="cnt" id="cRc" hidden></span></a>
+    <a href="#customers" data-r="customers">Mijozlar</a>
+    <a href="#installments" data-r="installments">Bo'lib to'lash boshqaruvi</a>
+    <a href="#settings" data-r="settings">Sozlamalar</a>
+    <a href="#logs" data-r="logs">Jurnallar</a>
+    <a href="/" target="_blank" rel="noopener">Saytni ochish ↗</a>
+  </nav>
+  <main class="main">
+    <button class="btn btn-ghost btn-sm menu-btn" id="menuBtn" type="button">☰ Menyu</button>
+    <div id="view"></div>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet" style="max-height:90vh;overflow:auto"></div></div>
+<script src="/admin/admin.js"></script>
+</body>
+</html>

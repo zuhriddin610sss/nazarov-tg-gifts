@@ -101,6 +101,6 @@ export function t(lang: string | null | undefined, k: Key, vars: Record<string, 
 }
 
 export function money(x: number | string, lang = "uz") {
-  const loc = { uz: "uz-UZ", ru: "ru-RU", en: "en-US", zh: "zh-CN" }[lang as Lang] ?? "uz-UZ";
+  const loc = { uz: "ru-RU", ru: "ru-RU", en: "en-US", zh: "zh-CN" }[lang as Lang] ?? "uz-UZ";
   return new Intl.NumberFormat(loc, { maximumFractionDigits: 2 }).format(Number(x));
 }
