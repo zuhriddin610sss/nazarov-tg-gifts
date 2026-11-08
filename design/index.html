@@ -1,0 +1,650 @@
+<title>NAZAROVtggifts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: cream "gift paper" page, sage-green brand, brushed-silver accents; the logo's line–dot–line rule divides sections. */
+:root{
+  --cream:#FBF3E7; --paper:#FFFAF2; --line:#E6DCCB;
+  --sage:#6F977A; --sage-deep:#4C6F56; --sage-soft:#E3ECE2;
+  --ink:#26302A; --muted:#6B716A;
+  --silver-1:#8B8D8A; --silver-2:#E4E5E1; --silver-3:#A6A8A4; --silver-ink:#3E423F;
+  --warn:#B4762C; --ok:#4C8A5C;
+  --shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 10px 30px -18px rgba(38,48,42,.35);
+  --f-display:"Montserrat","Manrope",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  --f-body:"Manrope",system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --cream:#121814; --paper:#1A221D; --line:#2C362F;
+  --sage:#8DB596; --sage-deep:#A9CBB0; --sage-soft:#22302A;
+  --ink:#EEE9DF; --muted:#A3A89F;
+  --silver-1:#7A7C79; --silver-2:#D9DAD6; --silver-3:#9C9E9A; --silver-ink:#1C1F1D;
+  --warn:#E0A55B; --ok:#7FC291;
+  --shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 12px 30px -16px rgba(0,0,0,.6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --cream:#121814; --paper:#1A221D; --line:#2C362F;
+  --sage:#8DB596; --sage-deep:#A9CBB0; --sage-soft:#22302A;
+  --ink:#EEE9DF; --muted:#A3A89F;
+  --silver-1:#7A7C79; --silver-2:#D9DAD6; --silver-3:#9C9E9A; --silver-ink:#1C1F1D;
+  --warn:#E0A55B; --ok:#7FC291;
+  --shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 12px 30px -16px rgba(0,0,0,.6);
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--cream);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1160px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:800}
+h2{font-size:clamp(1.5rem,3vw,2.15rem);font-weight:700}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0}
+a{color:inherit}
+.eyebrow{font-size:.74rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+:focus-visible{outline:2px solid var(--sage);outline-offset:3px;border-radius:6px}
+
+/* the logo's divider: line · dot · line */
+.rule{display:flex;align-items:center;gap:10px;color:var(--sage);margin:0 auto;max-width:220px}
+.rule::before,.rule::after{content:"";flex:1;height:2px;background:currentColor;border-radius:2px;opacity:.8}
+.rule i{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* silver metal surface, like the "N" bag */
+.metal{background:linear-gradient(135deg,var(--silver-1) 0%,var(--silver-2) 38%,var(--silver-3) 58%,var(--silver-2) 80%,var(--silver-1) 100%);color:var(--silver-ink)}
+
+/* header */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--cream)}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--cream) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:18px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+.brand img{width:44px;height:auto}
+.brand b{font-family:var(--f-display);font-weight:800;color:var(--sage);font-size:1.15rem;line-height:1}
+.brand small{display:block;font-family:var(--f-display);font-weight:700;font-size:.72rem;color:var(--silver-1);letter-spacing:.02em}
+nav.main{display:flex;gap:4px;margin-left:auto}
+nav.main a{text-decoration:none;font-weight:600;font-size:.93rem;padding:8px 12px;border-radius:10px;color:var(--ink)}
+nav.main a:hover{background:var(--sage-soft)}
+.tools{display:flex;align-items:center;gap:10px}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--paper)}
+.lang button{border:0;background:none;font:600 .8rem var(--f-body);color:var(--muted);padding:5px 10px;border-radius:999px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--sage);color:var(--paper)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;cursor:pointer;font:700 .95rem var(--f-body);padding:12px 20px;border-radius:12px;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--sage);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 8px 20px -10px var(--sage)}
+:root[data-theme="dark"] .btn-primary{color:#10160F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn-primary{color:#10160F}}
+.btn-primary:hover{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 24px -10px var(--sage)}
+.btn-metal{border:1px solid var(--silver-3)}
+.btn-ghost{background:transparent;color:var(--sage-deep);border:1.5px solid var(--sage)}
+.btn-sm{padding:8px 14px;font-size:.85rem;border-radius:10px}
+.menu-toggle{display:none}
+
+/* hero */
+.hero{padding-block:56px 40px;text-align:center;display:grid;gap:18px;justify-items:center}
+.hero .mark{width:120px}
+.hero p.lead{max-width:56ch;color:var(--muted);font-size:1.08rem}
+.hero h1 em{font-style:normal;color:var(--sage)}
+
+.pillars{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding-bottom:56px}
+.pillar{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:28px;display:grid;gap:14px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.pillar::after{content:"";position:absolute;right:-60px;top:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--sage-soft),transparent 70%);pointer-events:none}
+.pillar .tag{justify-self:start;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+.pillar ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.pillar li{display:flex;gap:10px;align-items:baseline;color:var(--muted)}
+.pillar li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--sage);flex-shrink:0;transform:translateY(-2px)}
+.pillar .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+section.block{padding-block:56px;border-top:1px solid var(--line)}
+.head{display:grid;gap:12px;text-align:center;justify-items:center;margin-bottom:32px}
+.head p{color:var(--muted);max-width:60ch}
+
+/* services */
+.services{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.svc{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px;display:grid;gap:10px;align-content:start;min-width:0}
+.svc .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center}
+.svc .ic svg{width:22px;height:22px}
+.svc p{color:var(--muted);font-size:.93rem}
+.svc .price{font-family:var(--f-display);font-weight:700;color:var(--sage-deep);font-size:.95rem;font-variant-numeric:tabular-nums}
+.svc a{font-weight:700;color:var(--sage-deep);text-decoration:none;font-size:.9rem}
+
+/* rental market */
+.market-tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.market-tools input,.market-tools select{font:500 .92rem var(--f-body);padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);min-width:0}
+.market-tools input{flex:1 1 220px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:grid;min-width:0}
+.card .art{aspect-ratio:4/3;max-width:100%;display:grid;place-items:center;position:relative}
+.card .art svg{width:46%;height:auto;filter:drop-shadow(0 10px 14px rgba(0,0,0,.18))}
+.card .sample{position:absolute;top:10px;left:10px;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:999px}
+.card .body{padding:16px 18px 18px;display:grid;gap:10px}
+.attrs{display:flex;gap:6px;flex-wrap:wrap}
+.attrs span{font-size:.75rem;font-weight:600;padding:3px 8px;border-radius:8px;background:var(--sage-soft);color:var(--sage-deep)}
+.days{display:flex;gap:6px;flex-wrap:wrap}
+.days button{font:600 .8rem var(--f-body);padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.days button[aria-pressed="true"]{border-color:var(--sage);background:var(--sage-soft);color:var(--sage-deep)}
+.total{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.total b{font-family:var(--f-display);font-size:1.3rem;font-variant-numeric:tabular-nums}
+.total small{color:var(--muted)}
+.card .row{display:flex;gap:8px;flex-wrap:wrap}
+.card .row .btn{flex:1}
+
+/* stars calculator */
+.split{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:start}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:26px;display:grid;gap:16px;box-shadow:var(--shadow);min-width:0}
+.field{display:grid;gap:6px}
+.field label{font-weight:700;font-size:.9rem}
+.field input{font:600 1.05rem var(--f-body);padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--cream);color:var(--ink);font-variant-numeric:tabular-nums}
+.field .hint{font-size:.82rem;color:var(--muted)}
+.field .err{font-size:.82rem;color:var(--warn);font-weight:600}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;font:600 .88rem var(--f-body);padding:10px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;min-width:0}
+.seg button[aria-pressed="true"]{border-color:var(--sage);background:var(--sage-soft);color:var(--sage-deep)}
+.sum{display:flex;justify-content:space-between;align-items:baseline;padding-top:14px;border-top:1px dashed var(--line)}
+.sum b{font-family:var(--f-display);font-size:1.6rem;font-variant-numeric:tabular-nums}
+.premium-list{display:grid;gap:10px}
+.prem{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.prem b{font-family:var(--f-display)}
+.prem .note{font-size:.78rem;color:var(--muted)}
+.prem .val{font-weight:700;color:var(--sage-deep);font-variant-numeric:tabular-nums;text-align:right}
+
+/* installments */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.plan{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px;display:grid;gap:12px;align-content:start;min-width:0}
+.plan .badge{justify-self:start;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--sage-soft);color:var(--sage-deep)}
+.plan ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.plan li{display:flex;gap:8px;font-size:.93rem}
+.plan li::before{content:"✓";color:var(--sage);font-weight:800}
+.plan .for{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.callout{margin-top:22px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:20px 22px;border-radius:16px;border:1px dashed var(--sage);background:var(--sage-soft)}
+.callout p{font-weight:600;color:var(--sage-deep);max-width:60ch}
+
+/* steps (real order of an order) */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{counter-increment:s;display:grid;gap:8px;padding:18px;border-left:2px solid var(--sage);min-width:0}
+.steps li::before{content:counter(s);font-family:var(--f-display);font-weight:800;font-size:1.6rem;color:var(--sage)}
+.steps p{color:var(--muted);font-size:.93rem}
+
+/* faq */
+.faq{max-width:760px;margin:0 auto;display:grid;gap:10px}
+.faq details{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px 18px}
+.faq summary{cursor:pointer;font-weight:700;padding:12px 0;list-style:none;display:flex;justify-content:space-between;gap:12px}
+.faq summary::after{content:"+";color:var(--sage);font-weight:800;font-size:1.2rem;line-height:1}
+.faq details[open] summary::after{content:"–"}
+.faq details p{padding-bottom:14px;color:var(--muted)}
+
+footer{border-top:1px solid var(--line);padding-block:36px;margin-top:20px}
+.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+.foot p{color:var(--muted);font-size:.9rem}
+.copy{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.copy code{font:600 .95rem var(--f-body);background:var(--paper);border:1px solid var(--line);padding:6px 10px;border-radius:8px;user-select:all}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--cream);padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;z-index:20}
+
+@media (max-width:980px){
+  .services{grid-template-columns:repeat(2,1fr)}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .plans{grid-template-columns:1fr}
+  .steps{grid-template-columns:repeat(2,1fr)}
+  .split{grid-template-columns:1fr}
+  nav.main{display:none}
+  nav.main.open{display:grid;position:absolute;left:0;right:0;top:100%;background:var(--paper);border-bottom:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
+  .menu-toggle{display:inline-flex;margin-left:auto}
+  .bar{position:relative;flex-wrap:wrap}
+}
+@media (max-width:640px){
+  .pillars{grid-template-columns:1fr}
+  .services,.cards,.steps{grid-template-columns:1fr}
+  .tools .login{display:none}
+  .lang button{padding:5px 8px}
+  .brand small{display:none}
+  .hero{padding-block:36px 28px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .pillar,.card{transition:transform .25s ease,box-shadow .25s ease}
+  .pillar:hover,.card:hover{transform:translateY(-3px);box-shadow:0 18px 40px -22px rgba(38,48,42,.45)}
+}
+</style>
+
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="NAZAROVtggifts">
+      <img src="assets/logo-mark.png" alt="">
+      <span><b>Nazarov</b><small>TG Gifts</small></span>
+    </a>
+    <nav class="main" id="nav">
+      <a href="#nft" data-i="nav_nft"></a>
+      <a href="#rent" data-i="nav_rent"></a>
+      <a href="#services" data-i="nav_services"></a>
+      <a href="#plans" data-i="nav_plans"></a>
+      <a href="#faq" data-i="nav_faq"></a>
+    </nav>
+    <div class="tools">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="uz">UZ</button>
+        <button type="button" data-lang="ru">RU</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="zh">中文</button>
+      </div>
+      <button class="btn btn-primary btn-sm login" type="button" data-i="login"></button>
+    </div>
+    <button class="btn btn-ghost btn-sm menu-toggle" type="button" id="menuBtn" aria-expanded="false" aria-controls="nav" data-i="menu"></button>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap">
+    <section class="hero">
+      <img class="mark" src="assets/logo-mark.png" alt="">
+      <div class="eyebrow" data-i="tagline"></div>
+      <h1 data-i="hero_title" data-html></h1>
+      <div class="rule" aria-hidden="true"><i></i></div>
+      <p class="lead" data-i="hero_lead"></p>
+    </section>
+
+    <div class="pillars">
+      <article class="pillar" id="nft">
+        <span class="tag metal" data-i="p1_tag"></span>
+        <h2 data-i="p1_title"></h2>
+        <p data-i="p1_text"></p>
+        <ul>
+          <li data-i="p1_l1"></li>
+          <li data-i="p1_l2"></li>
+          <li data-i="p1_l3"></li>
+        </ul>
+        <div class="actions">
+          <a class="btn btn-primary" href="#plans" data-i="p1_cta"></a>
+          <a class="btn btn-ghost" href="#plans" data-i="p1_cta2"></a>
+        </div>
+      </article>
+      <article class="pillar">
+        <span class="tag metal" data-i="p2_tag"></span>
+        <h2 data-i="p2_title"></h2>
+        <p data-i="p2_text"></p>
+        <ul>
+          <li data-i="p2_l1"></li>
+          <li data-i="p2_l2"></li>
+          <li data-i="p2_l3"></li>
+        </ul>
+        <div class="actions">
+          <a class="btn btn-primary" href="#rent" data-i="p2_cta"></a>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <section class="block" id="rent">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow" data-i="rent_eyebrow"></div>
+        <h2 data-i="rent_title"></h2>
+        <div class="rule" aria-hidden="true"><i></i></div>
+        <p data-i="rent_text"></p>
+      </div>
+      <div class="market-tools">
+        <label class="sr" for="q" hidden>Search</label>
+        <input id="q" type="search" data-ph="search_ph">
+        <select id="fModel" aria-label="Model"><option data-i="f_model"></option></select>
+        <select id="fBg" aria-label="Background"><option data-i="f_bg"></option></select>
+        <select id="fSort" aria-label="Sort"><option data-i="sort_price"></option><option data-i="sort_new"></option></select>
+      </div>
+      <div class="cards" id="cards"></div>
+    </div>
+  </section>
+
+  <section class="block" id="services">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow" data-i="svc_eyebrow"></div>
+        <h2 data-i="svc_title"></h2>
+        <div class="rule" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="services">
+        <article class="svc">
+          <span class="ic metal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg></span>
+          <h3 data-i="s1_t"></h3><p data-i="s1_d"></p>
+          <a href="#rent" data-i="more"></a>
+        </article>
+        <article class="svc">
+          <span class="ic metal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></span>
+          <h3 data-i="s2_t"></h3><p data-i="s2_d"></p>
+          <a href="#rent" data-i="more"></a>
+        </article>
+        <article class="svc">
+          <span class="ic metal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.6 6.5 19.5l1-6.3L3 8.9 9 8z"/></svg></span>
+          <h3>Telegram Premium</h3><p data-i="s3_d"></p>
+          <span class="price" data-i="s3_p"></span>
+          <a href="#stars" data-i="more"></a>
+        </article>
+        <article class="svc">
+          <span class="ic metal"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.3L21 9l-5 4.4L17.5 20 12 16.7 6.5 20 8 13.4 3 9l6.4-.7z"/></svg></span>
+          <h3>Telegram Stars</h3><p data-i="s4_d"></p>
+          <span class="price" data-i="s4_p"></span>
+          <a href="#stars" data-i="more"></a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="stars">
+    <div class="wrap split">
+      <form class="panel" id="starsForm" novalidate>
+        <div class="eyebrow">Telegram Stars</div>
+        <h2 data-i="stars_title"></h2>
+        <div class="field">
+          <label for="qty" data-i="qty"></label>
+          <input id="qty" type="number" inputmode="numeric" min="50" step="1" value="100">
+          <span class="hint" data-i="qty_hint"></span>
+          <span class="err" id="qtyErr" hidden data-i="qty_err"></span>
+        </div>
+        <div class="field">
+          <label data-i="recipient"></label>
+          <div class="seg" role="group">
+            <button type="button" data-rcp="me" aria-pressed="true" data-i="rcp_me"></button>
+            <button type="button" data-rcp="other" aria-pressed="false" data-i="rcp_other"></button>
+          </div>
+          <input id="rcpUser" type="text" placeholder="@username" hidden autocomplete="off">
+        </div>
+        <div class="field">
+          <label data-i="pay"></label>
+          <div class="seg" role="group">
+            <button type="button" data-pay="cash" aria-pressed="true" data-i="pay_cash"></button>
+            <button type="button" data-pay="inst" aria-pressed="false" data-i="pay_inst"></button>
+          </div>
+        </div>
+        <div class="sum"><span data-i="total"></span><b id="starsSum"></b></div>
+        <button class="btn btn-primary" type="submit" data-i="order"></button>
+      </form>
+      <div class="panel">
+        <div class="eyebrow">Telegram Premium</div>
+        <h2 data-i="prem_title"></h2>
+        <div class="premium-list">
+          <div class="prem"><div><b data-i="m1"></b><div class="note" data-i="manual"></div></div><span class="val" data-i="by_admin"></span></div>
+          <div class="prem"><div><b data-i="m3"></b><div class="note">Marketapp</div></div><span class="val" data-i="auto_price"></span></div>
+          <div class="prem"><div><b data-i="m6"></b><div class="note">Marketapp</div></div><span class="val" data-i="auto_price"></span></div>
+          <div class="prem"><div><b data-i="m12"></b><div class="note">Marketapp</div></div><span class="val" data-i="auto_price"></span></div>
+        </div>
+        <p class="hint" style="color:var(--muted);font-size:.88rem" data-i="prem_note"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="plans">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow" data-i="plans_eyebrow"></div>
+        <h2 data-i="plans_title"></h2>
+        <div class="rule" aria-hidden="true"><i></i></div>
+        <p data-i="plans_text"></p>
+      </div>
+      <div class="plans">
+        <article class="plan">
+          <span class="badge" data-i="plan1"></span>
+          <ul><li data-i="no_bank"></li><li data-i="no_docs"></li><li data-i="no_age"></li><li data-i="no_collat"></li><li data-i="no_guar"></li></ul>
+          <p class="for" data-i="for_nft"></p>
+        </article>
+        <article class="plan">
+          <span class="badge" data-i="plan2"></span>
+          <ul><li data-i="no_bank"></li><li data-i="no_docs"></li><li data-i="no_age"></li><li data-i="no_guar"></li><li data-i="no_down"></li></ul>
+          <p class="for" data-i="for_all"></p>
+        </article>
+        <article class="plan">
+          <span class="badge metal" data-i="plan3"></span>
+          <ul><li data-i="age20"></li><li data-i="no_down"></li><li data-i="no_collat"></li><li data-i="no_guar"></li></ul>
+          <p class="for" data-i="for_all"></p>
+        </article>
+      </div>
+      <div class="callout">
+        <p data-i="contact_admin"></p>
+        <a class="btn btn-primary" href="https://t.me/" target="_blank" rel="noopener" data-i="write_admin"></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow" data-i="how_eyebrow"></div>
+        <h2 data-i="how_title"></h2>
+        <div class="rule" aria-hidden="true"><i></i></div>
+      </div>
+      <ol class="steps">
+        <li><h3 data-i="st1"></h3><p data-i="st1d"></p></li>
+        <li><h3 data-i="st2"></h3><p data-i="st2d"></p></li>
+        <li><h3 data-i="st3"></h3><p data-i="st3d"></p></li>
+        <li><h3 data-i="st4"></h3><p data-i="st4d"></p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="head"><h2 data-i="faq_title"></h2><div class="rule" aria-hidden="true"><i></i></div></div>
+      <div class="faq">
+        <details><summary data-i="q1"></summary><p data-i="a1"></p></details>
+        <details><summary data-i="q2"></summary><p data-i="a2"></p></details>
+        <details><summary data-i="q3"></summary><p data-i="a3"></p></details>
+        <details><summary data-i="q4"></summary><p data-i="a4"></p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top"><img src="assets/logo-mark.png" alt=""><span><b>Nazarov</b><small>TG Gifts</small></span></a>
+    <p data-i="foot"></p>
+    <div class="copy"><span data-i="track"></span><code id="oid">NG-8K29XQ</code><button class="btn btn-ghost btn-sm" type="button" id="copyBtn" data-i="copy"></button></div>
+  </div>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const T={
+uz:{nav_nft:"NFT sovg'alar",nav_rent:"Ijara",nav_services:"Xizmatlar",nav_plans:"Bo'lib to'lash",nav_faq:"Savollar",login:"Telegram orqali kirish",menu:"Menyu",
+tagline:"Telegram sovg'alari",hero_title:"Telegram sovg'alari — <em>bo'lib to'lashga</em> va ijaraga",
+hero_lead:"NFT sovg'alar, ijara, Premium va Stars bir joyda. Ro'yxatdan o'tish shart emas: Telegram akkauntingiz bilan kirasiz, balans sayt va botda bitta.",
+p1_tag:"Bo'lib to'lash",p1_title:"Telegram NFT sovg'alar",p1_text:"Istagan NFT sovg'angizni bo'lib to'lashga oling. Katalogda bo'lmasa, nomini, rasmini yoki havolasini yuboring.",
+p1_l1:"Model va fonni o'zingiz tanlaysiz yoki «Farqi yo'q»",p1_l2:"Banksiz, hujjatsiz, kafilsiz",p1_l3:"Uzum Nasiya orqali ham mumkin",p1_cta:"Sovg'a so'rash",p1_cta2:"Shartlar",
+p2_tag:"Naqd va bo'lib to'lash",p2_title:"NFT sovg'alar ijarasi",p2_text:"Marketapp katalogidagi barcha ijara sovg'alari. Narx tanlangan kunlar soniga qarab hisoblanadi.",
+p2_l1:"Model, fon va belgi bo'yicha filtr",p2_l2:"Har bir muddat uchun aniq narx so'mda",p2_l3:"Balansdan to'lov, darhol rasmiylashtirish",p2_cta:"Ijara katalogi",
+rent_eyebrow:"Marketapp bilan sinxron",rent_title:"Ijara katalogi",rent_text:"Kunlar sonini tanlang — narx avtomatik qayta hisoblanadi. Quyidagi kartochkalar dizayn namunasi.",
+search_ph:"Sovg'a nomi bo'yicha qidirish",f_model:"Model: barchasi",f_bg:"Fon: barchasi",sort_price:"Arzonroq avval",sort_new:"Yangilari avval",
+sample:"Namuna",days:"kun",day_label:"Muddat",total_for:"{d} kun uchun",rent_cash:"Naqd ijara",rent_inst:"Bo'lib to'lash",
+svc_eyebrow:"Boshqa xizmatlar",svc_title:"Telegram xizmatlari",
+s1_t:"Username ijarasi",s1_d:"Kolleksion Telegram username'larni kunlik ijaraga oling.",
+s2_t:"Anonim raqamlar ijarasi",s2_d:"+888 anonim raqam ijarasi. Kirish kodi sayt va botda ko'rsatiladi.",
+s3_d:"1, 3, 6 va 12 oylik. O'zingizga yoki do'stingizga.",s3_p:"Narx Marketapp asosida",
+s4_d:"Kamida 50 star. O'zingizga yoki do'stingizga.",s4_p:"1 star = 250 so'm",more:"Batafsil →",
+stars_title:"Stars sotib olish",qty:"Stars soni",qty_hint:"Kamida 50 ta. 1 star = 250 so'm.",qty_err:"Kamida 50 ta star kiriting.",
+recipient:"Qaysi akkauntga tushsin?",rcp_me:"O'zimga",rcp_other:"Boshqa odamga",pay:"To'lov usuli",pay_cash:"Naqd (balansdan)",pay_inst:"Bo'lib to'lash",
+total:"Jami",order:"Buyurtma berish",
+prem_title:"Premium muddatlari",m1:"1 oy",m3:"3 oy",m6:"6 oy",m12:"12 oy",manual:"Admin qo'lda bajaradi",by_admin:"Narxni admin belgilaydi",auto_price:"Avtomatik hisoblanadi",
+prem_note:"3, 6 va 12 oylik narxlar Marketapp narxidan avtomatik hisoblanadi. Naqd buyurtma darhol bajariladi.",
+plans_eyebrow:"Bo'lib to'lash",plans_title:"Uch xil yo'l bilan",plans_text:"NFT sovg'a va NFT username uchun uchala tur, Stars va Premium uchun 2- va 3-tur.",
+plan1:"1-tur",plan2:"2-tur",plan3:"Uzum Nasiya",no_bank:"Banksiz",no_docs:"Hujjatsiz",no_age:"Yosh ahamiyatsiz",no_collat:"Garovsiz",no_guar:"Kafilsiz",no_down:"Boshlang'ich to'lovsiz",age20:"Kamida 20 yosh",
+for_nft:"NFT sovg'a va NFT username",for_all:"NFT sovg'a, NFT username, Stars, Premium",
+contact_admin:"Bo'lib to'lash buyurtmasidan keyin admin bilan bog'laning — admin sizni kutmoqda.",write_admin:"Adminga yozish",
+how_eyebrow:"Buyurtma qanday bajariladi",how_title:"To'rt qadam",
+st1:"Tanlang",st1d:"Xizmat, muddat va to'lov usulini tanlang.",st2:"Tasdiqlang",st2d:"Telegram orqali kiring, telefon raqamingizni ulashing.",st3:"To'lang",st3d:"Balansdan to'lang yoki bo'lib to'lashni rasmiylashtiring.",st4:"Oling",st4d:"Buyurtma ID orqali holatini «Xaridlarim»da kuzating.",
+faq_title:"Ko'p so'raladigan savollar",
+q1:"Balansni qanday to'ldiraman?",a1:"Admin kartasiga pul o'tkazing va chek rasmini yuklang. Admin tekshirgach, summa balansingizga tushadi.",
+q2:"Ro'yxatdan o'tish kerakmi?",a2:"Yo'q. Telegram akkauntingiz orqali kirasiz, sayt va bot sizni bir xil taniydi.",
+q3:"Buyurtmamni qanday kuzataman?",a3:"Har bir buyurtmaga doimiy ID beriladi, masalan NG-8K29XQ. Uni «Xaridlarim» bo'limida yoki botda ko'rasiz.",
+q4:"Chet eldan to'lov qilsam bo'ladimi?",a4:"Ha. O'zbekiston kartasiga o'tkaza olmasangiz, admin bilan bog'laning — to'lovni alohida kelishamiz.",
+foot:"© NAZAROVtggifts · Telegram sovg'alari",track:"Buyurtma ID:",copy:"Nusxalash",copied:"Nusxalandi",ordered:"Dizayn namunasi: buyurtma hali yuborilmaydi",login_note:"Dizayn namunasi: Telegram kirishi backend bilan ulanadi"},
+ru:{nav_nft:"NFT-подарки",nav_rent:"Аренда",nav_services:"Услуги",nav_plans:"Рассрочка",nav_faq:"Вопросы",login:"Войти через Telegram",menu:"Меню",
+tagline:"Подарки Telegram",hero_title:"Подарки Telegram — <em>в рассрочку</em> и в аренду",
+hero_lead:"NFT-подарки, аренда, Premium и Stars в одном месте. Регистрация не нужна: вход через Telegram, единый баланс на сайте и в боте.",
+p1_tag:"Рассрочка",p1_title:"NFT-подарки Telegram",p1_text:"Оформите любой NFT-подарок в рассрочку. Если его нет в каталоге, отправьте название, фото или ссылку.",
+p1_l1:"Модель и фон на ваш выбор или «Без разницы»",p1_l2:"Без банка, документов и поручителей",p1_l3:"Можно через Uzum Nasiya",p1_cta:"Запросить подарок",p1_cta2:"Условия",
+p2_tag:"Наличные и рассрочка",p2_title:"Аренда NFT-подарков",p2_text:"Все подарки для аренды из каталога Marketapp. Цена зависит от выбранного количества дней.",
+p2_l1:"Фильтр по модели, фону и символу",p2_l2:"Точная цена в сумах за каждый срок",p2_l3:"Оплата с баланса, мгновенное оформление",p2_cta:"Каталог аренды",
+rent_eyebrow:"Синхронизация с Marketapp",rent_title:"Каталог аренды",rent_text:"Выберите количество дней — цена пересчитается автоматически. Карточки ниже — образец дизайна.",
+search_ph:"Поиск по названию подарка",f_model:"Модель: все",f_bg:"Фон: все",sort_price:"Сначала дешевле",sort_new:"Сначала новые",
+sample:"Образец",days:"дн.",day_label:"Срок",total_for:"За {d} дн.",rent_cash:"Аренда за наличные",rent_inst:"Рассрочка",
+svc_eyebrow:"Другие услуги",svc_title:"Услуги Telegram",
+s1_t:"Аренда username",s1_d:"Коллекционные username Telegram в посуточную аренду.",
+s2_t:"Аренда анонимных номеров",s2_d:"Аренда анонимных номеров +888. Код входа показывается на сайте и в боте.",
+s3_d:"На 1, 3, 6 и 12 месяцев. Себе или другу.",s3_p:"Цена на основе Marketapp",
+s4_d:"От 50 звёзд. Себе или другу.",s4_p:"1 звезда = 250 сум",more:"Подробнее →",
+stars_title:"Купить Stars",qty:"Количество звёзд",qty_hint:"Минимум 50. 1 звезда = 250 сум.",qty_err:"Введите не менее 50 звёзд.",
+recipient:"На какой аккаунт?",rcp_me:"Себе",rcp_other:"Другому",pay:"Способ оплаты",pay_cash:"Наличные (с баланса)",pay_inst:"Рассрочка",
+total:"Итого",order:"Оформить заказ",
+prem_title:"Сроки Premium",m1:"1 месяц",m3:"3 месяца",m6:"6 месяцев",m12:"12 месяцев",manual:"Выполняет администратор",by_admin:"Цену задаёт администратор",auto_price:"Рассчитывается автоматически",
+prem_note:"Цены на 3, 6 и 12 месяцев рассчитываются автоматически от цены Marketapp. Заказ за наличные выполняется сразу.",
+plans_eyebrow:"Рассрочка",plans_title:"Три варианта",plans_text:"Для NFT-подарков и NFT username — все три, для Stars и Premium — 2-й и 3-й.",
+plan1:"Вариант 1",plan2:"Вариант 2",plan3:"Uzum Nasiya",no_bank:"Без банка",no_docs:"Без документов",no_age:"Любой возраст",no_collat:"Без залога",no_guar:"Без поручителей",no_down:"Без первоначального взноса",age20:"От 20 лет",
+for_nft:"NFT-подарки и NFT username",for_all:"NFT-подарки, NFT username, Stars, Premium",
+contact_admin:"После заказа в рассрочку свяжитесь с администратором — он вас ждёт.",write_admin:"Написать админу",
+how_eyebrow:"Как выполняется заказ",how_title:"Четыре шага",
+st1:"Выберите",st1d:"Услугу, срок и способ оплаты.",st2:"Подтвердите",st2d:"Войдите через Telegram и поделитесь номером телефона.",st3:"Оплатите",st3d:"С баланса или оформите рассрочку.",st4:"Получите",st4d:"Следите за статусом по ID заказа в «Мои покупки».",
+faq_title:"Частые вопросы",
+q1:"Как пополнить баланс?",a1:"Переведите деньги на карту администратора и загрузите фото чека. После проверки сумма поступит на баланс.",
+q2:"Нужна ли регистрация?",a2:"Нет. Вход через ваш Telegram, сайт и бот узнают вас одинаково.",
+q3:"Как отследить заказ?",a3:"Каждому заказу присваивается постоянный ID, например NG-8K29XQ. Он виден в «Мои покупки» и в боте.",
+q4:"Можно оплатить из-за границы?",a4:"Да. Если перевод на узбекскую карту невозможен, свяжитесь с администратором — договоримся отдельно.",
+foot:"© NAZAROVtggifts · Подарки Telegram",track:"ID заказа:",copy:"Копировать",copied:"Скопировано",ordered:"Образец дизайна: заказ пока не отправляется",login_note:"Образец дизайна: вход через Telegram подключится к backend"},
+en:{nav_nft:"NFT Gifts",nav_rent:"Rental",nav_services:"Services",nav_plans:"Installments",nav_faq:"FAQ",login:"Log in with Telegram",menu:"Menu",
+tagline:"Telegram gifts",hero_title:"Telegram gifts — <em>in installments</em> and for rent",
+hero_lead:"NFT Gifts, rentals, Premium and Stars in one place. No sign-up: log in with Telegram, one balance on the site and in the bot.",
+p1_tag:"Installments",p1_title:"Telegram NFT Gifts",p1_text:"Get any NFT Gift in installments. Not in the catalogue? Send its name, image or link.",
+p1_l1:"Pick the model and background, or choose «Doesn't matter»",p1_l2:"No bank, no documents, no guarantors",p1_l3:"Also available via Uzum Nasiya",p1_cta:"Request a gift",p1_cta2:"Terms",
+p2_tag:"Cash and installments",p2_title:"NFT Gift rental",p2_text:"Every rentable gift from the Marketapp catalogue. The price depends on how many days you choose.",
+p2_l1:"Filter by model, background and symbol",p2_l2:"Exact price in UZS for every duration",p2_l3:"Pay from balance, instant checkout",p2_cta:"Rental catalogue",
+rent_eyebrow:"Synced with Marketapp",rent_title:"Rental catalogue",rent_text:"Choose the number of days and the price updates automatically. The cards below are design samples.",
+search_ph:"Search by gift name",f_model:"Model: all",f_bg:"Background: all",sort_price:"Cheapest first",sort_new:"Newest first",
+sample:"Sample",days:"d",day_label:"Duration",total_for:"For {d} days",rent_cash:"Rent with cash",rent_inst:"Installments",
+svc_eyebrow:"More services",svc_title:"Telegram services",
+s1_t:"Username rental",s1_d:"Rent collectible Telegram usernames by the day.",
+s2_t:"Anonymous number rental",s2_d:"Rent +888 anonymous numbers. The login code is shown on the site and in the bot.",
+s3_d:"1, 3, 6 or 12 months. For yourself or a friend.",s3_p:"Priced from Marketapp",
+s4_d:"From 50 stars. For yourself or a friend.",s4_p:"1 star = 250 UZS",more:"Details →",
+stars_title:"Buy Stars",qty:"Number of stars",qty_hint:"Minimum 50. 1 star = 250 UZS.",qty_err:"Enter at least 50 stars.",
+recipient:"Which account gets it?",rcp_me:"Me",rcp_other:"Someone else",pay:"Payment method",pay_cash:"Cash (from balance)",pay_inst:"Installments",
+total:"Total",order:"Place order",
+prem_title:"Premium plans",m1:"1 month",m3:"3 months",m6:"6 months",m12:"12 months",manual:"Fulfilled by the admin",by_admin:"Price set by the admin",auto_price:"Calculated automatically",
+prem_note:"3, 6 and 12-month prices are calculated automatically from the Marketapp price. Cash orders are fulfilled immediately.",
+plans_eyebrow:"Installments",plans_title:"Three ways to pay",plans_text:"All three for NFT Gifts and NFT usernames; options 2 and 3 for Stars and Premium.",
+plan1:"Option 1",plan2:"Option 2",plan3:"Uzum Nasiya",no_bank:"No bank",no_docs:"No documents",no_age:"Any age",no_collat:"No collateral",no_guar:"No guarantors",no_down:"No down payment",age20:"Age 20+",
+for_nft:"NFT Gifts and NFT usernames",for_all:"NFT Gifts, NFT usernames, Stars, Premium",
+contact_admin:"After an installment order, contact the admin — they are waiting for you.",write_admin:"Message the admin",
+how_eyebrow:"How an order works",how_title:"Four steps",
+st1:"Choose",st1d:"Pick the service, duration and payment method.",st2:"Confirm",st2d:"Log in with Telegram and share your phone number.",st3:"Pay",st3d:"Pay from balance or set up installments.",st4:"Receive",st4d:"Track the status by order ID in «My purchases».",
+faq_title:"Frequently asked questions",
+q1:"How do I top up my balance?",a1:"Transfer money to the admin's card and upload a photo of the receipt. Once checked, the amount is added to your balance.",
+q2:"Do I need to sign up?",a2:"No. You log in with Telegram, and the site and bot recognise you as the same person.",
+q3:"How do I track my order?",a3:"Every order gets a permanent ID, for example NG-8K29XQ. You see it in «My purchases» and in the bot.",
+q4:"Can I pay from abroad?",a4:"Yes. If you can't transfer to an Uzbek card, contact the admin to arrange payment.",
+foot:"© NAZAROVtggifts · Telegram gifts",track:"Order ID:",copy:"Copy",copied:"Copied",ordered:"Design sample: orders are not sent yet",login_note:"Design sample: Telegram login connects to the backend"},
+zh:{nav_nft:"NFT 礼物",nav_rent:"租赁",nav_services:"服务",nav_plans:"分期付款",nav_faq:"常见问题",login:"通过 Telegram 登录",menu:"菜单",
+tagline:"Telegram 礼物",hero_title:"Telegram 礼物 — <em>分期付款</em>与租赁",
+hero_lead:"NFT 礼物、租赁、Premium 和 Stars 一站式提供。无需注册：使用 Telegram 登录，网站与机器人共用同一余额。",
+p1_tag:"分期付款",p1_title:"Telegram NFT 礼物",p1_text:"任意 NFT 礼物均可分期购买。目录中没有？请发送名称、图片或链接。",
+p1_l1:"自选模型和背景，或选择「无所谓」",p1_l2:"无需银行、证件或担保人",p1_l3:"也可通过 Uzum Nasiya 办理",p1_cta:"申请礼物",p1_cta2:"条件",
+p2_tag:"现付与分期",p2_title:"NFT 礼物租赁",p2_text:"Marketapp 目录中所有可租礼物。价格取决于您选择的天数。",
+p2_l1:"按模型、背景和符号筛选",p2_l2:"每个租期均显示准确的苏姆价格",p2_l3:"余额支付，即时下单",p2_cta:"租赁目录",
+rent_eyebrow:"与 Marketapp 同步",rent_title:"租赁目录",rent_text:"选择天数，价格自动重新计算。以下卡片为设计示例。",
+search_ph:"按礼物名称搜索",f_model:"模型：全部",f_bg:"背景：全部",sort_price:"价格从低到高",sort_new:"最新优先",
+sample:"示例",days:"天",day_label:"租期",total_for:"{d} 天",rent_cash:"现付租赁",rent_inst:"分期付款",
+svc_eyebrow:"其他服务",svc_title:"Telegram 服务",
+s1_t:"用户名租赁",s1_d:"按天租用 Telegram 收藏用户名。",
+s2_t:"匿名号码租赁",s2_d:"租用 +888 匿名号码。登录验证码在网站和机器人中显示。",
+s3_d:"1、3、6 或 12 个月。可为自己或朋友购买。",s3_p:"价格基于 Marketapp",
+s4_d:"最少 50 星。可为自己或朋友购买。",s4_p:"1 星 = 250 苏姆",more:"详情 →",
+stars_title:"购买 Stars",qty:"星数",qty_hint:"最少 50 星。1 星 = 250 苏姆。",qty_err:"请输入至少 50 星。",
+recipient:"充值到哪个账户？",rcp_me:"给自己",rcp_other:"给他人",pay:"付款方式",pay_cash:"现付（余额）",pay_inst:"分期付款",
+total:"合计",order:"下单",
+prem_title:"Premium 时长",m1:"1 个月",m3:"3 个月",m6:"6 个月",m12:"12 个月",manual:"由管理员手动办理",by_admin:"价格由管理员设定",auto_price:"自动计算",
+prem_note:"3、6、12 个月的价格根据 Marketapp 价格自动计算。现付订单立即完成。",
+plans_eyebrow:"分期付款",plans_title:"三种方式",plans_text:"NFT 礼物和 NFT 用户名适用全部三种，Stars 和 Premium 适用第 2、3 种。",
+plan1:"方式 1",plan2:"方式 2",plan3:"Uzum Nasiya",no_bank:"无需银行",no_docs:"无需证件",no_age:"不限年龄",no_collat:"无需抵押",no_guar:"无需担保人",no_down:"无需首付",age20:"年满 20 岁",
+for_nft:"NFT 礼物和 NFT 用户名",for_all:"NFT 礼物、NFT 用户名、Stars、Premium",
+contact_admin:"分期下单后请联系管理员——管理员正在等您。",write_admin:"联系管理员",
+how_eyebrow:"订单流程",how_title:"四个步骤",
+st1:"选择",st1d:"选择服务、时长和付款方式。",st2:"确认",st2d:"通过 Telegram 登录并分享手机号。",st3:"付款",st3d:"余额支付或办理分期。",st4:"收货",st4d:"在「我的购买」中按订单号查看状态。",
+faq_title:"常见问题",
+q1:"如何充值余额？",a1:"转账至管理员银行卡并上传收据截图。审核通过后金额将计入您的余额。",
+q2:"需要注册吗？",a2:"不需要。使用 Telegram 登录，网站和机器人都能识别您。",
+q3:"如何查询订单？",a3:"每个订单都有固定编号，例如 NG-8K29XQ。可在「我的购买」或机器人中查看。",
+q4:"可以从国外付款吗？",a4:"可以。如无法转账至乌兹别克斯坦银行卡，请联系管理员单独安排。",
+foot:"© NAZAROVtggifts · Telegram 礼物",track:"订单号：",copy:"复制",copied:"已复制",ordered:"设计示例：订单暂不发送",login_note:"设计示例：Telegram 登录将接入后端"}
+};
+const LOCALE={uz:"uz-UZ",ru:"ru-RU",en:"en-US",zh:"zh-CN"};
+const CUR={uz:"so'm",ru:"сум",en:"UZS",zh:"苏姆"};
+let lang="uz";
+try{const s=localStorage.getItem("ng_lang");if(s&&T[s])lang=s}catch(e){}
+
+// Rental formula: (P + add) × mult × rate, no rounding. Admin-configurable.
+const RENT={add:0.15,mult:2,rate:19000};
+const rentPrice=P=>(P+RENT.add)*RENT.mult*RENT.rate;
+const STAR_PRICE=250, STAR_MIN=50;
+
+// Design samples only — real items come from Marketapp /v1/rent/gifts/.
+const SAMPLES=[
+ {name:"Gift #1042",model:"Model A",bg:"Backdrop 1",sym:"Symbol 1",ppd:0.42,c1:"#C9DCC8",c2:"#7FA488",days:[1,3,7,14]},
+ {name:"Gift #318",model:"Model B",bg:"Backdrop 2",sym:"Symbol 2",ppd:0.75,c1:"#E9DCC4",c2:"#B99A6B",days:[1,3,7]},
+ {name:"Gift #2207",model:"Model C",bg:"Backdrop 3",sym:"Symbol 3",ppd:1.1,c1:"#D9DDE2",c2:"#8E979F",days:[1,7,30]}
+];
+const fmt=n=>new Intl.NumberFormat(LOCALE[lang],{maximumFractionDigits:2}).format(n)+" "+CUR[lang];
+
+function giftSVG(){return '<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="40" width="68" height="50" rx="6" fill="rgba(255,255,255,.9)"/><rect x="10" y="28" width="80" height="16" rx="5" fill="#fff"/><rect x="45" y="28" width="10" height="62" fill="#6F977A"/><path d="M50 28c-6-14-24-16-24-6s18 6 24 6zm0 0c6-14 24-16 24-6s-18 6-24 6z" fill="none" stroke="#6F977A" stroke-width="5" stroke-linejoin="round"/></svg>'}
+
+function renderCards(){
+  const t=T[lang],box=document.getElementById("cards");
+  box.innerHTML=SAMPLES.map((g,i)=>`<article class="card">
+    <div class="art" style="background:radial-gradient(circle at 50% 40%,${g.c1},${g.c2})">${giftSVG()}<span class="sample metal">${t.sample}</span></div>
+    <div class="body">
+      <h3>${g.name}</h3>
+      <div class="attrs"><span>${g.model}</span><span>${g.bg}</span><span>${g.sym}</span></div>
+      <div class="days" role="group" aria-label="${t.day_label}">${g.days.map((d,j)=>`<button type="button" data-card="${i}" data-d="${d}" aria-pressed="${j===0}">${d} ${t.days}</button>`).join("")}</div>
+      <div class="total"><small id="lbl${i}"></small><b id="sum${i}"></b></div>
+      <div class="row"><button class="btn btn-primary btn-sm" type="button" data-act="order">${t.rent_cash}</button><button class="btn btn-ghost btn-sm" type="button" data-act="order">${t.rent_inst}</button></div>
+    </div></article>`).join("");
+  SAMPLES.forEach((g,i)=>setCard(i,g.days[0]));
+}
+function setCard(i,d){
+  const g=SAMPLES[i],t=T[lang];
+  document.querySelectorAll(`[data-card="${i}"]`).forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.d===d)));
+  document.getElementById("lbl"+i).textContent=t.total_for.replace("{d}",d);
+  document.getElementById("sum"+i).textContent=fmt(rentPrice(g.ppd*d));
+}
+
+function updateStars(){
+  const q=parseInt(document.getElementById("qty").value,10),err=document.getElementById("qtyErr");
+  const ok=Number.isFinite(q)&&q>=STAR_MIN;
+  err.hidden=ok;
+  document.getElementById("starsSum").textContent=ok?fmt(q*STAR_PRICE):"—";
+  return ok;
+}
+
+function apply(){
+  const t=T[lang];
+  document.documentElement.lang=lang==="zh"?"zh-CN":lang;
+  document.querySelectorAll("[data-i]").forEach(el=>{const v=t[el.dataset.i];if(v==null)return;if(el.hasAttribute("data-html"))el.innerHTML=v;else el.textContent=v});
+  document.querySelectorAll("[data-ph]").forEach(el=>el.placeholder=t[el.dataset.ph]);
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===lang)));
+  renderCards();updateStars();
+}
+
+let toastTimer;
+function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2600)}
+
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.lang){lang=b.dataset.lang;try{localStorage.setItem("ng_lang",lang)}catch(_){}apply();return}
+  if(b.dataset.card!=null){setCard(+b.dataset.card,+b.dataset.d);return}
+  if(b.dataset.rcp){document.querySelectorAll("[data-rcp]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));document.getElementById("rcpUser").hidden=b.dataset.rcp!=="other";return}
+  if(b.dataset.pay){document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));return}
+  if(b.dataset.act==="order"){toast(T[lang].ordered);return}
+  if(b.classList.contains("login")){toast(T[lang].login_note);return}
+  if(b.id==="menuBtn"){const n=document.getElementById("nav");const o=n.classList.toggle("open");b.setAttribute("aria-expanded",String(o));return}
+  if(b.id==="copyBtn"){const txt=document.getElementById("oid").textContent;
+    const done=()=>toast(T[lang].copied);
+    try{navigator.clipboard.writeText(txt).then(done,()=>selectOid())}catch(_){selectOid()}}
+});
+function selectOid(){const r=document.createRange();r.selectNodeContents(document.getElementById("oid"));const s=getSelection();s.removeAllRanges();s.addRange(r)}
+document.getElementById("nav").addEventListener("click",e=>{if(e.target.closest("a")){e.currentTarget.classList.remove("open");document.getElementById("menuBtn").setAttribute("aria-expanded","false")}});
+document.getElementById("qty").addEventListener("input",updateStars);
+document.getElementById("starsForm").addEventListener("submit",e=>{e.preventDefault();if(updateStars())toast(T[lang].ordered)});
+apply();
+</script>

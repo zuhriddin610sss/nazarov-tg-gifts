@@ -17,7 +17,8 @@ Bu fayl promtdan ustun turadi: farq bo'lsa, shu yerdagi qaror amal qiladi.
 | Telegram Stars | bor | bor (2 tur) | Marketapp `/v1/fragment/stars/` |
 
 - Stars: 1 star = 250 so'm, eng kamida 50 star.
-- Premium narxi: Marketapp narxidan hisoblanadi (formula hali kelishilmagan).
+- Premium narxi (3/6/12 oy): `(Marketapp narxi + 0.1) × 2 × 19000` so'm, Marketapp narxi TON'da. Qiymatlar admin sozlamalarida.
+- Premium 1 oy: narxni admin belgilaydi.
 
 ## Bo'lib to'lash turlari
 
