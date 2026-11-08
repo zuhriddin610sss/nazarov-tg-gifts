@@ -23,6 +23,10 @@ const T = {
     help: "Buyruqlar:\n/start — xizmatlar\n/balance — balans\n/orders — xaridlarim\n/admin — admin bilan bog'lanish",
     admin_contact: "Admin: @{u}",
     rent_ending: "⏰ Ijara muddati tugayapti: {title}\nTugash vaqti: {end}\nMuddat tugagach, {what} sizdan qaytib oladi. Uzaytirmoqchi bo'lsangiz, admin bilan bog'laning.",
+    inst_soon: "🔔 Oylik to'lov eslatmasi\n{title}\nTo'lov sanasi: {date}\nOylik to'lov: {amount} so'm\n\nTo'lash uchun «Xaridlarim» bo'limiga kiring yoki admin bilan bog'laning.",
+    inst_today: "🔔 Bugun oylik to'lov kuni\n{title}\nOylik to'lov: {amount} so'm\n\nTo'lash uchun «Xaridlarim» bo'limiga kiring yoki admin bilan bog'laning.",
+    inst_late: "⚠️ Oylik to'lov muddati o'tdi\n{title}\nTo'lov sanasi: {date}\nOylik to'lov: {amount} so'm\n\nIltimos, to'lovni amalga oshiring yoki admin bilan bog'laning.",
+    open_orders: "Xaridlarimni ochish",
     rent_what_gift: "sovg'a", rent_what_username: "username", rent_what_number: "raqam (va unga ulangan kirish)",
   },
   ru: {
@@ -47,6 +51,10 @@ const T = {
     help: "Команды:\n/start — услуги\n/balance — баланс\n/orders — мои покупки\n/admin — связаться с админом",
     admin_contact: "Администратор: @{u}",
     rent_ending: "⏰ Срок аренды заканчивается: {title}\nОкончание: {end}\nПосле окончания срока {what} вернётся владельцу. Чтобы продлить, свяжитесь с администратором.",
+    inst_soon: "🔔 Напоминание о ежемесячном платеже\n{title}\nДата платежа: {date}\nЕжемесячный платёж: {amount} сум\n\nОплатить можно в разделе «Мои покупки» или через администратора.",
+    inst_today: "🔔 Сегодня день ежемесячного платежа\n{title}\nЕжемесячный платёж: {amount} сум\n\nОплатить можно в разделе «Мои покупки» или через администратора.",
+    inst_late: "⚠️ Срок ежемесячного платежа прошёл\n{title}\nДата платежа: {date}\nЕжемесячный платёж: {amount} сум\n\nПожалуйста, оплатите или свяжитесь с администратором.",
+    open_orders: "Открыть мои покупки",
     rent_what_gift: "подарок", rent_what_username: "username", rent_what_number: "номер (и вход по нему)",
   },
   en: {
@@ -71,6 +79,10 @@ const T = {
     help: "Commands:\n/start — services\n/balance — balance\n/orders — my purchases\n/admin — contact the admin",
     admin_contact: "Admin: @{u}",
     rent_ending: "⏰ Your rental is ending: {title}\nEnds: {end}\nWhen it ends, the {what} goes back to its owner. To extend it, contact the admin.",
+    inst_soon: "🔔 Monthly payment reminder\n{title}\nDue date: {date}\nMonthly payment: {amount} UZS\n\nPay in «My purchases» or contact the admin.",
+    inst_today: "🔔 Your monthly payment is due today\n{title}\nMonthly payment: {amount} UZS\n\nPay in «My purchases» or contact the admin.",
+    inst_late: "⚠️ Your monthly payment is overdue\n{title}\nDue date: {date}\nMonthly payment: {amount} UZS\n\nPlease pay or contact the admin.",
+    open_orders: "Open my purchases",
     rent_what_gift: "gift", rent_what_username: "username", rent_what_number: "number (and the login tied to it)",
   },
   zh: {
@@ -95,6 +107,10 @@ const T = {
     help: "命令：\n/start — 服务\n/balance — 余额\n/orders — 我的购买\n/admin — 联系管理员",
     admin_contact: "管理员：@{u}",
     rent_ending: "⏰ 您的租期即将结束：{title}\n结束时间：{end}\n到期后{what}将归还给所有者。如需续租，请联系管理员。",
+    inst_soon: "🔔 月供提醒\n{title}\n付款日期：{date}\n月供：{amount} 苏姆\n\n可在「我的购买」中付款或联系管理员。",
+    inst_today: "🔔 今天是月供付款日\n{title}\n月供：{amount} 苏姆\n\n可在「我的购买」中付款或联系管理员。",
+    inst_late: "⚠️ 月供已逾期\n{title}\n付款日期：{date}\n月供：{amount} 苏姆\n\n请尽快付款或联系管理员。",
+    open_orders: "打开我的购买",
     rent_what_gift: "礼物", rent_what_username: "用户名", rent_what_number: "号码（及其登录）",
   },
 } as const;

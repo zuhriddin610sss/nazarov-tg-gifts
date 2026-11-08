@@ -17,7 +17,7 @@ const inst = await import("../src/services/installments.js");
 const { verifyWebAppInitData, verifyLoginWidget } = await import("../src/telegramAuth.js");
 const { rentCustomerPrice, rentTotalTon } = await import("../src/pricing.js");
 const promo = await import("../src/services/promo.js");
-const { sendRentReminders } = await import("../src/jobs.js");
+const { sendRentReminders, sendInstallmentReminders } = await import("../src/jobs.js");
 
 let n = 0;
 async function customer(balance = 0, phone: string | null = "+998901234567") {
@@ -253,5 +253,23 @@ describe("ijara eslatmalari", () => {
     await sendRentReminders(at(10));
     const keys = (await q("SELECT key FROM notifications_sent WHERE key LIKE 'rent:%' ORDER BY key")).map((x: any) => x.key);
     expect(keys).toEqual([`rent:${r.id}:24h`, `rent:${r.id}:72h`]);
+  });
+});
+
+describe("oylik to'lov eslatmalari", () => {
+  it("3 kun oldin, to'lov kuni va kechikkanda bittadan eslatma; to'langandan keyin to'xtaydi", async () => {
+    const c = await customer(0);
+    const id = await inst.createAgreement({ customerId: c, legacy: true, productName: "Plush Pepe", totalPrice: 1_200_000, downPayment: 0,
+      monthlyPayment: 100_000, startDate: "2026-01-10", finalDate: "2026-12-10" }, "a");
+    const at = (d: string) => new Date(d + "T07:00:00Z"); // Toshkent: 12:00
+    for (const d of ["2026-02-06", "2026-02-07", "2026-02-07", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12"]) await sendInstallmentReminders(at(d));
+    const keys = async () => (await q("SELECT key FROM notifications_sent WHERE key LIKE 'inst:%' ORDER BY created_at, key")).map((x: any) => x.key);
+    expect(await keys()).toEqual([`inst:${id}:2026-02-10:soon`, `inst:${id}:2026-02-10:today`, `inst:${id}:2026-02-10:late`]);
+    // to'lov qilingach keyingi sana 2026-03-10 bo'ladi, kechikish eslatmasi takrorlanmaydi
+    await inst.addManualPayment(id, 100_000, "pay-feb-1", "a");
+    await sendInstallmentReminders(at("2026-02-13"));
+    expect((await keys()).length).toBe(3);
+    await sendInstallmentReminders(at("2026-03-07"));
+    expect((await keys()).at(-1)).toBe(`inst:${id}:2026-03-10:soon`);
   });
 });

@@ -111,11 +111,10 @@ Ishlaydi:
 - Admin: statistika, navbat, buyurtmalar, cheklar, mijozlar va balans tuzatish, bo'lib to'lash (eski shartnomalar ham), promo-kodlar, sharhlar, sozlamalar, jurnallar.
 - Promo-kodlar (foiz yoki summa, muddat, ishlatish limiti, xizmat bo'yicha cheklov; faqat naqd buyurtmalar uchun).
 - Ijara tugashidan 72 va 24 soat oldin mijozga va adminga eslatma.
+- Bo'lib to'lash: oylik to'lovdan 3 kun oldin, to'lov kuni va kechikkanda (ertasi kuni) eslatma, Toshkent vaqti 09:00–21:00 oralig'ida. To'lov kuni va kechikish haqida adminga ham xabar keladi.
 - Savollar sahifasi, buyurtmani ID orqali tekshirish, mijoz sharhlari (admin tasdiqlagach ko'rinadi).
 
 Hali qilinmagan:
 - **Naqd buyurtmani Marketapp'ga avtomatik yuborish.** Buning uchun alohida TON hamyon va tranzaksiyani imzolash kerak. Hozircha naqd buyurtmalar ham navbatda turadi va admin qo'lda bajaradi.
 - Ijara narxida Marketapp'ning kunlik chegirmasi (`discount_per_day`) hisobga olinmagan: haqiqiy ma'lumot bilan tekshirish kerak.
-- Referal tizimi.
 - Admin panel hozircha faqat o'zbek tilida.
-- Admin uchun ikki bosqichli (TOTP) tekshiruv.

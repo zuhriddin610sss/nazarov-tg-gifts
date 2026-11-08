@@ -109,3 +109,14 @@ Server va domen bor. Kod: GitHub `zuhriddin610sss/nazarov-tg-gifts`.
 - Promo-kod faqat naqd buyurtmalarga; foiz yoki qat'iy summa; muddat, ishlatish limiti, xizmat bo'yicha cheklov. Bitta mijoz bitta kodni bir marta ishlatadi. Narx kamida 1 so'm qoladi.
 - Sharh faqat bajarilgan buyurtmaga, bitta buyurtmaga bitta; admin tasdiqlagach "Savollar" sahifasida ko'rinadi (ism qisqartiriladi).
 - Ijara admin "Amalga oshirildi" qilgan paytdan hisoblanadi; tugashidan 72 va 24 soat oldin eslatma.
+
+## Oylik to'lov eslatmalari
+
+- Mijozga: to'lov kunidan 3 kun oldin, to'lov kuni, kechikkanda (ertasi kuni). Faqat mahsulot, sana va oylik to'lov aytiladi.
+- Adminga: to'lov kuni va kechikkanda (kechikkan summa bilan). Saytga ulanmagan eski mijozlar haqida ham.
+- Xabarlar Toshkent vaqti bilan 09:00–21:00 oralig'ida yuboriladi.
+
+## Qilinmaydi (egasi qarori)
+
+- Referal tizimi.
+- Admin panelga ikki bosqichli (TOTP) kirish.

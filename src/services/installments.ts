@@ -155,7 +155,7 @@ export async function payFromBalance(agreementId: number, customerId: number, ke
   });
 }
 
-export async function listAgreements(filter: { status?: string; search?: string; customerId?: number } = {}) {
+export async function listAgreements(filter: { status?: string; search?: string; customerId?: number } = {}, today = new Date()) {
   const rows = await q(
     `SELECT a.*, c.username AS cust_username, c.phone AS cust_phone, o.public_id AS order_public_id,
             COALESCE((SELECT SUM(amount) FROM installment_payments p WHERE p.agreement_id = a.id), 0) AS paid_sum
@@ -169,7 +169,7 @@ export async function listAgreements(filter: { status?: string; search?: string;
       ORDER BY a.status, a.start_date DESC`,
     [filter.status ?? null, filter.search ?? null, filter.customerId ?? null],
   );
-  return rows.map((a) => ({ ...a, summary: summarize(a, Number(a.paid_sum)) }));
+  return rows.map((a) => ({ ...a, summary: summarize(a, Number(a.paid_sum), today) }));
 }
 
 export async function agreementPayments(id: number) {
