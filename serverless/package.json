@@ -1,0 +1,13 @@
+{
+  "name": "nazarov-tg-gifts-serverless",
+  "private": true,
+  "type": "module",
+  "description": "NAZAROVtggifts: Telegram Serverless versiyasi (bot + Mini App + admin panel)",
+  "scripts": {
+    "test": "node --no-warnings --import ./test/register.mjs --test test/*.test.mjs",
+    "deploy": "tgcloud push"
+  },
+  "devDependencies": {
+    "@tgcloud/cli": "0.2.0"
+  }
+}
