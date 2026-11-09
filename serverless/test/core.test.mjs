@@ -24,9 +24,8 @@ async function withPhone(u = user) {
   await messageHandler({ chat: { id: u.id, type: 'private' }, from: u, contact: { user_id: u.id, phone_number: '998901112233' } });
 }
 async function topup(som, u = user) {
-  await app({ action: 'uploadReceipt', amount: som, image: PNG }, u);
-  const rc = (await admin({ action: 'receipts', status: 'pending' }))[0];
-  await admin({ action: 'approveReceipt', id: rc.id });
+  const c = (await admin({ action: 'customers', search: String(u.id) }))[0];
+  await admin({ action: 'adjust', id: c.id, amount: som, note: 'Naqd', idempotencyKey: key() });
 }
 const balance = async (u = user) => (await app({ action: 'me' }, u)).balance;
 
@@ -94,19 +93,17 @@ test('navbat: barcha buyurtmalar navbatda, yopilganda raqamlar suriladi, bekor q
   assert.deepEqual(q.map((x) => x.position), [1]);
 });
 
-test('chek: bir marta tasdiqlanadi (sayt va bot tugmasi), rad etilgani tasdiqlanmaydi', async () => {
+test("balansni faqat admin to'ldiradi: chek yuklash yo'q, karta raqami mijozga berilmaydi, tuzatish takrorlanmaydi", async () => {
   await withPhone();
-  await app({ action: 'uploadReceipt', amount: 50000, image: PNG });
-  const rc = (await admin({ action: 'receipts', status: 'pending' }))[0];
-  const photo = sent.find((s) => s.method === 'sendPhoto' && s.params.reply_markup);
-  assert.ok(photo.params.reply_markup.inline_keyboard[0][0].callback_data.endsWith(':' + rc.id));
-  await callbackHandler({ id: 'q1', data: `rc:ok:${rc.id}`, from: { id: 777 } });
-  await callbackHandler({ id: 'q2', data: `rc:ok:${rc.id}`, from: { id: 777 } });
-  assert.equal(await code(admin({ action: 'approveReceipt', id: rc.id })), 'RECEIPT_ALREADY_REVIEWED');
+  assert.equal(await code(app({ action: 'uploadReceipt', amount: 50000, image: PNG })), 'UNKNOWN_ACTION');
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), card_number: '8600 0000 0000 0000' });
+  const b = await app({ action: 'balance' });
+  assert.ok(!JSON.stringify(b).includes('8600'));
+  const c = (await admin({ action: 'customers', search: '5001' }))[0];
+  await admin({ action: 'adjust', id: c.id, amount: 50000, note: 'Naqd', idempotencyKey: 'adj-same-key-1' });
+  await admin({ action: 'adjust', id: c.id, amount: 50000, note: 'Naqd', idempotencyKey: 'adj-same-key-1' });
   assert.equal(await balance(), 50000);
-  await callbackHandler({ id: 'q3', data: `rc:ok:${rc.id}`, from: { id: 1234 } }); // admin emas
-  assert.equal(await balance(), 50000);
-  assert.equal(await code(app({ action: 'uploadReceipt', amount: 5000, image: 'bm90LWFuLWltYWdl' })), 'FILE_TYPE_NOT_ALLOWED');
+  assert.equal(await code(admin({ action: 'adjust', id: c.id, amount: -60000, note: 'Xato', idempotencyKey: 'adj-neg-key-1' })), 'INSUFFICIENT_BALANCE');
 });
 
 test('admin endpointi faqat adminlarga', async () => {

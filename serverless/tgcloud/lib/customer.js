@@ -203,26 +203,11 @@ export const actions = {
       balance: toSom(c.balance),
       ledger: ledger.map((l) => ({ amount: toSom(l.amount), kind: l.kind, note: l.note, createdAt: Number(l.created_at) })),
       receipts: receipts.map((r) => ({ id: r.id, amount: toSom(r.amount), status: r.status, createdAt: Number(r.created_at) })),
-      card: { number: s.card_number, holder: s.card_holder },
-      warning: s.payment_warning[c.lang] || s.payment_warning.uz,
       adminContact: s.admin_contact,
     };
   },
 
-  async uploadReceipt(i, c) {
-    const amount = toTiyin(i.amount);
-    if (!Number.isInteger(amount) || amount < 100_000 || amount > 100_000_000_000) throw fail('BAD_AMOUNT');
-    const pending = await get("SELECT count(*) AS n FROM receipts WHERE customer_id = :c AND status = 'pending'", { c: c.id });
-    if (Number(pending.n) >= 5) throw fail('TOO_MANY_PENDING_RECEIPTS');
-    // Avval chek yoziladi (fayl hali yo'q), so'ng rasm tasdiqlash tugmalari bilan adminga boradi va file_id saqlanadi
-    const rid = await createReceipt(c.id, amount, '');
-    const caption = `💳 Yangi chek #${rid}\nMijoz: ${c.username ? '@' + c.username : '-'} · ${c.phone || '-'}\nSumma: ${fmt(amount)}`;
-    let fileId;
-    try { fileId = await storeImage(i.image, caption, rid); }
-    catch (e) { await run("DELETE FROM receipts WHERE id = :id AND status = 'pending'", { id: rid }); throw e; }
-    await run('UPDATE receipts SET file_id = :f WHERE id = :id', { f: fileId, id: rid });
-    return { id: rid };
-  },
+
 
   async payInstallment(i, c) {
     const r = await payInstallment(int(i.id, { min: 1 }), c.id, idemKey(i.idempotencyKey));

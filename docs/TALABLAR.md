@@ -120,3 +120,10 @@ Server va domen bor. Kod: GitHub `zuhriddin610sss/nazarov-tg-gifts`.
 
 - Referal tizimi.
 - Admin panelga ikki bosqichli (TOTP) kirish.
+
+## O'zgarishlar (Serverless versiyasi)
+
+- Platforma: Telegram Serverless (`serverless/` papkasi). Ilova faqat Telegram ichida ochiladi.
+- Balansni to'ldirish: **faqat admin orqali**. Mijozga "Balansni to'ldirish uchun adminga murojaat qiling" va "Adminga yozish" tugmasi ko'rsatiladi. Karta raqami va chek yuklash olib tashlandi. Admin pulni admin paneldan qo'shadi (Mijozlar → Balansni o'zgartirish).
+- Dizayn: Rolex / Mercedes / BMW ruhida — qora fon, bitta chuqur yashil, kumush harflar, to'g'ri burchaklar, vitrina (ijaradagi sovg'alarning haqiqiy rasmlari).
+- Xizmat nomlari: NFT sovg'ani bo'lib to'lashga olish; NFT sovg'ani ijaraga olish; Noyob username ijarasi; Anonim raqam ijarasi (+888); Telegram Premium; Telegram Stars (har biri ostida bir qatorli izoh).

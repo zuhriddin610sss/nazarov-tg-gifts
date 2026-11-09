@@ -115,7 +115,6 @@ async function api(path, opts = {}) {
     return { ...b, instructions: b.warning,
       ledger: b.ledger.map((l) => ({ ...l, created_at: l.createdAt })), receipts: b.receipts.map((r) => ({ ...r, created_at: r.createdAt })) };
   }
-  if (p === "/api/balance/receipts") return call("uploadReceipt", { amount: body.get("amount"), image: await imageToBase64(body.get("file")) });
   if ((x = m(/^\/api\/track\/(.+)$/))) return call("track", { publicId: x[1] });
   if (p === "/api/reviews") return call("reviews");
   throw { code: "UNKNOWN_ACTION", extra: {} };
@@ -271,6 +270,7 @@ function insufficient(amount) {
   sheet(`<h2>${esc(t("insufficient"))}</h2>
     <p class="hint">${esc(t("your_balance", { b: money(S.me ? S.me.balance : 0) }))} · ${esc(t("total"))}: ${esc(som(amount))}</p>
     <a class="btn btn-primary" href="#balance" id="goTop">${esc(t("topup"))}</a>
+    <p class="hint" style="text-align:center">${esc(t("topup_contact"))}</p>
     <button class="btn btn-ghost" id="cfNo" type="button">${esc(t("cancel"))}</button>`);
   $("#goTop").onclick = closeSheet;
   $("#cfNo").onclick = closeSheet;
@@ -319,12 +319,34 @@ function payStep(n, d, types) {
 }
 
 // ---------- sahifalar ----------
-function viewHome(v) {
+async function viewHome(v) {
   const en = (S.cfg && S.cfg.services) || {};
   const list = ["nft_gift", "gift_rent", "username_rent", "number_rent", "premium", "stars"].filter((s) => en[s] !== false);
-  v.innerHTML = `<h1 class="page-title">${esc(t("choose_service"))}</h1>
-    <div class="tiles">${list.map((s) => `<a class="tile" href="#${ROUTE[s]}"><span class="ic metal">${ICONS[s]}</span><b>${esc(t("svc_" + s))}</b></a>`).join("")}</div>
-    <p style="text-align:center;margin-top:22px"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
+  v.innerHTML = `<section class="showcase reveal">
+      <div class="sc-head"><span class="lbl">${esc(t("showcase"))}</span><span class="lbl dim">${esc(t("showcase_sub"))}</span></div>
+      <div class="sc-track" id="scTrack"><div class="slide brand"><div class="stage"><img src="/assets/logo-mark.png" alt=""></div><div class="cap"><b>Nazarov</b><small>Telegram gifts</small></div></div></div>
+    </section>
+    ${S.me ? `<a class="balrow" href="#balance"><span class="lbl">${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
+    <div class="lbl sect">${esc(t("services_title"))}</div>
+    <nav class="svc-list">${list.map((s) => `<a class="svc" href="#${ROUTE[s]}"><div><h3>${esc(t("svc_" + s))}</h3><p>${esc(t("svcd_" + s))}</p></div><span class="go" aria-hidden="true">→</span></a>`).join("")}</nav>
+    <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
+  // Vitrina: Marketapp'dagi ijaraga mavjud sovg'alar (haqiqiy rasmlari bilan)
+  if (!(S.cfg && S.cfg.marketapp) || en.gift_rent === false) return;
+  try {
+    if (!S.showcase) S.showcase = await api("/api/rent/gifts?sort_by=recently_touch");
+    const r = S.showcase;
+    const track = $("#scTrack", v);
+    if (!track || !r.items.length) return;
+    track.innerHTML = r.items.slice(0, 8).map((it) => `<button type="button" class="slide" data-a="${esc(it.address)}">
+        <div class="stage">${imgTag("gifts", it.name)}</div>
+        <div class="cap"><b>${esc(it.name)}</b><small>${esc(t("rent_total", { n: it.minDays }))} · ${esc(som(rentPrice(it.pricePerDayNano, it.minDays, r.formula)))}</small></div>
+      </button>`).join("");
+    track.querySelectorAll(".slide").forEach((b) => b.addEventListener("click", () => {
+      const it = r.items.find((x) => x.address === b.dataset.a);
+      S.rentPick = { category: "gifts", service: "gift_rent", route: "rent-gifts", item: it, formula: r.formula, days: it.minDays, pay: null, key: key() };
+      location.hash = "rent-item";
+    }));
+  } catch { /* vitrina ixtiyoriy: xato bo'lsa logotip qoladi */ }
 }
 
 function viewPremium(v) {
@@ -664,51 +686,19 @@ async function viewOrders(v) {
 
 async function viewBalance(v) {
   if (!(await needLogin())) return;
-  v.innerHTML = `<h1 class="page-title">${esc(t("balance_title"))}</h1><div class="spin"></div>`;
+  v.innerHTML = `<div class="spin"></div>`;
   let b;
   try { b = await api("/api/balance"); } catch (e) { v.innerHTML = `<p class="alert">${esc(errText(e))}</p>`; return; }
   const admin = (b.adminContact || "").replace(/^@/, "");
-  v.innerHTML = `<div class="bal"><small>${esc(t("balance_title"))}</small><b>${esc(som(b.balance))}</b></div>
+  v.innerHTML = `<div class="balhero reveal"><span class="lbl">${esc(t("balance_short"))}</span><b>${esc(som(b.balance))}</b></div>
     <section class="box">
-      <h2>${esc(t("topup_title"))}</h2>
-      ${b.card.number ? `<div class="cardno"><div><small class="hint">${esc(t("card"))}</small><br><code id="cardNo">${esc(b.card.number)}</code>
-          ${b.card.holder ? `<br><small class="hint">${esc(t("card_holder"))}: ${esc(b.card.holder)}</small>` : ""}</div>
-          <button class="btn btn-ghost btn-sm" id="copy" type="button">${esc(t("copy"))}</button></div>`
-        : `<p class="alert">${esc(t("card_missing"))}</p>`}
-      ${b.instructions ? `<p class="warnbox">${esc(b.instructions)}</p>` : ""}
-      <p class="rc-line">${esc(t("upload_below"))}</p>
-      <form id="rcForm" class="opts" novalidate>
-        <div class="field"><label for="amt">${esc(t("amount"))}</label><input class="input" id="amt" inputmode="numeric" autocomplete="off"></div>
-        <div class="field"><label>${esc(t("receipt"))}</label>
-          <label class="btn btn-ghost" for="rcFile" id="rcLbl">${esc(t("choose_file"))}</label>
-          <input id="rcFile" type="file" accept="image/jpeg,image/png,image/webp" hidden></div>
-        <button class="btn btn-primary" type="submit" id="rcSend">${esc(t("send_receipt"))}</button>
-      </form>
-      ${admin ? `<p class="hint">${esc(t("cant_pay"))} <a href="https://t.me/${esc(admin)}" target="_blank" rel="noopener">${esc(t("write_admin"))}</a></p>` : ""}
+      <p>${esc(t("topup_contact"))}</p>
+      ${admin ? `<a class="btn btn-primary" href="https://t.me/${esc(admin)}" target="_blank" rel="noopener">${esc(t("write_admin"))}</a>` : ""}
     </section>
-    ${b.receipts.length ? `<section class="box"><h2>${esc(t("receipts"))}</h2>${b.receipts.map((r) => `<div class="led"><div>${esc(som(r.amount))}<small>${esc(date(r.created_at))}</small></div><span class="badge ${r.status === "approved" ? "b-completed" : r.status === "rejected" ? "b-cancelled" : "b-queued"}">${esc(t("rc_" + r.status))}</span></div>`).join("")}</section>` : ""}
     <section class="box"><h2>${esc(t("history"))}</h2>
       ${b.ledger.length ? b.ledger.map((l) => `<div class="led"><div>${esc(t("k_" + l.kind))}${l.note ? ` · ${esc(l.note)}` : ""}<small>${esc(date(l.created_at))}</small></div>
         <span class="${Number(l.amount) > 0 ? "p" : "m"}">${Number(l.amount) > 0 ? "+" : "−"}${esc(som(Math.abs(Number(l.amount))))}</span></div>`).join("") : `<p class="hint">${esc(t("no_history"))}</p>`}
     </section>`;
-  const cp = $("#copy", v);
-  if (cp) cp.addEventListener("click", () => {
-    const txt = b.card.number.replace(/\s/g, "");
-    const sel = () => { const r = document.createRange(); r.selectNodeContents($("#cardNo")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
-    try { navigator.clipboard.writeText(txt).then(() => toast(t("copied")), sel); } catch { sel(); }
-  });
-  $("#rcFile", v).addEventListener("change", (e) => { if (e.target.files[0]) $("#rcLbl", v).textContent = t("file_chosen") + " ✓"; });
-  $("#rcForm", v).addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const f = $("#rcFile", v).files[0];
-    const amount = $("#amt", v).value.replace(/[\s,]/g, "");
-    if (!f) return toast(t("err_FILE_REQUIRED"));
-    if (!(Number(amount) >= 1000)) return toast(t("err_BAD_AMOUNT"));
-    const fd = new FormData(); fd.append("amount", amount); fd.append("file", f);
-    const btn = $("#rcSend", v); btn.disabled = true;
-    try { await api("/api/balance/receipts", { body: fd }); toast(t("receipt_sent")); render(); }
-    catch (er) { btn.disabled = false; toast(errText(er)); }
-  });
 }
 
 async function viewHelp(v) {
