@@ -389,7 +389,7 @@ async function viewNft(v) {
   const name = $("#gName", v);
   name.addEventListener("input", () => { d.name = name.value; upd(); });
   name.addEventListener("change", async () => {
-    const cols = S.giftCollections || [];
+    const cols = Array.isArray(S.giftCollections) ? S.giftCollections : [];
     const c = cols.find((x) => x.name.toLowerCase() === name.value.trim().toLowerCase());
     d.collection = c ? c.address : null; d.attrs = null; d.model = "any"; d.backdrop = "any";
     if (c) { try { d.attrs = (await api("/api/nft/collections/" + encodeURIComponent(c.address) + "/attributes")).attributes; } catch {} }
