@@ -319,34 +319,41 @@ function payStep(n, d, types) {
 }
 
 // ---------- sahifalar ----------
+const SVC_ICON = {
+  nft_gift: '<img src="/assets/logo-mark.png" alt="">',
+  gift_rent: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
+  username_rent: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>',
+  number_rent: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/></svg>',
+  premium: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linejoin="round"><path d="M3 18 5 7l4.5 4L12 5l2.5 6L19 7l2 11z"/><path d="M3 21h18"/></svg>',
+  stars: '<svg viewBox="0 0 24 24" fill="url(#sv)"><path d="M12 2l3 6.2 6.8.9-5 4.7 1.3 6.7L12 17.3 5.9 20.5l1.3-6.7-5-4.7 6.8-.9z"/></svg>',
+};
+const SILVER_DEFS = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="sv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F3EF"/><stop offset=".5" stop-color="#A3A6A2"/><stop offset="1" stop-color="#E6E7E3"/></linearGradient></defs></svg>';
+const HOME_ROUTE = { nft_gift: "nft", gift_rent: "rent", username_rent: "rent", number_rent: "rent", premium: "premium", stars: "stars" };
+const RENT_TAB = { gift_rent: "gifts", username_rent: "usernames", number_rent: "numbers" };
+
 async function viewHome(v) {
   const en = (S.cfg && S.cfg.services) || {};
-  const list = ["nft_gift", "gift_rent", "username_rent", "number_rent", "premium", "stars"].filter((s) => en[s] !== false);
-  v.innerHTML = `<section class="showcase reveal">
-      <div class="sc-head"><span class="lbl">${esc(t("showcase"))}</span><span class="lbl dim">${esc(t("showcase_sub"))}</span></div>
-      <div class="sc-track" id="scTrack"><div class="slide brand"><div class="stage"><img src="/assets/logo-mark.png" alt=""></div><div class="cap"><b>Nazarov</b><small>Telegram gifts</small></div></div></div>
-    </section>
-    ${S.me ? `<a class="balrow" href="#balance"><span class="lbl">${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
-    <div class="lbl sect">${esc(t("services_title"))}</div>
-    <nav class="svc-list">${list.map((s) => `<a class="svc" href="#${ROUTE[s]}"><div><h3>${esc(t("svc_" + s))}</h3><p>${esc(t("svcd_" + s))}</p></div><span class="go" aria-hidden="true">→</span></a>`).join("")}</nav>
+  const list = ["stars", "premium", "gift_rent", "nft_gift", "username_rent", "number_rent"].filter((s) => en[s] !== false);
+  v.innerHTML = `${SILVER_DEFS}
+    ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
+    <h1 class="page-title">${esc(t("tg_services"))}</h1>
+    <nav class="svc-list">${list.map((s) => `<a class="svc" href="#${HOME_ROUTE[s]}" data-svc="${s}">
+        <span class="svc-ic${s === "nft_gift" ? " logo" : ""}">${SVC_ICON[s]}</span>
+        <span class="svc-t"><b>${esc(t("svc_" + s))}</b><small>${esc(t("svcd_" + s))}</small></span>
+        <span class="chev" aria-hidden="true">›</span></a>`).join("")}</nav>
+    <div id="pop"></div>
     <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
-  // Vitrina: Marketapp'dagi ijaraga mavjud sovg'alar (haqiqiy rasmlari bilan)
+  v.querySelectorAll(".svc[data-svc]").forEach((a) => a.addEventListener("click", () => { if (RENT_TAB[a.dataset.svc]) S.rentTab = RENT_TAB[a.dataset.svc]; }));
   if (!(S.cfg && S.cfg.marketapp) || en.gift_rent === false) return;
   try {
-    if (!S.showcase) S.showcase = await api("/api/rent/gifts?sort_by=recently_touch");
-    const r = S.showcase;
-    const track = $("#scTrack", v);
-    if (!track || !r.items.length) return;
-    track.innerHTML = r.items.slice(0, 8).map((it) => `<button type="button" class="slide" data-a="${esc(it.address)}">
-        <div class="stage">${imgTag("gifts", it.name)}</div>
-        <div class="cap"><b>${esc(it.name)}</b><small>${esc(t("rent_total", { n: it.minDays }))} · ${esc(som(rentPrice(it.pricePerDayNano, it.minDays, r.formula)))}</small></div>
-      </button>`).join("");
-    track.querySelectorAll(".slide").forEach((b) => b.addEventListener("click", () => {
-      const it = r.items.find((x) => x.address === b.dataset.a);
-      S.rentPick = { category: "gifts", service: "gift_rent", route: "rent-gifts", item: it, formula: r.formula, days: it.minDays, pay: null, key: key() };
-      location.hash = "rent-item";
-    }));
-  } catch { /* vitrina ixtiyoriy: xato bo'lsa logotip qoladi */ }
+    const st = rentState("gifts");
+    if (!st.loaded) await loadRent("gifts");
+    const pop = $("#pop", v);
+    if (!pop || !st.items.length) return;
+    pop.innerHTML = `<div class="sect-h"><h2>${esc(t("popular"))}</h2><a href="#rent" class="link">${esc(t("see_all"))} ›</a></div>
+      <div class="strip">${st.items.slice(0, 8).map((it) => giftCard("gifts", it, st.formula)).join("")}</div>`;
+    pop.querySelectorAll(".gcard").forEach((c) => c.addEventListener("click", () => pickRent("gifts", c.dataset.a)));
+  } catch { /* ixtiyoriy */ }
 }
 
 function viewPremium(v) {
@@ -522,54 +529,134 @@ function imgTag(category, name) {
 }
 const attrsOf = (it) => (it.attributes || []).filter((a) => a && a.trait_type && a.value != null).slice(0, 3);
 
-async function viewRent(v, route) {
-  const [category, service] = CAT[route];
-  const st = S.rent[category] ||= { items: [], cursor: null, loaded: false, sort: "price_per_day", q: "", formula: null, error: null };
+const RENT_SVC = { gifts: "gift_rent", usernames: "username_rent", numbers: "number_rent" };
+const TRAITS = { model: "model", backdrop: "backdrop", symbol: "symbol" };
+function rentState(cat) {
+  return (S.rent[cat] ||= { items: [], cursor: null, loaded: false, sort: "price_per_day", formula: null, error: null,
+    f: { collection: null, model: null, backdrop: null, symbol: null }, attrs: null });
+}
+async function loadRent(cat, more) {
+  const st = rentState(cat);
+  const qs = new URLSearchParams({ sort_by: st.sort });
+  if (more && st.cursor) qs.set("cursor", st.cursor);
+  if (cat === "gifts") {
+    if (st.f.collection) qs.set("collection_address", st.f.collection.address);
+    for (const k of Object.keys(TRAITS)) if (st.f[k]) qs.set(k, st.f[k]);
+  }
+  const r = await api(`/api/rent/${cat}?${qs}`);
+  st.formula = r.formula;
+  st.items = more ? st.items.concat(r.items) : r.items;
+  st.cursor = r.cursor; st.loaded = true; st.error = null;
+}
+const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
+function priceLine(it, f) {
+  const p = rentPrice(it.pricePerDayNano, it.minDays, f);
+  return it.minDays === 1 ? `<b>${esc(money(p))}</b> ${esc(t("per_day"))}` : `${esc(t("days_n", { n: it.minDays }))} · <b>${esc(money(p))}</b>`;
+}
+function giftCard(cat, it, f) {
+  const model = (it.attributes || []).find((a) => /model/i.test(a.trait_type));
+  return `<button type="button" class="gcard" data-a="${esc(it.address)}">
+    <span class="gimg">${imgTag(cat, it.name)}</span>
+    <span class="gb"><b>${esc(cat === "gifts" ? shortName(it.name) : it.name)}</b>
+      ${model ? `<small>${esc(model.value)}</small>` : ""}
+      <span class="gp">${priceLine(it, f)}</span></span></button>`;
+}
+function pickRent(cat, address) {
+  const st = rentState(cat);
+  const it = st.items.find((x) => x.address === address);
+  if (!it) return;
+  S.rentPick = { category: cat, service: RENT_SVC[cat], route: "rent", item: it, formula: st.formula, days: it.minDays, pay: null, key: key() };
+  location.hash = "rent-item";
+}
+
+/** Ro'yxatdan bitta qiymat tanlash oynasi (filtrlar uchun). */
+function pickSheet(title, options, current, onPick) {
+  const draw = (q = "") => {
+    const ql = q.trim().toLowerCase();
+    const list = options.filter((o) => !ql || o.label.toLowerCase().includes(ql)).slice(0, 200);
+    sheet(`<h2>${esc(title)}</h2>
+      ${options.length > 10 ? `<input class="input" id="pkQ" placeholder="${esc(t("search"))}" value="${esc(q)}" autocomplete="off">` : ""}
+      <div class="pick">
+        <button type="button" class="pk${current == null ? " on" : ""}" data-i="-1">${esc(t("f_all"))}</button>
+        ${list.map((o) => `<button type="button" class="pk${current === o.value ? " on" : ""}" data-i="${options.indexOf(o)}"><span>${esc(o.label)}</span>${o.note ? `<small>${esc(o.note)}</small>` : ""}</button>`).join("")}
+      </div>`);
+    const qi = $("#pkQ"); if (qi) { qi.oninput = () => { const pos = qi.selectionStart; draw(qi.value); const n = $("#pkQ"); n.focus(); n.setSelectionRange(pos, pos); }; }
+    $("#sheet").querySelectorAll(".pk").forEach((b) => (b.onclick = () => { closeSheet(); const i = Number(b.dataset.i); onPick(i < 0 ? null : options[i]); }));
+  };
+  draw();
+}
+
+async function viewRent(v) {
+  const tab = S.rentTab || "gifts";
+  const en = (S.cfg && S.cfg.services) || {};
+  const tabs = [["gifts", "tab_gifts", "gift_rent"], ["numbers", "tab_numbers", "number_rent"], ["usernames", "tab_usernames", "username_rent"], ["mine", "tab_mine", null]]
+    .filter(([, , svc]) => !svc || en[svc] !== false);
+  const head = `<h1 class="page-title">${esc(t("store_title"))}</h1>
+    <div class="seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sg${tab === k ? " on" : ""}" data-tab="${k}">${esc(t(l))}</button>`).join("")}</div>`;
+  const bindTabs = () => v.querySelectorAll(".sg").forEach((b) => (b.onclick = () => { S.rentTab = b.dataset.tab; render(); }));
+
+  if (tab === "mine") {
+    v.innerHTML = head + `<div class="spin"></div>`; bindTabs();
+    if (!(await needLogin())) return;
+    let data;
+    try { data = await api("/api/orders"); } catch (e) { v.innerHTML = head + `<p class="alert">${esc(errText(e))}</p>`; bindTabs(); return; }
+    const mine = data.orders.filter((o) => ["gift_rent", "username_rent", "number_rent"].includes(o.service));
+    v.innerHTML = head + (mine.length ? `<div class="list">${mine.map((o) => `<article class="item">
+        <div class="item-h"><b>${esc(o.title)}</b><span class="badge b-${esc(o.status)}">${esc(t("st_" + o.status))}</span></div>
+        <div class="meta"><code>${esc(o.publicId)}</code><span>${esc(date(o.createdAt))}</span>${o.price != null ? `<span>${esc(som(o.price))}</span>` : ""}</div>
+        ${o.rentEndsAt ? `<div class="kv"><span>${esc(t("rent_ends"))}</span><b>${esc(date(o.rentEndsAt))}</b></div>` : ""}</article>`).join("")}</div>`
+      : `<p class="empty">${esc(t("no_rentals"))}</p>`);
+    bindTabs(); return;
+  }
+
+  const cat = tab, st = rentState(cat);
+  const chip = (k, label, val, disabled) => `<button type="button" class="fchip${val ? " on" : ""}" data-f="${k}" ${disabled ? "disabled" : ""}>${esc(val || label)}<span aria-hidden="true">⌄</span></button>`;
   const draw = () => {
-    const ql = st.q.trim().toLowerCase();
-    const items = st.items.filter((it) => !ql || it.name.toLowerCase().includes(ql) || attrsOf(it).some((a) => String(a.value).toLowerCase().includes(ql)));
-    v.innerHTML = `<h1 class="page-title">${esc(t("svc_" + service))}</h1>
-      <div class="cat-tools">
-        <input class="input" id="q" type="search" placeholder="${esc(t("search"))}" value="${esc(st.q)}">
-        <select class="input" id="sort" style="flex:0 1 auto">
-          <option value="price_per_day" ${st.sort === "price_per_day" ? "selected" : ""}>${esc(t("sort_cheap"))}</option>
-          <option value="recently_touch" ${st.sort === "recently_touch" ? "selected" : ""}>${esc(t("sort_new"))}</option>
-        </select>
+    v.innerHTML = head + `
+      <div class="filters">
+        <button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
+        ${cat === "gifts" ? chip("collection", t("f_gift"), st.f.collection && st.f.collection.name)
+          + chip("model", t("f_model"), st.f.model, !st.f.collection) + chip("backdrop", t("f_backdrop"), st.f.backdrop, !st.f.collection)
+          + chip("symbol", t("f_symbol"), st.f.symbol, !st.f.collection) : ""}
       </div>
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.loaded && !st.error ? `<div class="spin"></div>` : ""}
-      ${st.loaded && !items.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
-      <div class="cards">${items.map((it) => `<button type="button" class="card" data-a="${esc(it.address)}">
-          <div class="img">${imgTag(category, it.name)}</div>
-          <div class="b"><b>${esc(it.name)}</b>
-            ${attrsOf(it).length ? `<div class="attrs">${attrsOf(it).map((a) => `<span>${esc(a.value)}</span>`).join("")}</div>` : ""}
-            <small>${esc(t("rent_total", { n: it.minDays }))}: ${esc(som(rentPrice(it.pricePerDayNano, it.minDays, st.formula)))}</small>
-          </div></button>`).join("")}</div>
-      ${st.cursor && st.loaded ? `<div class="cta" style="position:static"><button class="btn btn-ghost" id="more" type="button">${esc(t("load_more"))}</button></div>` : ""}`;
-    const q = $("#q", v);
-    q.addEventListener("input", () => { st.q = q.value; const pos = q.selectionStart; draw(); const n = $("#q", v); n.focus(); n.setSelectionRange(pos, pos); });
-    $("#sort", v).addEventListener("change", (e) => { st.sort = e.target.value; st.items = []; st.cursor = null; st.loaded = false; load(); });
-    v.querySelectorAll(".card").forEach((c) => c.addEventListener("click", () => {
-      const it = st.items.find((x) => x.address === c.dataset.a);
-      S.rentPick = { category, service, route, item: it, formula: st.formula, days: it.minDays, pay: null, key: key() };
-      location.hash = "rent-item";
-    }));
-    const more = $("#more", v); if (more) more.addEventListener("click", () => load(true));
-    const retry = $("#retry", v); if (retry) retry.addEventListener("click", () => { st.error = null; load(); });
+      ${st.loaded && !st.items.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
+      <div class="grid3">${st.items.map((it) => giftCard(cat, it, st.formula)).join("")}</div>
+      ${st.cursor && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
+    bindTabs();
+    v.querySelectorAll(".gcard").forEach((c) => c.addEventListener("click", () => pickRent(cat, c.dataset.a)));
+    v.querySelectorAll(".fchip").forEach((b) => b.addEventListener("click", () => openFilter(b.dataset.f)));
+    const more = $("#more", v); if (more) more.addEventListener("click", () => reload(true));
+    const retry = $("#retry", v); if (retry) retry.addEventListener("click", () => reload());
   };
-  const load = async (more) => {
-    draw();
-    try {
-      const qs = new URLSearchParams({ sort_by: st.sort });
-      if (more && st.cursor) qs.set("cursor", st.cursor);
-      const r = await api(`/api/rent/${category}?${qs}`);
-      st.formula = r.formula;
-      st.items = more ? st.items.concat(r.items) : r.items;
-      st.cursor = r.cursor; st.loaded = true; st.error = null;
-    } catch (e) { st.error = e.code && e.code.startsWith("MARKETAPP") ? errText(e) : t("catalog_error"); }
-    if (location.hash.slice(1) === route) draw();
+  const reload = async (more) => {
+    if (!more) { st.loaded = false; st.items = []; }
+    st.error = null; draw();
+    try { await loadRent(cat, more); } catch (e) { st.error = e.code && e.code.startsWith("MARKETAPP") ? errText(e) : t("catalog_error"); }
+    if (location.hash.slice(1) === "rent" && (S.rentTab || "gifts") === cat) draw();
   };
-  if (!st.loaded) load(); else draw();
+  const openFilter = async (k) => {
+    if (k === "sort") {
+      return pickSheet(t("sort_title"), [{ value: "price_per_day", label: t("sort_cheap") }, { value: "recently_touch", label: t("sort_new") }],
+        st.sort, (o) => { st.sort = o ? o.value : "price_per_day"; reload(); });
+    }
+    if (k === "collection") {
+      if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } }
+      const cols = Array.isArray(S.giftCollections) ? S.giftCollections : [];
+      return pickSheet(t("f_gift"), cols.map((c) => ({ value: c.address, label: c.name, c })), st.f.collection && st.f.collection.address, async (o) => {
+        st.f = { collection: o ? { name: o.c.name, address: o.c.address } : null, model: null, backdrop: null, symbol: null };
+        st.attrs = null;
+        if (o) { try { st.attrs = (await api("/api/nft/collections/" + encodeURIComponent(o.c.address) + "/attributes")).attributes; } catch { st.attrs = []; } }
+        reload();
+      });
+    }
+    if (!st.f.collection) return toast(t("f_pick_gift_first"));
+    const a = (st.attrs || []).find((x) => String(x.trait_type).toLowerCase() === TRAITS[k]);
+    const opts = a ? a.values.map((x) => ({ value: x.value, label: x.value, note: x.perc ? (Math.round(x.perc * 10) / 10) + "%" : "" })) : [];
+    pickSheet(t("f_" + k), opts, st.f[k], (o) => { st.f[k] = o ? o.value : null; reload(); });
+  };
+  if (!st.loaded) reload(); else draw();
 }
 
 function viewRentItem(v) {
@@ -581,7 +668,7 @@ function viewRentItem(v) {
   const ok = Number.isInteger(p.days) && p.days >= it.minDays && p.days <= it.maxDays;
   const price = ok ? rentPrice(it.pricePerDayNano, p.days, p.formula) : null;
   v.innerHTML = `<div class="hero-img">${imgTag(p.category, it.name)}</div>
-    <h1 class="page-title" style="text-align:center">${esc(it.name)}</h1>
+    <h1 class="page-title" style="text-align:center">${esc(p.category === "gifts" ? shortName(it.name) : it.name)}${p.category === "gifts" && /#\d+$/.test(it.name) ? ` <span class="num">#${esc(it.name.split("#").pop())}</span>` : ""}</h1>
     ${attrsOf(it).length ? `<div class="attrs" style="justify-content:center">${attrsOf(it).map((a) => `<span>${esc(a.trait_type)}: ${esc(a.value)}</span>`).join("")}</div>` : ""}
     <section class="step">${stepHead(1, t("rent_days"))}
       <div class="chips">${preset.map((x) => `<button type="button" class="chip" data-d="${x}" aria-pressed="${p.days === x}">${esc(t("days_n", { n: x }))}</button>`).join("")}</div>
@@ -735,11 +822,12 @@ async function viewHelp(v) {
 // ---------- marshrutlash ----------
 const VIEWS = {
   home: viewHome, premium: viewPremium, stars: viewStars, nft: viewNft,
-  "rent-gifts": (v) => viewRent(v, "rent-gifts"), "rent-usernames": (v) => viewRent(v, "rent-usernames"), "rent-numbers": (v) => viewRent(v, "rent-numbers"),
+  rent: viewRent,
+  "rent-gifts": (v) => { S.rentTab = "gifts"; location.replace("#rent"); }, "rent-usernames": (v) => { S.rentTab = "usernames"; location.replace("#rent"); }, "rent-numbers": (v) => { S.rentTab = "numbers"; location.replace("#rent"); },
   "rent-item": viewRentItem, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
-const TOP = new Set(["home", "orders", "balance", "login", "done"]);
-const PARENT = { "rent-item": () => (S.rentPick ? S.rentPick.route : "home") };
+const TOP = new Set(["home", "rent", "orders", "balance", "login", "done"]);
+const PARENT = { "rent-item": () => "rent" };
 
 function applyStatic() {
   document.documentElement.lang = S.lang === "zh" ? "zh-CN" : S.lang;
@@ -751,7 +839,7 @@ async function render() {
   const route = location.hash.slice(1) || "home";
   const fn = VIEWS[route] || viewHome;
   applyStatic();
-  const tab = route === "orders" || route === "balance" ? route : "home";
+  const tab = ["orders", "balance", "rent"].includes(route) ? route : route === "rent-item" ? "rent" : "home";
   document.querySelectorAll(".tab").forEach((a) => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   $("#backBtn").hidden = TOP.has(route);
   $("#brand").hidden = !TOP.has(route);
