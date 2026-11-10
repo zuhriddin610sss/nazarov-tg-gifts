@@ -18,7 +18,9 @@ setFetch(async (url) => {
   const body = url.includes('/collections/gifts/') ? [{ name: 'Plush Pepe', address: 'EQ_COLLECTION_PLUSH_PEPE_0001', extra_data: {} }]
     : url.includes('/attributes/') ? { attributes: [{ trait_type: 'Model', values: [{ value: 'Gold', perc: 1.2 }, { value: 'Ruby', perc: 2.5 }] },
         { trait_type: 'Backdrop', values: [{ value: 'Black', perc: 2 }] }, { trait_type: 'Symbol', values: [{ value: 'Crown', perc: 0.4 }] }] }
-    : { cursor: null, items: ITEMS };
+    : url.includes('/rent/usernames/') ? { cursor: null, items: ['@garant_ovg', '@ab7777', '@x_trader', '@eventdisconect', '@nazar'].map((n, i) => ({ ...ITEMS[0], nft_address: 'EQ_USER_' + i + 'XXXXXXXXXXXXXXXX', nft_name: n, attributes: [] })) }
+    : url.includes('/rent/numbers/') ? { cursor: null, items: ['+888 0777 7777', '+888 1234 4321', '+888 4545 4545', '+888 8 123'].map((n, i) => ({ ...ITEMS[1], nft_address: 'EQ_NUM_' + i + 'XXXXXXXXXXXXXXXXX', nft_name: n, attributes: [] })) }
+    : { cursor: null, items: ITEMS.map((x) => ({ ...x, min_duration: 3 * 86400, max_duration: 34 * 86400 })) };
   return { ok: true, status: 200, text: async () => JSON.stringify(body) };
 });
 

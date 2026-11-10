@@ -214,3 +214,19 @@ test('sharh: faqat bajarilgan buyurtmaga, bir marta; admin tasdiqlagach ko\'rina
   assert.equal(pub.length, 1);
   assert.equal(pub[0].name, 'A***');
 });
+
+test("o'z mahsulotlari: admin qo'shadi, mijoz ijaraga va sotib oladi; ijara narxi butun so'mga yaxlitlanadi", async () => {
+  await withPhone();
+  const { rentPriceTiyin } = await import('../tgcloud/lib/pricing.js');
+  assert.equal(rentPriceTiyin(0.0149968, { add: 0.15, mult: 2, rate: 19000 }), 627000); // 6 269,89 -> 6 270 so'm
+  assert.equal(rentPriceTiyin(0.15, { add: 0.15, mult: 2, rate: 19000 }), 1140000);
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Plush Pepe #9', rent_enabled: true, rent_price: 1000.5, rent_min: 2, rent_max: 10, inst_enabled: true, cash_enabled: true, cash_price: 500 });
+  const list = await app({ action: 'ownList', category: 'gifts' });
+  const p = list.find((x) => x.name === 'Plush Pepe #9');
+  assert.ok(p && p.rent && p.installment && p.cashPrice === 500);
+  assert.equal(await code(app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'rent', days: 11, paymentMethod: 'installment', idempotencyKey: key() })), 'BAD_DURATION');
+  const r = await app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'plan2', months: 12, downPayment: 100, idempotencyKey: key() });
+  assert.match(r.publicId, /^NG-/);
+  await admin({ action: 'saveOwnProduct', id: p.id, kind: 'gifts', name: 'Plush Pepe #9', inst_enabled: true, visible: false });
+  assert.equal((await app({ action: 'ownList', category: 'gifts' })).some((x) => x.id === p.id), false);
+});

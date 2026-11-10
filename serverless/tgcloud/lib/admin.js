@@ -221,6 +221,51 @@ export const actions = {
     return { audit: a.map((x) => ({ ...x, created_at: Number(x.created_at) })), errors: e.map((x) => ({ ...x, created_at: Number(x.created_at) })) };
   },
 
+  // ---------- O'z mahsulotlari ("Reklama") ----------
+  async ownProducts() {
+    const rows = await all('SELECT * FROM own_products ORDER BY position, id DESC');
+    return rows.map((p) => ({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price),
+      rent_enabled: Boolean(p.rent_enabled), inst_enabled: Boolean(p.inst_enabled), cash_enabled: Boolean(p.cash_enabled), visible: Boolean(p.visible) }));
+  },
+  async saveOwnProduct(i, admin) {
+    const kind = ['gifts', 'usernames', 'numbers'].includes(i.kind) ? i.kind : null;
+    if (!kind) throw fail('VALIDATION', { field: 'kind' });
+    const rentOn = Boolean(i.rent_enabled), cashOn = Boolean(i.cash_enabled);
+    const p = {
+      kind, name: str(i.name, 120, { required: true, name: 'name' }), image: str(i.image, 500),
+      model: str(i.model, 80), backdrop: str(i.backdrop, 80), symbol: str(i.symbol, 80),
+      rent_enabled: rentOn ? 1 : 0, rent_price: rentOn ? toTiyin(num(i.rent_price, { min: 1, name: 'rent_price' })) : null,
+      rent_min: rentOn ? int(i.rent_min, { min: 1, max: 3650, name: 'rent_min' }) : null,
+      rent_max: rentOn ? int(i.rent_max, { min: 1, max: 3650, name: 'rent_max' }) : null,
+      inst_enabled: i.inst_enabled ? 1 : 0, cash_enabled: cashOn ? 1 : 0,
+      cash_price: cashOn ? toTiyin(num(i.cash_price, { min: 1, name: 'cash_price' })) : null,
+      visible: i.visible === false ? 0 : 1, position: i.position ? int(i.position, { min: -1000, max: 1000 }) : 0,
+    };
+    if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });
+    if (rentOn && p.rent_max < p.rent_min) throw fail('VALIDATION', { field: 'rent_max' });
+    if (!rentOn && !p.inst_enabled && !cashOn) throw fail('VALIDATION', { field: 'modes' });
+    const id = i.id ? int(i.id, { min: 1 }) : null;
+    if (id) {
+      const r = await run(`UPDATE own_products SET kind=:kind, name=:name, image=:image, model=:model, backdrop=:backdrop, symbol=:symbol,
+          rent_enabled=:rent_enabled, rent_price=:rent_price, rent_min=:rent_min, rent_max=:rent_max, inst_enabled=:inst_enabled,
+          cash_enabled=:cash_enabled, cash_price=:cash_price, visible=:visible, position=:position WHERE id = :id`, { ...p, id });
+      if (r.rowsAffected !== 1) throw fail('NOT_FOUND');
+    } else {
+      await run(`INSERT INTO own_products (kind, name, image, model, backdrop, symbol, rent_enabled, rent_price, rent_min, rent_max,
+          inst_enabled, cash_enabled, cash_price, visible, position, created_at)
+          VALUES (:kind, :name, :image, :model, :backdrop, :symbol, :rent_enabled, :rent_price, :rent_min, :rent_max,
+          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now)`, { ...p, now: Date.now() });
+    }
+    await audit(admin, 'own.save', id ? String(id) : p.name);
+    return { ok: true };
+  },
+  async deleteOwnProduct(i, admin) {
+    const id = int(i.id, { min: 1 });
+    await run('DELETE FROM own_products WHERE id = :id', { id });
+    await audit(admin, 'own.delete', String(id));
+    return { ok: true };
+  },
+
   async runJobs() { return (await maybeRunJobs(true)) || { rent: 0, inst: 0 }; },
 };
 

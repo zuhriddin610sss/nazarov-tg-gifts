@@ -78,6 +78,10 @@ async function api(path, opts = {}) {
     case "reviews":
       if (seg[2]) return call("reviewAction", { id, decision: seg[2] });
       return call("reviews", q);
+    case "own":
+      if (opts.method === "DELETE") return call("deleteOwnProduct", { id });
+      if (opts.body) return call("saveOwnProduct", { ...body, id });
+      return call("ownProducts");
     case "audit": return (await call("logs")).audit;
     case "errors": return (await call("logs")).errors;
   }
@@ -465,7 +469,68 @@ async function logs(v) {
     <div class="section"><h2>Admin harakatlari</h2><div class="det">${a.map((x) => `${dt(x.created_at)} · ${x.actor} · ${x.action}${x.target ? " · " + x.target : ""}`).map(esc).join("\n") || "—"}</div></div>`;
 }
 
-const VIEWS = { dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs };
+// ---------- O'z mahsulotlari ("Reklama") ----------
+const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqam" };
+async function own(v) {
+  const rows = await api("/api/admin/own");
+  v.innerHTML = `<h1>Mening mahsulotlarim</h1>
+    <p class="hint" style="margin-bottom:12px">Bu mahsulotlar mijozga <b>"Reklama"</b> yorlig'i bilan har doim birinchi ko'rinadi: qaysi filtr tanlansa ham.</p>
+    <button class="btn btn-primary btn-sm" id="new" type="button" style="margin-bottom:12px">+ Yangi mahsulot</button>
+    <div class="tbl-wrap"><table><thead><tr><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Holat</th><th></th></tr></thead><tbody>
+    ${rows.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
+      <td>${esc(KIND[p.kind])}</td>
+      <td>${p.rent_enabled ? `${esc(money(p.rent_price))}/kun<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
+      <td>${p.inst_enabled ? "Ha" : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
+      <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
+        <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}
+    </tbody></table></div>`;
+  $("#new").onclick = () => ownForm({});
+  v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
+  v.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Rostdan o'chirilsinmi?"; return; }
+    try { await api("/api/admin/own/" + b.dataset.del, { method: "DELETE" }); toast("O'chirildi"); render(); } catch (e) { toast(e.message); }
+  }));
+}
+function ownForm(p) {
+  const edit = Boolean(p.id);
+  const ck = (name, on, label) => `<label class="chip"><input type="checkbox" name="${name}" ${on ? "checked" : ""}> ${label}</label>`;
+  sheet(`<h2>${edit ? "Mahsulotni tahrirlash" : "Yangi mahsulot"}</h2>
+    <form class="form" id="of">
+      <div class="field"><label>Turi</label><select class="input" name="kind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="field"><label>Nomi</label><input class="input" name="name" required value="${esc(p.name || "")}" placeholder="Plush Pepe #123 yoki @nazarov yoki +888 0123 4567"></div>
+      <div class="field full"><label>Rasm havolasi (ixtiyoriy, https://...). Bo'sh qolsa, NFT rasmi nomidan avtomatik olinadi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url"></div>
+      <div class="field"><label>Model (ixtiyoriy)</label><input class="input" name="model" value="${esc(p.model || "")}"></div>
+      <div class="field"><label>Fon (ixtiyoriy)</label><input class="input" name="backdrop" value="${esc(p.backdrop || "")}"></div>
+      <div class="field"><label>Belgi (ixtiyoriy)</label><input class="input" name="symbol" value="${esc(p.symbol || "")}"></div>
+      <div class="field full"><label>Mijoz nima qila oladi?</label>
+        <div class="acts">${ck("rent_enabled", p.rent_enabled, "Ijaraga olish")}${ck("inst_enabled", p.inst_enabled, "Bo'lib to'lab sotib olish")}${ck("cash_enabled", p.cash_enabled, "Naqd sotib olish")}</div></div>
+      <div class="field"><label>Ijara: kunlik narx (so'm)</label><input class="input" name="rent_price" inputmode="decimal" value="${esc(p.rent_price ? Number(p.rent_price) : "")}"></div>
+      <div class="field"><label>Ijara: eng kam kun</label><input class="input" name="rent_min" inputmode="numeric" value="${esc(p.rent_min || 1)}"></div>
+      <div class="field"><label>Ijara: eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 30)}"></div>
+      <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
+      <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
+      <div class="field"><label>Holat</label><select class="input" name="visible"><option value="1" ${p.visible !== false ? "selected" : ""}>Ko'rinadi</option><option value="0" ${p.visible === false ? "selected" : ""}>Yashirin (sotilgan)</option></select></div>
+      <button class="btn btn-primary full" type="submit">Saqlash</button>
+    </form>`);
+  $("#of").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const n = (k) => Number(String(f.get(k) || "").replace(/[\s,]/g, ""));
+    const body = {
+      kind: f.get("kind"), name: String(f.get("name")).trim(), image: String(f.get("image") || "").trim() || null,
+      model: String(f.get("model") || "").trim() || null, backdrop: String(f.get("backdrop") || "").trim() || null, symbol: String(f.get("symbol") || "").trim() || null,
+      rent_enabled: f.get("rent_enabled") === "on", rent_price: n("rent_price"), rent_min: n("rent_min"), rent_max: n("rent_max"),
+      inst_enabled: f.get("inst_enabled") === "on", cash_enabled: f.get("cash_enabled") === "on", cash_price: n("cash_price"),
+      position: n("position"), visible: f.get("visible") === "1",
+    };
+    if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) return toast("Kamida bittasini belgilang: ijara, bo'lib to'lash yoki naqd");
+    try { await api("/api/admin/own" + (edit ? "/" + p.id : ""), { body }); closeSheet(); toast("Saqlandi"); render(); }
+    catch (er) { toast(er.code === "VALIDATION" ? "Maydonlarni tekshiring (narx, kunlar, rasm havolasi)" : er.message); }
+  };
+}
+
+const VIEWS = { dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own };
 async function render() {
   if (!(await ensureAuth())) return;
   const r = location.hash.slice(1) || "dashboard";

@@ -10,6 +10,14 @@ import { fmt } from 'lib/core';
 
 const LANGS = ['uz', 'ru', 'en', 'zh'];
 const RENT = { gift_rent: 'gifts', username_rent: 'usernames', number_rent: 'numbers' };
+const OWN_RENT = { gifts: 'gift_rent', usernames: 'username_rent', numbers: 'number_rent' };
+export function ownOut(p) {
+  return {
+    id: p.id, kind: p.kind, name: p.name, image: p.image || null, model: p.model || null, backdrop: p.backdrop || null, symbol: p.symbol || null,
+    rent: p.rent_enabled && p.rent_price ? { pricePerDay: toSom(p.rent_price), minDays: p.rent_min, maxDays: p.rent_max } : null,
+    installment: Boolean(p.inst_enabled), cashPrice: p.cash_enabled && p.cash_price ? toSom(p.cash_price) : null,
+  };
+}
 
 /** Telegram tekshirgan foydalanuvchini topadi yoki yaratadi. */
 export async function upsertCustomer(user) {
@@ -88,6 +96,12 @@ export const actions = {
     };
   },
 
+  async ownList(i) {
+    const kind = ['gifts', 'usernames', 'numbers'].includes(i.category) ? i.category : null;
+    const rows = await all(`SELECT * FROM own_products WHERE visible = 1 AND (:k IS NULL OR kind = :k) ORDER BY position, id DESC LIMIT 100`, { k: kind });
+    return rows.map(ownOut);
+  },
+
   async giftCollections() { return giftCollections(); },
   async collectionAttributes(i) { return collectionAttributes(i.address); },
 
@@ -114,7 +128,7 @@ export const actions = {
   async createOrder(i, c) {
     const s = await getSettings();
     const service = i.service;
-    if (!s.services_enabled[service]) throw fail(service in s.services_enabled ? 'SERVICE_DISABLED' : 'VALIDATION');
+    if (service !== 'own' && !s.services_enabled[service]) throw fail(service in s.services_enabled ? 'SERVICE_DISABLED' : 'VALIDATION');
     const method = i.paymentMethod === 'cash' ? 'cash' : i.paymentMethod === 'installment' ? 'installment' : null;
     if (!method) throw fail('VALIDATION', { field: 'paymentMethod' });
     const key = idemKey(i.idempotencyKey);
@@ -132,7 +146,25 @@ export const actions = {
     };
 
     let o;
-    if (service === 'premium') {
+    if (service === 'own') {
+      // Adminning o'z mahsuloti ("Reklama"): ijara yoki sotuv
+      const p = await get('SELECT * FROM own_products WHERE id = :id AND visible = 1', { id: int(i.ownId, { min: 1, name: 'ownId' }) });
+      if (!p) throw fail('NOT_FOUND');
+      if (i.ownMode === 'rent') {
+        if (!p.rent_enabled || !p.rent_price) throw fail('VALIDATION', { field: 'ownMode' });
+        const days = int(i.days, { min: 1, max: 3650, name: 'days' });
+        if (days < p.rent_min || days > p.rent_max) throw fail('BAD_DURATION', { minDays: p.rent_min, maxDays: p.rent_max });
+        const price = Number(p.rent_price) * days;
+        o = { service: OWN_RENT[p.kind], title: `${p.name} — ${days} kun`, installmentType: null, price: method === 'cash' ? price : null,
+          details: { own: p.id, name: p.name, days, ...(method === 'installment' ? { quotedPrice: price } : {}) } };
+      } else if (i.ownMode === 'buy') {
+        if (method === 'cash' && !(p.cash_enabled && p.cash_price)) throw fail('VALIDATION', { field: 'paymentMethod' });
+        if (method === 'installment' && !p.inst_enabled) throw fail('VALIDATION', { field: 'paymentMethod' });
+        o = { service: 'nft_gift', title: `${p.name} — sotib olish`, installmentType: itype(['plan1', 'plan2', 'uzum']),
+          price: method === 'cash' ? Number(p.cash_price) : null,
+          details: { own: p.id, sale: true, kind: p.kind, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined } };
+      } else throw fail('VALIDATION', { field: 'ownMode' });
+    } else if (service === 'premium') {
       if (!PREMIUM_PLANS.includes(i.plan)) throw fail('VALIDATION', { field: 'plan' });
       o = { service, title: `Telegram Premium — ${PREMIUM_LABEL[i.plan]}`, details: { plan: i.plan }, recipient: recipient(i.recipient),
         installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? toTiyin(s.premium_prices[i.plan]) : null };

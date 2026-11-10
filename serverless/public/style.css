@@ -217,3 +217,13 @@ select.input option{background:var(--bg)}
 .wheel-pad{height:44px}
 .wheel-i{height:44px;display:grid;place-items:center;scroll-snap-align:center;font:700 1.05rem var(--f-display);color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer}
 .wheel-i.on{color:var(--ink);font-weight:800}
+
+/* O'z mahsulotlari ("Reklama") */
+.gimg{position:relative}
+.adtag{position:absolute;top:8px;left:8px;background:linear-gradient(135deg,#F2F3EF,#A3A6A2);color:#141A16;font:800 .66rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.adtag.inline{position:static;display:inline-block}
+.gcard.own{border-color:var(--sage)}
+.fchip.clr{color:var(--muted)}
+.chip .save{color:var(--ok,#7fd19b);font-weight:800;margin-left:2px}
+.upsell{display:grid;gap:8px;background:var(--sage-soft);border:1px solid var(--sage);border-radius:14px;padding:12px;font-size:.9rem}
+.upsell .btn{justify-self:start}

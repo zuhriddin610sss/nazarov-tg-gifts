@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -186,5 +186,23 @@ export const DDL = [
 
   `CREATE TABLE IF NOT EXISTS rent_seen (
     address TEXT PRIMARY KEY, category TEXT NOT NULL, item TEXT NOT NULL, seen_at INTEGER NOT NULL
+  )`,
+
+  // Adminning o'z mahsulotlari ("Reklama"): ijara va sotuv. Narxlar tiyinda.
+  `CREATE TABLE IF NOT EXISTS own_products (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('gifts','usernames','numbers')),
+    name TEXT NOT NULL,
+    image TEXT,
+    model TEXT, backdrop TEXT, symbol TEXT,
+    rent_enabled INTEGER NOT NULL DEFAULT 0,
+    rent_price INTEGER CHECK (rent_price IS NULL OR rent_price > 0),
+    rent_min INTEGER, rent_max INTEGER,
+    inst_enabled INTEGER NOT NULL DEFAULT 0,
+    cash_enabled INTEGER NOT NULL DEFAULT 0,
+    cash_price INTEGER CHECK (cash_price IS NULL OR cash_price > 0),
+    visible INTEGER NOT NULL DEFAULT 1,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
   )`,
 ];

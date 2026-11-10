@@ -4,9 +4,10 @@
 export function rentTotalTon(pricePerDayNano, days) {
   return Number(BigInt(String(pricePerDayNano)) * BigInt(days)) / 1e9;
 }
-/** Ijara formulasi: (P + add) × mult × rate so'm. Yaxlitlanmaydi (faqat tiyingacha). */
+/** Ijara formulasi: (P + add) × mult × rate so'm, butun so'mgacha yuqoriga yaxlitlanadi (6 269,89 -> 6 270). */
 export function rentPriceTiyin(P, f) {
-  return Math.round((P + Number(f.add)) * Number(f.mult) * Number(f.rate) * 100);
+  const tiyin = Math.round((P + Number(f.add)) * Number(f.mult) * Number(f.rate) * 100);
+  return Math.ceil(tiyin / 100) * 100;
 }
 /** Tannarx (faqat admin uchun): P × rate. */
 export function rentCostTiyin(P, f) {

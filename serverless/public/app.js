@@ -51,8 +51,12 @@ const key = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) 
 const round2 = (x) => Math.round(x * 100) / 100;
 function rentPrice(ppdNano, days, f) {
   const P = Number(BigInt(ppdNano) * BigInt(days)) / 1e9;
-  return round2((P + f.add) * f.mult * f.rate);
+  return Math.ceil(round2((P + f.add) * f.mult * f.rate));
 }
+/** Har qanday ijara mahsuloti (Marketapp yoki o'zimizniki) uchun d kunlik narx, butun so'm. */
+function itemPrice(it, f, d) { return it.own ? Math.ceil(it.ppd * d) : rentPrice(it.pricePerDayNano, d, f); }
+/** Eng uzoq muddatga olinganda kuniga tushadigan eng arzon narx. */
+function bestPerDay(it, f) { return Math.ceil(itemPrice(it, f, it.maxDays) / it.maxDays); }
 
 let toastT;
 function toast(msg) { const el = $("#toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), 3200); }
@@ -60,7 +64,7 @@ function errText(e) {
   const code = e && e.code;
   if (code && I18N.uz["err_" + code]) {
     const x = e.extra || {};
-    return t("err_" + code, x) + (code === "MARKETAPP_ERROR" && x.status ? ` (${x.status}${x.mcode ? " " + x.mcode : ""})` : "");
+    return t("err_" + code, x);
   }
   return t("err_generic");
 }
@@ -115,6 +119,7 @@ async function api(path, opts = {}) {
   if (p === "/api/nft/collections") return call("giftCollections");
   if ((x = m(/^\/api\/nft\/collections\/([^/]+)\/attributes$/))) return call("collectionAttributes", { address: decodeURIComponent(x[1]) });
   if (p === "/api/uploads/image") return call("uploadImage", { image: await imageToBase64(body.get("file")) });
+  if (parts[0] === "own") return call("ownList", { category: parts[1] });
   if (parts[0] === "rent") return call("rentList", { category: parts[1], ...Object.fromEntries(new URLSearchParams(qs || "")) });
   if ((x = m(/^\/api\/orders\/([^/]+)\/review$/))) return call("leaveReview", { publicId: x[1], ...body });
   if ((x = m(/^\/api\/installments\/(\d+)\/pay$/))) return call("payInstallment", { id: Number(x[1]), ...body });
@@ -310,12 +315,13 @@ function bindOpts(root, onPick) {
   root.querySelectorAll(".opt[data-g]").forEach((b) => b.addEventListener("click", () => onPick(b.dataset.g, b.dataset.v)));
 }
 
-function recipientStep(n, d) {
+function recipientStep(n, d, selfOnly) {
   const noUser = S.me && !S.me.username;
+  if (selfOnly) d.rcp = "me";
   return `<section class="step">${stepHead(n, t("step_recipient"))}
     <div class="row2" role="radiogroup">
       ${opt("me", t("rcp_me"), "", "", d.rcp === "me", "rcp")}
-      ${opt("other", t("rcp_other"), "", "", d.rcp === "other", "rcp")}
+      ${selfOnly ? "" : opt("other", t("rcp_other"), "", "", d.rcp === "other", "rcp")}
     </div>
     ${d.rcp === "other" ? `<input class="input" id="rcpUser" placeholder="${esc(t("rcp_placeholder"))}" value="${esc(d.rcpUser || "")}" autocomplete="off" autocapitalize="off" spellcheck="false">` : ""}
     ${d.rcp === "me" && noUser ? `<p class="alert">${esc(t("rcp_me_missing"))}</p>` : ""}
@@ -411,14 +417,17 @@ async function viewHome(v) {
     <div id="pop"></div>
     <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
   v.querySelectorAll(".svc[data-svc]").forEach((a) => a.addEventListener("click", () => { if (RENT_TAB[a.dataset.svc]) S.rentTab = RENT_TAB[a.dataset.svc]; }));
-  if (!(S.cfg && S.cfg.marketapp) || en.gift_rent === false) return;
+  if (en.gift_rent === false) return;
   try {
     const st = rentState("gifts");
-    if (!st.loaded) await loadRent("gifts");
+    if (!st.loaded) {
+      if (S.cfg && S.cfg.marketapp) { try { await loadRent("gifts"); } catch { await loadOwn("gifts"); } }
+      else await loadOwn("gifts");
+    }
     const pop = $("#pop", v);
-    if (!pop || !st.items.length) return;
+    if (!pop || !(st.items.length || (st.own || []).length)) return;
     pop.innerHTML = `<div class="sect-h"><h2>${esc(t("popular"))}</h2><a href="#rent" class="link">${esc(t("see_all"))} ›</a></div>
-      <div class="strip">${st.items.slice(0, 8).map((it) => giftCard("gifts", it, st.formula)).join("")}</div>`;
+      <div class="strip">${(st.own || []).concat(st.items).slice(0, 10).map((it) => giftCard("gifts", it, st.formula)).join("")}</div>`;
     pop.querySelectorAll(".gcard").forEach((c) => c.addEventListener("click", () => pickRent("gifts", c.dataset.a)));
   } catch { /* ixtiyoriy */ }
 }
@@ -434,7 +443,7 @@ function viewPremium(v) {
     <section class="step">${stepHead(1, t("step_plan"))}<div class="opts" role="radiogroup">
       ${plans.map(([id, l, note]) => opt(id, t(l), note ? t(note) : "", d.pay === "installment" ? "" : som(p[id]), d.plan === id, "plan")).join("")}
     </div></section>
-    ${recipientStep(2, d)}
+    ${recipientStep(2, d, d.plan === "m1" || d.plan === "m12_login")}
     ${payStep(3, d, ["plan2", "uzum"])}
     <div class="cta">
       <div class="sum"><span>${esc(t("total"))}</span><b>${d.pay === "installment" ? esc(t("price_by_admin")) : cashPrice ? esc(som(cashPrice)) : "—"}</b></div>
@@ -519,6 +528,7 @@ async function viewNft(v) {
   };
   const hasId = Boolean(d.name.trim() || d.link.trim() || d.image);
   v.innerHTML = `<h1 class="page-title">${esc(t("nft_title"))}</h1>
+    <div id="ownSale"></div>
     <section class="step">${stepHead(1, t("gift_name"))}
       <p class="hint">${esc(t("nft_intro"))}</p>
       <div class="field"><label for="gName">${esc(t("gift_name"))}</label>
@@ -582,6 +592,19 @@ async function viewNft(v) {
       collectionAddress: d.collection || undefined, model: clean(d.model), backdrop: clean(d.backdrop), idempotencyKey: d.key,
     });
   });
+  // O'z sovg'alarimiz (sotuvda): har doim tepada
+  const stG = rentState("gifts");
+  if (!stG.ownLoaded) { await loadOwn("gifts"); stG.ownLoaded = true; }
+  const sale = (stG.own || []).filter((x) => x.installment || x.cashPrice);
+  const os = $("#ownSale", v);
+  if (os && sale.length) {
+    os.innerHTML = `<div class="sect-h"><h2>${esc(t("own_sale_title"))}</h2></div><div class="strip">${sale.map((it) => giftCard("gifts", { ...it, rent: false }, stG.formula)).join("")}</div>`;
+    os.querySelectorAll(".gcard").forEach((c) => c.addEventListener("click", () => {
+      const it = sale.find((x) => x.address === c.dataset.a);
+      S.rentPick = { category: "gifts", service: "gift_rent", route: "nft", item: it, formula: stG.formula, days: it.minDays, pay: null, key: key(), mode: "buy", itype: null };
+      location.hash = "rent-item";
+    }));
+  }
   if (!S.giftCollections) {
     try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; }
   }
@@ -610,8 +633,19 @@ const attrsOf = (it) => (it.attributes || []).filter((a) => a && a.trait_type &&
 const RENT_SVC = { gifts: "gift_rent", usernames: "username_rent", numbers: "number_rent" };
 const TRAITS = { model: "model", backdrop: "backdrop", symbol: "symbol" };
 function rentState(cat) {
-  return (S.rent[cat] ||= { items: [], cursor: null, loaded: false, sort: "price_per_day", formula: null, error: null,
-    f: { collection: null, model: null, backdrop: null, symbol: null }, attrs: null });
+  return (S.rent[cat] ||= { items: [], own: [], cursor: null, loaded: false, sort: "price_per_day", formula: null, error: null,
+    f: { collection: null, model: null, backdrop: null, symbol: null }, attrs: null, cf: {}, q: "" });
+}
+/** Adminning o'z mahsulotini ijara kartochkasi ko'rinishiga keltirish. */
+function normOwn(o) {
+  return { own: true, id: o.id, address: "own" + o.id, name: o.name, image: o.image, kind: o.kind,
+    attributes: [["Model", o.model], ["Backdrop", o.backdrop], ["Symbol", o.symbol]].filter((a) => a[1]).map(([trait_type, value]) => ({ trait_type, value })),
+    rent: Boolean(o.rent), ppd: o.rent ? Number(o.rent.pricePerDay) : 0, minDays: o.rent ? o.rent.minDays : 1, maxDays: o.rent ? o.rent.maxDays : 1,
+    installment: o.installment, cashPrice: o.cashPrice };
+}
+async function loadOwn(cat) {
+  const st = rentState(cat);
+  try { st.own = (await api("/api/own/" + cat)).map(normOwn); } catch { st.own = st.own || []; }
 }
 async function loadRent(cat, more) {
   const st = rentState(cat);
@@ -621,6 +655,7 @@ async function loadRent(cat, more) {
     if (st.f.collection) qs.set("collection_address", st.f.collection.address);
     for (const k of Object.keys(TRAITS)) if (st.f[k]) qs.set(k, st.f[k]);
   }
+  if (!more) await loadOwn(cat);
   const r = await api(`/api/rent/${cat}?${qs}`);
   st.formula = r.formula;
   st.items = more ? st.items.concat(r.items) : r.items;
@@ -628,22 +663,25 @@ async function loadRent(cat, more) {
 }
 const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
 function priceLine(it, f) {
-  const p = rentPrice(it.pricePerDayNano, it.minDays, f);
-  return it.minDays === 1 ? `<b>${esc(money(p))}</b> ${esc(t("per_day"))}` : `${esc(t("days_n", { n: it.minDays }))} · <b>${esc(money(p))}</b>`;
+  if (it.own && !it.rent) return it.cashPrice ? `<b>${esc(money(it.cashPrice))}</b> ${esc(t("som"))}` : esc(t("own_inst_only"));
+  const pre = t("from_pre");
+  return `${pre ? esc(pre) + " " : ""}<b>${esc(money(bestPerDay(it, f)))}</b> ${esc(t("per_day_from"))}`;
 }
 function giftCard(cat, it, f) {
   const model = (it.attributes || []).find((a) => /model/i.test(a.trait_type));
-  return `<button type="button" class="gcard" data-a="${esc(it.address)}">
-    <span class="gimg">${imgTag(cat, it.name)}</span>
+  const img = it.own && it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy">` : imgTag(cat, it.name);
+  return `<button type="button" class="gcard${it.own ? " own" : ""}" data-a="${esc(it.address)}">
+    <span class="gimg">${img}${it.own ? `<span class="adtag">${esc(t("ad_tag"))}</span>` : ""}</span>
     <span class="gb"><b>${esc(cat === "gifts" ? shortName(it.name) : it.name)}</b>
       ${model ? `<small>${esc(model.value)}</small>` : ""}
       <span class="gp">${priceLine(it, f)}</span></span></button>`;
 }
 function pickRent(cat, address) {
   const st = rentState(cat);
-  const it = st.items.find((x) => x.address === address);
+  const it = (st.own || []).find((x) => x.address === address) || st.items.find((x) => x.address === address);
   if (!it) return;
-  S.rentPick = { category: cat, service: RENT_SVC[cat], route: "rent", item: it, formula: st.formula, days: it.minDays, pay: null, key: key() };
+  S.rentPick = { category: cat, service: RENT_SVC[cat], route: "rent", item: it, formula: st.formula, days: it.minDays, pay: null, key: key(),
+    mode: it.own && !it.rent ? "buy" : "rent", itype: null };
   location.hash = "rent-item";
 }
 
@@ -689,34 +727,55 @@ async function viewRent(v) {
 
   const cat = tab, st = rentState(cat);
   const chip = (k, label, val, disabled) => `<button type="button" class="fchip${val ? " on" : ""}" data-f="${k}" ${disabled ? "disabled" : ""}>${esc(val || label)}<span aria-hidden="true">⌄</span></button>`;
+  const cfs = CF[cat] || [];
+  const anyFilter = () => (cat === "gifts" ? Boolean(st.f.collection || st.f.model || st.f.backdrop || st.f.symbol) : Object.keys(st.cf).length > 0 || Boolean(st.q));
+  const visible = () => st.items.filter((it) => cfs.every((c) => st.cf[c.k] == null || c.test(it, st.cf[c.k])) && (cat !== "usernames" || matchQuery(it.name, st.q)));
   const draw = () => {
+    const shown = visible();
     v.innerHTML = head + `
+      ${cat === "usernames" ? `<input class="input" id="uq" placeholder="${esc(t("search_user_ph"))}" value="${esc(st.q)}" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-top:12px">` : ""}
       <div class="filters">
         <button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
         ${cat === "gifts" ? chip("collection", t("f_gift"), st.f.collection && st.f.collection.name)
           + chip("model", t("f_model"), st.f.model, !st.f.collection) + chip("backdrop", t("f_backdrop"), st.f.backdrop, !st.f.collection)
           + chip("symbol", t("f_symbol"), st.f.symbol, !st.f.collection) : ""}
+        ${cfs.map((c) => chip("cf:" + c.k, t(c.label), st.cf[c.k] != null ? cfLabel(c, st.cf[c.k]) : "")).join("")}
+        ${anyFilter() ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
       </div>
+      ${(st.own || []).length ? `<div class="grid3">${st.own.map((it) => giftCard(cat, it, st.formula)).join("")}</div>` : ""}
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.loaded && !st.error ? `<div class="spin"></div>` : ""}
-      ${st.loaded && !st.items.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
-      <div class="grid3">${st.items.map((it) => giftCard(cat, it, st.formula)).join("")}</div>
+      ${st.loaded && !shown.length && !(st.own || []).length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
+      <div class="grid3">${shown.map((it) => giftCard(cat, it, st.formula)).join("")}</div>
       ${st.cursor && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
     bindTabs();
     v.querySelectorAll(".gcard").forEach((c) => c.addEventListener("click", () => pickRent(cat, c.dataset.a)));
     v.querySelectorAll(".fchip").forEach((b) => b.addEventListener("click", () => openFilter(b.dataset.f)));
     const more = $("#more", v); if (more) more.addEventListener("click", () => reload(true));
     const retry = $("#retry", v); if (retry) retry.addEventListener("click", () => reload());
+    const uq = $("#uq", v);
+    if (uq) uq.addEventListener("input", () => {
+      st.q = uq.value; const pos = uq.selectionStart; draw();
+      const n = $("#uq", v); n.focus(); n.setSelectionRange(pos, pos);
+    });
   };
   const reload = async (more) => {
     if (!more) { st.loaded = false; st.items = []; }
     st.error = null; draw();
-    try { await loadRent(cat, more); } catch (e) { st.error = e.code && e.code.startsWith("MARKETAPP") ? errText(e) : t("catalog_error"); }
+    try { await loadRent(cat, more); } catch (e) { st.error = t("catalog_error"); st.loaded = true; }
     if (location.hash.slice(1) === "rent" && (S.rentTab || "gifts") === cat) draw();
   };
   const openFilter = async (k) => {
+    if (k === "clear") {
+      if (cat === "gifts") { st.f = { collection: null, model: null, backdrop: null, symbol: null }; st.attrs = null; return reload(); }
+      st.cf = {}; st.q = ""; return draw();
+    }
+    if (k.startsWith("cf:")) {
+      const c = cfs.find((x) => x.k === k.slice(3));
+      return pickSheet(t(c.label), c.opts(st.items), st.cf[c.k] ?? null, (o) => { if (o) st.cf[c.k] = o.value; else delete st.cf[c.k]; draw(); });
+    }
     if (k === "sort") {
-      return pickSheet(t("sort_title"), [{ value: "price_per_day", label: t("sort_cheap") }, { value: "recently_touch", label: t("sort_new") }],
+      return pickSheet(t("sort_title"), SORTS[cat].map((x) => ({ value: x, label: t("sort_" + x) })),
         st.sort, (o) => { st.sort = o ? o.value : "price_per_day"; reload(); });
     }
     if (k === "collection") {
@@ -737,41 +796,157 @@ async function viewRent(v) {
   if (!st.loaded) reload(); else draw();
 }
 
+// --- Saralash va ilova ichidagi filtrlar (username va raqamlar) ---
+const SORTS = {
+  gifts: ["price_per_day", "min_price", "duration_asc", "duration_desc", "item_num_asc", "item_num_desc", "recently_touch"],
+  usernames: ["price_per_day", "min_price", "duration_asc", "duration_desc", "recently_touch"],
+  numbers: ["price_per_day", "min_price", "duration_asc", "duration_desc", "item_num_asc", "item_num_desc", "recently_touch"],
+};
+const uname = (n) => String(n || "").replace(/^@/, "");
+const nbody = (n) => { const d = String(n || "").replace(/\D/g, ""); return d.startsWith("888") ? d.slice(3) : d; };
+function matchQuery(name, q) {
+  q = String(q || "").trim().replace(/^@/, "").toLowerCase();
+  if (!q) return true;
+  const u = uname(name).toLowerCase();
+  if (!q.includes("*")) return u.includes(q);
+  const re = new RegExp("^" + q.split("*").map((x) => x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+  return re.test(u);
+}
+const maskOf = (str) => { const m = {}; let n = 0; return [...str].map((c) => (m[c] ??= "ABCDEFGHIJ"[n++] || "?")).join(""); };
+const maxRun = (str) => { let b = 0, r = 0, p = null; for (const c of str) { r = c === p ? r + 1 : 1; p = c; b = Math.max(b, r); } return b; };
+const maxProg = (str) => {
+  const d = [...str].map(Number); if (d.length < 2) return d.length;
+  let b = 1, r = 1, diff = null;
+  for (let i = 1; i < d.length; i++) { const x = d[i] - d[i - 1]; if (x !== 0 && x === diff) r++; else { r = x !== 0 ? 2 : 1; diff = x; } b = Math.max(b, r); }
+  return b;
+};
+const halves = (b) => { const h = Math.floor(b.length / 2); return [b.slice(0, h), b.slice(b.length - h)]; };
+const yesNo = [{ value: "yes", label: "cf_yes" }, { value: "no", label: "cf_no" }];
+const tr = (arr) => arr.map((o) => ({ ...o, label: t(o.label) }));
+const distinct = (items, f) => [...new Set(items.map(f))].sort((a, b) => (a > b ? 1 : -1));
+const CF = {
+  usernames: [
+    { k: "digits", label: "cf_digits", opts: () => tr(yesNo), test: (it, v) => /\d/.test(uname(it.name)) === (v === "yes") },
+    { k: "len", label: "cf_len", opts: () => [4, 5, 6, 7, 8, 9, 10, "11+"].map((n) => ({ value: String(n), label: t("cf_letters", { n }) })),
+      test: (it, v) => (v === "11+" ? uname(it.name).length >= 11 : uname(it.name).length === Number(v)) },
+    { k: "us", label: "cf_us", opts: () => tr(yesNo), test: (it, v) => uname(it.name).includes("_") === (v === "yes") },
+    { k: "usstyle", label: "cf_usstyle", opts: () => tr([{ value: "edge", label: "cf_us_edge" }, { value: "mid", label: "cf_us_mid" }]),
+      test: (it, v) => { const u = uname(it.name); const edge = /^_|_$/.test(u), mid = /[^_]_+[^_]/.test(u); return v === "edge" ? edge : mid; } },
+    { k: "pattern", label: "cf_pattern", opts: () => tr([{ value: "l2d4", label: "cf_pat_l2d4" }]), test: (it) => /^[a-z]{2}(\d)\1{3}$/i.test(uname(it.name)) },
+  ],
+  numbers: [
+    { k: "digit", label: "cf_digit", opts: () => [..."0123456789"].flatMap((d) => [{ value: "h" + d, label: t("cf_dig_has", { d }) }, { value: "n" + d, label: t("cf_dig_no", { d }) }]),
+      test: (it, v) => nbody(it.name).includes(v[1]) === (v[0] === "h") },
+    { k: "len", label: "cf_len", opts: (items) => distinct(items, (it) => nbody(it.name).length).map((n) => ({ value: n, label: t("cf_digits_n", { n }) })),
+      test: (it, v) => nbody(it.name).length === v },
+    { k: "run", label: "cf_run", opts: () => [2, 3, 4, 5, 6, 7, 8].map((n) => ({ value: n, label: t("cf_atleast", { n }) })), test: (it, v) => maxRun(nbody(it.name)) >= v },
+    { k: "uniq", label: "cf_uniq", opts: (items) => distinct(items, (it) => new Set(nbody(it.name)).size).map((n) => ({ value: n, label: String(n) })),
+      test: (it, v) => new Set(nbody(it.name)).size === v },
+    { k: "prog", label: "cf_prog", opts: () => [3, 4, 5, 6, 7, 8].map((n) => ({ value: n, label: t("cf_atleast", { n }) })), test: (it, v) => maxProg(nbody(it.name)) >= v },
+    { k: "sym", label: "cf_sym", opts: () => tr([{ value: "eq", label: "cf_sym_eq" }, { value: "mir", label: "cf_sym_mir" }]),
+      test: (it, v) => { const [l, r] = halves(nbody(it.name)); return l.length > 0 && (v === "eq" ? l === r : [...l].reverse().join("") === r); } },
+    { k: "mask", label: "cf_mask", opts: (items) => {
+        const o = [];
+        for (const it of items) {
+          const b = nbody(it.name), [l, r] = halves(b);
+          o.push("L:" + maskOf(l), "R:" + maskOf(r));
+          if (b.length <= 6) o.push("S:" + maskOf(b));
+        }
+        return [...new Set(o)].sort().map((x) => ({ value: x, label: t(x[0] === "L" ? "cf_mask_l" : x[0] === "R" ? "cf_mask_r" : "cf_mask_s") + ": " + x.slice(2) }));
+      },
+      test: (it, v) => { const b = nbody(it.name), [l, r] = halves(b); const m = v.slice(2);
+        return v[0] === "L" ? maskOf(l) === m : v[0] === "R" ? maskOf(r) === m : b.length <= 6 && maskOf(b) === m; } },
+  ],
+};
+function cfLabel(c, val) {
+  const o = c.opts(rentState(c === CF.numbers.find((x) => x.k === c.k) ? "numbers" : "usernames").items).find((x) => x.value === val);
+  return o ? o.label : String(val);
+}
+
 function viewRentItem(v) {
   const p = S.rentPick;
   if (!p) { location.hash = "home"; return; }
   const it = p.item;
-  const preset = [1, 3, 7, 14, 30, 60, 90].filter((x) => x >= it.minDays && x <= it.maxDays);
-  if (!preset.includes(it.minDays)) preset.unshift(it.minDays);
-  const ok = Number.isInteger(p.days) && p.days >= it.minDays && p.days <= it.maxDays;
-  const price = ok ? rentPrice(it.pricePerDayNano, p.days, p.formula) : null;
-  v.innerHTML = `<div class="hero-img">${imgTag(p.category, it.name)}</div>
+  const canRent = !it.own || it.rent, canBuy = it.own && (it.installment || it.cashPrice);
+  if (p.mode === "rent" && !canRent) p.mode = "buy";
+  const title = `<div class="hero-img">${it.own && it.image ? `<img src="${esc(it.image)}" alt="">` : imgTag(p.category, it.name)}</div>
     <h1 class="page-title" style="text-align:center">${esc(p.category === "gifts" ? shortName(it.name) : it.name)}${p.category === "gifts" && /#\d+$/.test(it.name) ? ` <span class="num">#${esc(it.name.split("#").pop())}</span>` : ""}</h1>
+    ${it.own ? `<p style="text-align:center"><span class="adtag inline">${esc(t("ad_tag"))}</span></p>` : ""}
     ${attrsOf(it).length ? `<div class="attrs" style="justify-content:center">${attrsOf(it).map((a) => `<span>${esc(a.trait_type)}: ${esc(a.value)}</span>`).join("")}</div>` : ""}
+    ${canRent && canBuy ? `<div class="seg" role="tablist" style="margin:12px 0">
+      <button type="button" class="sg${p.mode === "rent" ? " on" : ""}" data-mode="rent">${esc(t("mode_rent"))}</button>
+      <button type="button" class="sg${p.mode === "buy" ? " on" : ""}" data-mode="buy">${esc(t("mode_buy"))}</button></div>` : ""}`;
+  const bindMode = () => v.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { p.mode = b.dataset.mode; p.pay = null; p.itype = null; render(); }));
+
+  if (p.mode === "buy") {
+    const opts = [];
+    if (it.cashPrice) opts.push(opt("cash", t("pay_full"), t("pay_full_note"), som(it.cashPrice), p.pay === "cash", "pay"));
+    if (it.installment) opts.push(opt("installment", t("pay_inst"), t("pay_inst_note"), "", p.pay === "installment", "pay"));
+    if (opts.length === 1 && !p.pay) p.pay = it.cashPrice ? "cash" : "installment";
+    const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));
+    v.innerHTML = title + `<section class="step">${stepHead(1, t("step_pay"))}<div class="opts" role="radiogroup">${opts.join("")}</div>
+      ${p.pay === "installment" ? `<div class="field"><label>${esc(t("inst_type"))}</label><div class="opts" role="radiogroup">
+        ${["plan1", "plan2", "uzum"].map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", p.itype === ty, "itype")).join("")}</div></div>${instExtra(p)}` : ""}
+      </section>
+      <div class="cta">
+        <div class="sum"><span>${esc(t("total"))}</span><b>${p.pay === "cash" ? esc(som(it.cashPrice)) : esc(t("price_by_admin"))}</b></div>
+        <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("next"))}</button>
+      </div>`;
+    bindMode();
+    bindOpts(v, (g, val) => { if (g === "itype" && val !== p.itype) resetInst(p, val); if (g === "pay" && val !== p.pay) p.itype = null; p[g] = val; render(); });
+    v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { p.months = Number(c.dataset.v); render(); }));
+    bindInst(v, p, () => ($("#go", v).disabled = !isReady()));
+    $("#go", v).addEventListener("click", () => placeOrder({
+      service: "own", ownId: it.id, ownMode: "buy", paymentMethod: p.pay, installmentType: p.pay === "installment" ? p.itype : undefined,
+      ...(p.pay === "installment" ? instBody(p) : {}), idempotencyKey: p.key,
+    }, it.cashPrice));
+    return;
+  }
+
+  const f = p.formula;
+  const price = (d) => itemPrice(it, f, d);
+  const max = it.maxDays, min = it.minDays;
+  const preset = [3, 7, 15, 30].filter((x) => x >= min && x < max);
+  if (!preset.length || preset[0] > min) preset.unshift(min);
+  if (!preset.includes(max)) preset.push(max);
+  const saving = max > min ? Math.floor((1 - (price(max) / max) / (price(min) / min)) * 100) : 0;
+  const ok = (d) => Number.isInteger(d) && d >= min && d <= max;
+  const perDayLine = (d) => (ok(d) ? t("per_day_is", { d: money(Math.ceil(price(d) / d)) }) : "");
+  const upsell = (d) => (ok(d) && d !== max && max > min && p.pay !== "installment"
+    ? `<div class="upsell" id="ups">💡 ${esc(t("upsell", { n: max, d: money(bestPerDay(it, f)), tot: money(price(max)) }))}
+        <button type="button" class="btn btn-ghost btn-sm" id="upsBtn">${esc(t("upsell_btn", { n: max }))}</button></div>` : "");
+  v.innerHTML = title + `
     <section class="step">${stepHead(1, t("rent_days"))}
-      <div class="chips">${preset.map((x) => `<button type="button" class="chip" data-d="${x}" aria-pressed="${p.days === x}">${esc(t("days_n", { n: x }))}</button>`).join("")}</div>
-      <input class="input" id="days" type="number" inputmode="numeric" min="${it.minDays}" max="${it.maxDays}" value="${esc(p.days)}">
-      <p class="hint">${esc(t("days_range", { a: it.minDays, b: it.maxDays }))}</p>
+      <div class="chips">${preset.map((x) => `<button type="button" class="chip" data-d="${x}" aria-pressed="${p.days === x}">${esc(t("days_n", { n: x }))}${x === max && saving >= 1 ? ` <span class="save">−${saving}%</span>` : ""}</button>`).join("")}</div>
+      <input class="input" id="days" type="number" inputmode="numeric" min="${min}" max="${max}" value="${esc(p.days)}">
+      <p class="hint">${esc(t("days_range", { a: min, b: max }))}</p>
+      <p class="hint" id="pdl">${esc(perDayLine(p.days))}</p>
+      <div id="upsWrap">${upsell(p.days)}</div>
     </section>
     ${payStep(2, p, null)}
     <div class="cta">
-      <div class="sum"><span id="lbl">${esc(t("rent_total", { n: ok ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(t("price_by_admin")) : price != null ? esc(som(price)) : "—"}</b></div>
-      <button class="btn btn-primary" id="go" type="button" ${ok && p.pay ? "" : "disabled"}>${esc(t("next"))}</button>
+      <div class="sum"><span id="lbl">${esc(t("rent_total", { n: ok(p.days) ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(t("price_by_admin")) : ok(p.days) ? esc(som(price(p.days))) : "—"}</b></div>
+      <button class="btn btn-primary" id="go" type="button" ${ok(p.days) && p.pay ? "" : "disabled"}>${esc(t("next"))}</button>
     </div>`;
-  v.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { p.days = Number(c.dataset.d); render(); }));
+  bindMode();
+  const bindUps = () => { const b = $("#upsBtn", v); if (b) b.onclick = () => { p.days = max; render(); }; };
+  bindUps();
+  v.querySelectorAll(".chip[data-d]").forEach((c) => c.addEventListener("click", () => { p.days = Number(c.dataset.d); render(); }));
   const di = $("#days", v);
   di.addEventListener("input", () => {
     p.days = parseInt(di.value, 10);
-    const good = Number.isInteger(p.days) && p.days >= it.minDays && p.days <= it.maxDays;
+    const good = ok(p.days);
     $("#lbl", v).textContent = t("rent_total", { n: good ? p.days : "—" });
-    $("#tot", v).textContent = p.pay === "installment" ? t("price_by_admin") : good ? som(rentPrice(it.pricePerDayNano, p.days, p.formula)) : "—";
+    $("#tot", v).textContent = p.pay === "installment" ? t("price_by_admin") : good ? som(price(p.days)) : "—";
+    $("#pdl", v).textContent = perDayLine(p.days);
+    $("#upsWrap", v).innerHTML = upsell(p.days); bindUps();
     $("#go", v).disabled = !(good && p.pay);
-    v.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(Number(c.dataset.d) === p.days)));
+    v.querySelectorAll(".chip[data-d]").forEach((c) => c.setAttribute("aria-pressed", String(Number(c.dataset.d) === p.days)));
   });
   bindOpts(v, (g, val) => { p[g] = val; render(); });
-  $("#go", v).addEventListener("click", () => placeOrder({
-    service: p.service, address: it.address, days: p.days, paymentMethod: p.pay, idempotencyKey: p.key,
-  }, rentPrice(it.pricePerDayNano, p.days, p.formula)));
+  $("#go", v).addEventListener("click", () => placeOrder(it.own
+    ? { service: "own", ownId: it.id, ownMode: "rent", days: p.days, paymentMethod: p.pay, idempotencyKey: p.key }
+    : { service: p.service, address: it.address, days: p.days, paymentMethod: p.pay, idempotencyKey: p.key }, price(p.days)));
 }
 
 function viewDone(v) {
