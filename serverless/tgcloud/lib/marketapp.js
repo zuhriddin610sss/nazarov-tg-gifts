@@ -27,7 +27,7 @@ async function call(method, path, { body, query } = {}) {
     await logError('marketapp', `${method} ${path} -> ${res.status}`, { body: text.slice(0, 800) });
     throw fail('MARKETAPP_ERROR', { status: res.status });
   }
-  try { return JSON.parse(text); } catch {
+  try { return JSON.parse(text); } catch (e) {
     await logError('marketapp', `${method} ${path}: JSON emas`, { body: text.slice(0, 300) });
     throw fail('MARKETAPP_ERROR');
   }
@@ -58,7 +58,7 @@ export async function listRent(category, opts = {}) {
 /** Mijoz ko'rgan e'lon (15 daqiqadan eski bo'lmasin: narx o'zgargan bo'lishi mumkin). */
 export async function seenRentItem(category, address) {
   const r = await get('SELECT item, category, seen_at FROM rent_seen WHERE address = :a', { a: String(address) });
-  if (!r || r.category !== category || nowMs() - Number(r.seen_at) > 15 * 60_000) throw fail('RENT_ITEM_STALE');
+  if (!r || r.category !== category || nowMs() - Number(r.seen_at) > 15 * 60000) throw fail('RENT_ITEM_STALE');
   return JSON.parse(r.item);
 }
 

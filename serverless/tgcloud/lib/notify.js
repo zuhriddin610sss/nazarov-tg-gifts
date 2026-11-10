@@ -13,7 +13,7 @@ async function send(chatId, text, extra = {}) {
   catch (e) { await logError('bot.send', `${chatId}: ${e && (e.description || e.message)}`); return null; }
 }
 const tashkent = (ms) => {
-  const d = new Date(Number(ms) + 5 * 3_600_000);
+  const d = new Date(Number(ms) + 5 * 3600000);
   const p = (n) => String(n).padStart(2, '0');
   return `${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}.${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 };

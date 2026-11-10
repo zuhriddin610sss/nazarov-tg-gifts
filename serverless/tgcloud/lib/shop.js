@@ -154,7 +154,7 @@ export function summarize(a, paidSum, today = new Date()) {
   const paid = down + paidSum;
   const remaining = Math.max(0, total - paid);
   const start = ymd(a.start_date);
-  const t = ymd(new Date(today.getTime() + 5 * 3_600_000).toISOString()); // Toshkent sanasi
+  const t = ymd(new Date(today.getTime() + 5 * 3600000).toISOString()); // Toshkent sanasi
   const monthsElapsed = Math.max(0, (t.getUTCFullYear() - start.getUTCFullYear()) * 12 + (t.getUTCMonth() - start.getUTCMonth()) - (t.getUTCDate() < start.getUTCDate() ? 1 : 0));
   const expected = Math.min(total, down + monthly * monthsElapsed);
   const overdueAmount = Math.max(0, expected - paid);
@@ -225,7 +225,7 @@ export async function addManualPayment(agreementId, amount, key, actor, note, pa
   if (!a) throw fail('AGREEMENT_NOT_FOUND');
   const r = await run(`INSERT INTO inst_payments (agreement_id, amount, source, note, idem_key, created_by, paid_at)
                        VALUES (:id, :a, 'manual', :n, :k, :by, :t) ON CONFLICT (idem_key) DO NOTHING`,
-    { id: agreementId, a: amount, n: note ?? null, k: `admin:${key}`, by: actor, t: paidAt ? ymd(paidAt).getTime() + 12 * 3_600_000 : nowMs() });
+    { id: agreementId, a: amount, n: note ?? null, k: `admin:${key}`, by: actor, t: paidAt ? ymd(paidAt).getTime() + 12 * 3600000 : nowMs() });
   await audit(actor, 'installment.payment', String(agreementId), { amount, note, duplicate: r.rowsAffected === 0 });
   await closeIfPaid(agreementId);
   return { duplicate: r.rowsAffected === 0 };

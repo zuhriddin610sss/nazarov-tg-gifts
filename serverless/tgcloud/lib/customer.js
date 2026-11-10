@@ -1,7 +1,7 @@
 // Mijoz Mini App'i uchun amallar (endpoints/app.js orqali chaqiriladi).
 import { api, InputFile } from 'sdk';
 import { all, get, run, fail, getSettings, toSom, toTiyin, nowMs, int, str, idemKey, USERNAME_RE, cleanUser, adminIds, logError } from 'lib/core';
-import * as mk from 'lib/marketapp';
+import { listRent, seenRentItem, giftCollections, collectionAttributes, searchRecipient, marketappConfigured } from 'lib/marketapp';
 import { PREMIUM_PLANS, PREMIUM_LABEL, rentTotalTon, rentPriceTiyin, rentCostTiyin, starsPriceTiyin } from 'lib/pricing';
 import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, summarize } from 'lib/shop';
 import { notifyNewOrder, receiptButtons } from 'lib/notify';
@@ -51,7 +51,7 @@ export const actions = {
     const s = await getSettings();
     return {
       services: s.services_enabled, starsPrice: s.stars_price, starsMin: s.stars_min, premiumPrices: s.premium_prices,
-      rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await mk.marketappConfigured(),
+      rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
     };
   },
 
@@ -74,7 +74,7 @@ export const actions = {
     const category = ['gifts', 'usernames', 'numbers'].includes(i.category) ? i.category : null;
     if (!category) throw fail('VALIDATION', { field: 'category' });
     const s = await getSettings();
-    const data = await mk.listRent(category, i);
+    const data = await listRent(category, i);
     return {
       cursor: data.cursor, formula: s.rent_formula,
       items: data.items.map((it) => ({
@@ -85,14 +85,14 @@ export const actions = {
     };
   },
 
-  async giftCollections() { return mk.giftCollections(); },
-  async collectionAttributes(i) { return mk.collectionAttributes(i.address); },
+  async giftCollections() { return giftCollections(); },
+  async collectionAttributes(i) { return collectionAttributes(i.address); },
 
   async checkRecipient(i) {
     const u = cleanUser(i.username);
     if (!USERNAME_RE.test(u)) throw fail('BAD_USERNAME');
-    if (!(await mk.marketappConfigured())) return { username: u, verified: false };
-    const r = await mk.searchRecipient(i.service, u);
+    if (!(await marketappConfigured())) return { username: u, verified: false };
+    const r = await searchRecipient(i.service, u);
     return { username: u, verified: true, name: r.name, photo: r.photo };
   },
 
@@ -134,7 +134,7 @@ export const actions = {
       o = { service, title: `Telegram Premium — ${PREMIUM_LABEL[i.plan]}`, details: { plan: i.plan }, recipient: recipient(i.recipient),
         installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? toTiyin(s.premium_prices[i.plan]) : null };
     } else if (service === 'stars') {
-      const q = int(i.quantity, { min: 1, max: 1_000_000, name: 'quantity' });
+      const q = int(i.quantity, { min: 1, max: 1000000, name: 'quantity' });
       if (q < s.stars_min) throw fail('STARS_MIN', { min: s.stars_min });
       o = { service, title: `Telegram Stars — ${q} ta`, details: { quantity: q }, recipient: recipient(i.recipient),
         installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? starsPriceTiyin(q, s) : null };
@@ -146,7 +146,7 @@ export const actions = {
       o = { service, title: name ? `NFT sovg'a — ${name}` : "NFT sovg'a (maxsus so'rov)", installmentType: itype(['plan1', 'plan2', 'uzum']), price: null,
         details: { name, link, image, collectionAddress: str(i.collectionAddress, 80), model: str(i.model, 80) || 'any', backdrop: str(i.backdrop, 80) || 'any' } };
     } else if (RENT[service]) {
-      const item = await mk.seenRentItem(RENT[service], str(i.address, 100, { required: true }));
+      const item = await seenRentItem(RENT[service], str(i.address, 100, { required: true }));
       const minDays = Math.max(1, Math.ceil(Number(item.min_duration) / 86400)), maxDays = Math.floor(Number(item.max_duration) / 86400);
       const days = int(i.days, { min: 1, max: 3650, name: 'days' });
       if (days < minDays || days > maxDays) throw fail('BAD_DURATION', { minDays, maxDays });
@@ -171,7 +171,7 @@ export const actions = {
         WHERE o.customer_id = :c AND o.status NOT IN ('pending','failed') ORDER BY o.created_at DESC LIMIT 200`, { c: c.id });
     const legacy = await all(`SELECT id, product_name, start_date, monthly_payment, final_date, status FROM agreements
         WHERE customer_id = :c AND order_id IS NULL ORDER BY start_date DESC`, { c: c.id });
-    const DAY = 86_400_000;
+    const DAY = 86400000;
     return {
       orders: rows.map((r) => {
         const det = JSON.parse(r.details || '{}');

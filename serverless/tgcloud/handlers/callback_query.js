@@ -22,7 +22,7 @@ export default async function (q, ctx) {
       await notifyReceiptReviewed(id, false);
     }
     if (q.message) {
-      try { await api.editMessageReplyMarkup({ chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }); } catch {}
+      try { await api.editMessageReplyMarkup({ chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: { inline_keyboard: [] } }); } catch (e) {}
     }
   } catch (e) {
     const code = e && e.parameters && e.parameters.code;

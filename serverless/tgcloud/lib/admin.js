@@ -68,7 +68,7 @@ export const actions = {
         ORDER BY o.id DESC LIMIT 300`,
       { q: str(i.search, 100), svc: SERVICES.includes(i.service) ? i.service : null, pm: ['cash', 'installment'].includes(i.method) ? i.method : null,
         st: ['queued', 'completed', 'cancelled'].includes(i.status) ? i.status : null,
-        from: date(i.from, 'from') ? Date.parse(i.from + 'T00:00:00+05:00') : null, to: date(i.to, 'to') ? Date.parse(i.to + 'T00:00:00+05:00') + 86_400_000 : null });
+        from: date(i.from, 'from') ? Date.parse(i.from + 'T00:00:00+05:00') : null, to: date(i.to, 'to') ? Date.parse(i.to + 'T00:00:00+05:00') + 86400000 : null });
     return rows.map((r) => ({ ...orderOut(r), position: r.position ? Number(r.position) : null }));
   },
 
@@ -225,10 +225,10 @@ export const actions = {
 };
 
 function startOfTashkentDay(now = Date.now()) {
-  const d = new Date(now + 5 * 3_600_000);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 5 * 3_600_000;
+  const d = new Date(now + 5 * 3600000);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 5 * 3600000;
 }
 function startOfTashkentMonth(now = Date.now()) {
-  const d = new Date(now + 5 * 3_600_000);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - 5 * 3_600_000;
+  const d = new Date(now + 5 * 3600000);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - 5 * 3600000;
 }

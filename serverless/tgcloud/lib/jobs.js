@@ -6,7 +6,7 @@ import { t, money } from 'lib/texts';
 import { send, tashkent, openAppButton } from 'lib/notify';
 
 const WHAT = { gift_rent: 'rent_what_gift', username_rent: 'rent_what_username', number_rent: 'rent_what_number' };
-const DAY = 86_400_000;
+const DAY = 86400000;
 
 /** Ijara admin "Amalga oshirildi" qilgan paytdan hisoblanadi. Tugashiga 72 va 24 soat qolganda bittadan eslatma. */
 export async function sendRentReminders(now = nowMs()) {
@@ -27,7 +27,7 @@ export async function sendRentReminders(now = nowMs()) {
   return sent;
 }
 
-const tashkentDay = (ms) => new Date(ms + 5 * 3_600_000).toISOString().slice(0, 10);
+const tashkentDay = (ms) => new Date(ms + 5 * 3600000).toISOString().slice(0, 10);
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / DAY);
 
 /** Oylik to'lov: 3 kun oldin, to'lov kuni, kechikkanda (ertasi kundan). Mijozga umumiy qarz aytilmaydi. */
@@ -68,12 +68,12 @@ export async function maybeRunJobs(force = false) {
     if (!force) {
       const r = await run(`INSERT INTO meta (key, value) VALUES ('jobs', :now)
                            ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE CAST(meta.value AS INTEGER) < :limit`,
-        { now: String(now), limit: now - 30 * 60_000 });
+        { now: String(now), limit: now - 30 * 60000 });
       if (r.rowsAffected !== 1) return null;
     }
     const rent = await sendRentReminders(now);
     // Mijozni tunda bezovta qilmaslik uchun: Toshkent vaqti bilan 09:00–21:00
-    const h = new Date(now + 5 * 3_600_000).getUTCHours();
+    const h = new Date(now + 5 * 3600000).getUTCHours();
     const inst = force || (h >= 9 && h < 21) ? await sendInstallmentReminders(now) : 0;
     return { rent, inst };
   } catch (e) {

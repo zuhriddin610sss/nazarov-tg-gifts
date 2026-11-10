@@ -99,7 +99,7 @@ export const DEFAULT_SETTINGS = {
 export async function getSettings() {
   const row = await get("SELECT value FROM settings WHERE key = 'main'");
   let saved = {};
-  try { saved = row ? JSON.parse(row.value) : {}; } catch {}
+  try { saved = row ? JSON.parse(row.value) : {}; } catch (e) {}
   const s = { ...DEFAULT_SETTINGS, ...saved };
   for (const k of ['payment_warning', 'premium_prices', 'rent_formula', 'services_enabled']) s[k] = { ...DEFAULT_SETTINGS[k], ...(saved[k] || {}) };
   return s;
