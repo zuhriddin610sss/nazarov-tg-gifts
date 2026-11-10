@@ -25,10 +25,18 @@ export function __resetForTests() { ready = false; }
 /** Sxemani bir marta (har bir ishga tushishda) tekshiradi va kerak bo'lsa yaratadi. */
 export async function ensureSchema() {
   if (ready) return;
-  await db.run('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+  const hasMeta = await db.get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'meta'");
+  if (!hasMeta) await db.run('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)');
   const v = await db.get("SELECT value FROM meta WHERE key = 'schema'");
   if (!v || Number(v.value) < SCHEMA_VERSION) {
-    for (const stmt of DDL) await db.run(stmt);
+    // Mavjud jadval/indeks/triggerlar qayta yaratilmaydi: "IF NOT EXISTS" bo'lsa ham
+    // Serverless bunday so'rovni "o'qish" deb hisoblab, db.run'da xato beradi.
+    const have = new Set((await db.all('SELECT name FROM sqlite_master')).map((r) => r.name));
+    for (const stmt of DDL) {
+      const m = /IF NOT EXISTS\s+(\w+)/i.exec(stmt);
+      if (m && have.has(m[1])) continue;
+      await db.run(stmt);
+    }
     await db.run("INSERT INTO meta (key, value) VALUES ('schema', :v) ON CONFLICT (key) DO UPDATE SET value = excluded.value", { ':v': String(SCHEMA_VERSION) });
   }
   ready = true;
