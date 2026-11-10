@@ -1,0 +1,26 @@
+name: Mini App yuklash
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['serverless/public/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: serverless
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - name: Mini App fayllarini Telegram'ga yuklash
+        env:
+          TGCLOUD_TOKEN: ${{ secrets.TGCLOUD_TOKEN }}
+        run: |
+          if [ -z "$TGCLOUD_TOKEN" ]; then echo "TGCLOUD_TOKEN secret qo'shilmagan"; exit 1; fi
+          npx tgcloud push public --force
