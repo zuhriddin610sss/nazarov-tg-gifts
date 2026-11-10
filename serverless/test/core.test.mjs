@@ -37,7 +37,7 @@ beforeEach(() => {
 });
 
 test('telefonsiz buyurtma yo\'q; boshqaning kontakti qabul qilinmaydi', async () => {
-  assert.equal(await code(app({ action: 'createOrder', service: 'premium', plan: 'm3', paymentMethod: 'installment', installmentType: 'uzum', recipient: { self: true }, idempotencyKey: key() })), 'PHONE_REQUIRED');
+  assert.equal(await code(app({ action: 'createOrder', service: 'premium', plan: 'm3', paymentMethod: 'installment', installmentType: 'uzum', months: 6, recipient: { self: true }, idempotencyKey: key() })), 'PHONE_REQUIRED');
   await messageHandler({ chat: { id: user.id, type: 'private' }, from: user, contact: { user_id: 999, phone_number: '998900000000' } });
   assert.equal((await app({ action: 'me' })).hasPhone, false);
   await withPhone();
@@ -77,8 +77,10 @@ test('navbat: barcha buyurtmalar navbatda, yopilganda raqamlar suriladi, bekor q
   await topup(1000000);
   const ids = [];
   ids.push((await app({ action: 'createOrder', service: 'stars', quantity: 100, paymentMethod: 'cash', recipient: { self: true }, idempotencyKey: key() })).publicId);
-  ids.push((await app({ action: 'createOrder', service: 'nft_gift', paymentMethod: 'installment', installmentType: 'plan1', giftName: 'Plush Pepe', model: 'any', backdrop: 'Black', idempotencyKey: key() })).publicId);
-  ids.push((await app({ action: 'createOrder', service: 'premium', plan: 'm1', paymentMethod: 'installment', installmentType: 'plan2', recipient: { self: true }, idempotencyKey: key() })).publicId);
+  ids.push((await app({ action: 'createOrder', service: 'nft_gift', paymentMethod: 'installment', installmentType: 'plan1', months: 6, giftName: 'Plush Pepe', model: 'any', backdrop: 'Black', idempotencyKey: key() })).publicId);
+  assert.equal(await code(app({ action: 'createOrder', service: 'stars', quantity: 100, paymentMethod: 'installment', installmentType: 'uzum', months: 7, recipient: { self: true }, idempotencyKey: key() })), 'VALIDATION');
+  assert.equal(await code(app({ action: 'createOrder', service: 'stars', quantity: 100, paymentMethod: 'installment', installmentType: 'plan2', months: 241, recipient: { self: true }, idempotencyKey: key() })), 'VALIDATION');
+  ids.push((await app({ action: 'createOrder', service: 'premium', plan: 'm1', paymentMethod: 'installment', installmentType: 'plan2', months: 240, downPayment: 50000, recipient: { self: true }, idempotencyKey: key() })).publicId);
   let q = await admin({ action: 'queue' });
   assert.deepEqual(q.map((x) => [x.position, x.public_id]), [[1, ids[0]], [2, ids[1]], [3, ids[2]]]);
   const first = q[0].id;
@@ -133,7 +135,7 @@ test('promo-kod: chegirma, bir mijozga bir marta, limit, bekor qilinganda chegir
 test("bo'lib to'lash: mijoz faqat 3 ma'lumotni ko'radi, oylik to'lov bir marta yechiladi, boshqaniki to'lanmaydi", async () => {
   await withPhone();
   await topup(600000);
-  const o = await app({ action: 'createOrder', service: 'nft_gift', paymentMethod: 'installment', installmentType: 'plan1', giftName: 'Plush Pepe', model: 'any', backdrop: 'any', idempotencyKey: key() });
+  const o = await app({ action: 'createOrder', service: 'nft_gift', paymentMethod: 'installment', installmentType: 'plan1', months: 6, giftName: 'Plush Pepe', model: 'any', backdrop: 'any', idempotencyKey: key() });
   const q = await admin({ action: 'queue' });
   const { id } = await admin({ action: 'saveInstallment', orderId: q[0].id, productName: 'Plush Pepe', totalPrice: 3000000, downPayment: 500000, monthlyPayment: 250000, startDate: '2026-11-08', finalDate: '2027-09-08' });
   const mine = (await app({ action: 'myOrders' })).orders.find((x) => x.publicId === o.publicId);
@@ -199,7 +201,7 @@ test('ijara: katalog Marketapp\'dan, narx formula bo\'yicha (yaxlitlanmaydi), es
 
 test('sharh: faqat bajarilgan buyurtmaga, bir marta; admin tasdiqlagach ko\'rinadi', async () => {
   await withPhone();
-  const o = await app({ action: 'createOrder', service: 'premium', plan: 'm1', paymentMethod: 'installment', installmentType: 'uzum', recipient: { self: true }, idempotencyKey: key() });
+  const o = await app({ action: 'createOrder', service: 'premium', plan: 'm1', paymentMethod: 'installment', installmentType: 'uzum', months: 6, recipient: { self: true }, idempotencyKey: key() });
   assert.equal(await code(app({ action: 'leaveReview', publicId: o.publicId, rating: 5, text: 'Zo\'r' })), 'REVIEW_NOT_ALLOWED');
   const q = await admin({ action: 'queue' });
   await admin({ action: 'closeOrder', id: q[0].id, status: 'completed' });

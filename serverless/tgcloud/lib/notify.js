@@ -40,17 +40,20 @@ export async function notifyNewOrder(orderId) {
     det.model || det.backdrop ? `Model: ${det.model === 'any' ? "Farqi yo'q" : det.model} · Fon: ${det.backdrop === 'any' ? "Farqi yo'q" : det.backdrop}` : null,
     det.link ? `Havola: ${det.link}` : null,
     `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
+    det.months ? `Muddat: ${det.months} oy` : null,
+    det.downPayment != null ? `Boshlang'ich to'lov: ${det.downPayment > 0 ? money(det.downPayment) + " so'm" : "yo'q"}` : null,
     `Narx: ${o.price != null ? fmt(o.price) : 'admin belgilaydi'}${o.discount > 0 ? ` (promo ${o.promo_code}: −${fmt(o.discount)})` : ''}`,
     o.cost != null ? `Tannarx: ${fmt(o.cost)}` : null,
     det.quotedPrice ? `Formula bo'yicha narx: ${fmt(det.quotedPrice)}` : null,
     `Sana: ${tashkent(o.created_at)}`,
   ].filter(Boolean).join('\n');
   for (const id of adminIds()) {
-    await send(id, lines, { reply_markup: adminPanelButton() });
+    let sent = null;
     if (det.image) {
-      try { await api.sendPhoto({ chat_id: id, photo: det.image, caption: o.public_id }); }
+      try { sent = await api.sendPhoto({ chat_id: id, photo: det.image, caption: lines.slice(0, 1024), reply_markup: adminPanelButton() }); }
       catch (e) { await logError('bot.photo', e && (e.description || e.message)); }
     }
+    if (!sent) await send(id, lines, { reply_markup: adminPanelButton() });
   }
   const s = await getSettings();
   const inst = o.payment_method === 'installment';

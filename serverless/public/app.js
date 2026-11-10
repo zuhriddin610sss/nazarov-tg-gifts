@@ -10,6 +10,11 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
 };
+// t.me havolalari Telegram ichida chatni to'g'ridan-to'g'ri ochsin
+document.addEventListener("click", (e) => {
+  const l = e.target.closest && e.target.closest('a[href^="https://t.me/"]');
+  if (l && tg && tg.openTelegramLink) { e.preventDefault(); try { closeSheet(); } catch (_) {} tg.openTelegramLink(l.href); }
+});
 const S = {
   lang: pickLang(),
   token: store.get("ng_token"),
@@ -53,7 +58,10 @@ let toastT;
 function toast(msg) { const el = $("#toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), 3200); }
 function errText(e) {
   const code = e && e.code;
-  if (code && I18N.uz["err_" + code]) return t("err_" + code, e.extra || {});
+  if (code && I18N.uz["err_" + code]) {
+    const x = e.extra || {};
+    return t("err_" + code, x) + (code === "MARKETAPP_ERROR" && x.status ? ` (${x.status}${x.mcode ? " " + x.mcode : ""})` : "");
+  }
   return t("err_generic");
 }
 
@@ -245,7 +253,7 @@ async function placeOrder(body, cashAmount) {
       ${promoLine || ""}
       <p>${esc(t("confirm_debit", { a: money(toPay) }))}</p>
       <p class="hint">${esc(t("your_balance", { b: money(bal) }))}</p>
-      ${bal < toPay ? `<p class="alert">${esc(t("insufficient"))}</p><a class="btn btn-primary" href="#balance" id="goTop">${esc(t("topup"))}</a>`
+      ${bal < toPay ? `<p class="alert">${esc(t("insufficient"))}</p>${topupBtn()}`
                     : `<button class="btn btn-primary" id="cfOk" type="button">${esc(t("confirm"))}</button>`}
       <button class="btn btn-ghost" id="cfNo" type="button">${esc(t("cancel"))}</button>`);
     const ok = $("#cfOk"); if (ok) ok.onclick = (e) => go(e.currentTarget);
@@ -266,10 +274,16 @@ async function placeOrder(body, cashAmount) {
   };
   draw();
 }
+/** "Balansni to'ldirish": admin username kiritilgan bo'lsa, to'g'ridan-to'g'ri admin chatini ochadi. */
+function topupBtn() {
+  const a = S.cfg && S.cfg.adminContact ? String(S.cfg.adminContact).replace(/^@/, "") : "";
+  return a ? `<a class="btn btn-primary" href="https://t.me/${esc(a)}" target="_blank" rel="noopener" id="goTop">${esc(t("topup"))}</a>`
+           : `<a class="btn btn-primary" href="#balance" id="goTop">${esc(t("topup"))}</a>`;
+}
 function insufficient(amount) {
   sheet(`<h2>${esc(t("insufficient"))}</h2>
     <p class="hint">${esc(t("your_balance", { b: money(S.me ? S.me.balance : 0) }))} · ${esc(t("total"))}: ${esc(som(amount))}</p>
-    <a class="btn btn-primary" href="#balance" id="goTop">${esc(t("topup"))}</a>
+    ${topupBtn()}
     <p class="hint" style="text-align:center">${esc(t("topup_contact"))}</p>
     <button class="btn btn-ghost" id="cfNo" type="button">${esc(t("cancel"))}</button>`);
   $("#goTop").onclick = closeSheet;
@@ -315,7 +329,60 @@ function payStep(n, d, types) {
     </div>
     ${d.pay === "installment" && types ? `<div class="field"><label>${esc(t("inst_type"))}</label><div class="opts" role="radiogroup">
       ${types.map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", d.itype === ty, "itype")).join("")}</div></div>` : ""}
+    ${d.pay === "installment" ? instExtra(d) : ""}
   </section>`;
+}
+
+// --- Bo'lib to'lash: muddat (oy) va boshlang'ich to'lov ---
+const WHEEL_H = 44, WHEEL_MAX = 240;
+const needsDown = (ty) => ty === "plan2" || ty === "uzum";
+function instExtra(d) {
+  if (!d.itype) return "";
+  let h = `<div class="field"><label>${esc(t("months_q"))}</label>`;
+  if (d.itype === "uzum") {
+    h += `<div class="chips">${[3, 6, 12].map((m) => `<button type="button" class="chip" data-g="months" data-v="${m}" aria-pressed="${Number(d.months) === m}">${m} ${esc(t("months_unit"))}</button>`).join("")}</div>`;
+  } else {
+    const items = Array.from({ length: WHEEL_MAX }, (_, i) => `<div class="wheel-i${i + 1 === Number(d.months) ? " on" : ""}">${i + 1} ${esc(t("months_unit"))}</div>`).join("");
+    h += `<div class="wheel" id="mWheel"><div class="wheel-pad"></div>${items}<div class="wheel-pad"></div></div><p class="hint">${esc(t("months_pick"))}</p>`;
+  }
+  h += `</div>`;
+  if (needsDown(d.itype)) {
+    h += `<div class="field"><label>${esc(t("down_q"))}</label><div class="row2" role="radiogroup">
+      ${opt("no", t("dp_no"), "", "", d.dp === "no", "dp")}${opt("yes", t("dp_yes"), "", "", d.dp === "yes", "dp")}</div>
+      ${d.dp === "yes" ? `<input class="input" id="dpAmt" type="number" inputmode="numeric" min="1" step="1" placeholder="${esc(t("down_ph"))}" value="${esc(d.dpAmt || "")}">` : ""}</div>`;
+  }
+  return h;
+}
+function instOk(d) {
+  if (!d.itype || !(Number(d.months) >= 1)) return false;
+  if (!needsDown(d.itype)) return true;
+  return d.dp === "no" || (d.dp === "yes" && Number(d.dpAmt) > 0);
+}
+function instBody(d) {
+  return { months: Number(d.months), downPayment: needsDown(d.itype) && d.dp === "yes" ? Number(d.dpAmt) : 0 };
+}
+function resetInst(d, ty) {
+  d.months = ty === "uzum" ? null : 12; d.dp = null; d.dpAmt = "";
+}
+/** Baraban va boshlang'ich to'lov maydonini ulash; upd() "Davom etish" tugmasini yangilaydi. */
+function bindInst(v, d, upd) {
+  const w = $("#mWheel", v);
+  if (w) {
+    w.scrollTop = (Number(d.months || 12) - 1) * WHEEL_H;
+    let tm;
+    w.addEventListener("scroll", () => {
+      clearTimeout(tm);
+      tm = setTimeout(() => {
+        const m = Math.min(WHEEL_MAX, Math.max(1, Math.round(w.scrollTop / WHEEL_H) + 1));
+        d.months = m;
+        w.querySelectorAll(".wheel-i").forEach((el, i) => el.classList.toggle("on", i + 1 === m));
+        upd();
+      }, 90);
+    });
+    w.querySelectorAll(".wheel-i").forEach((el, i) => el.addEventListener("click", () => w.scrollTo({ top: i * WHEEL_H, behavior: "smooth" })));
+  }
+  const a = $("#dpAmt", v);
+  if (a) a.addEventListener("input", () => { d.dpAmt = a.value; upd(); });
 }
 
 // ---------- sahifalar ----------
@@ -361,7 +428,8 @@ function viewPremium(v) {
   const p = S.cfg.premiumPrices;
   const plans = [["m1", "months_1", "m1_note"], ["m3", "months_3"], ["m6", "months_6"], ["m12_login", "months_12_login", "m12_login_note"], ["m12", "months_12"]];
   const cashPrice = d.plan ? p[d.plan] : null;
-  const ready = d.plan && d.pay && (d.pay === "cash" || d.itype) && (d.rcp === "me" ? !S.me || Boolean(S.me.username) : true);
+  const isReady = () => d.plan && d.pay && (d.pay === "cash" || instOk(d)) && (d.rcp === "me" ? !S.me || Boolean(S.me.username) : true);
+  const ready = isReady();
   v.innerHTML = `<h1 class="page-title">Telegram Premium</h1>
     <section class="step">${stepHead(1, t("step_plan"))}<div class="opts" role="radiogroup">
       ${plans.map(([id, l, note]) => opt(id, t(l), note ? t(note) : "", d.pay === "installment" ? "" : som(p[id]), d.plan === id, "plan")).join("")}
@@ -374,8 +442,9 @@ function viewPremium(v) {
     </div>`;
   wireForm(v, d, "premium", () => placeOrder({
     service: "premium", plan: d.plan, paymentMethod: d.pay, installmentType: d.pay === "installment" ? d.itype : undefined,
+    ...(d.pay === "installment" ? instBody(d) : {}),
     recipient: { self: d.rcp === "me", username: d.rcpUser }, idempotencyKey: d.key,
-  }, cashPrice));
+  }, cashPrice), isReady);
 }
 
 function viewStars(v) {
@@ -383,7 +452,8 @@ function viewStars(v) {
   const d = S.drafts.stars ||= { qty: Math.max(min, 100), rcp: "me", rcpUser: "", pay: null, itype: null, key: key() };
   const ok = Number.isInteger(d.qty) && d.qty >= min;
   const total = ok ? round2(d.qty * price) : 0;
-  const ready = ok && d.pay && (d.pay === "cash" || d.itype);
+  const isReady = () => Number.isInteger(d.qty) && d.qty >= min && d.pay && (d.pay === "cash" || instOk(d));
+  const ready = isReady();
   v.innerHTML = `<h1 class="page-title">Telegram Stars</h1>
     <section class="step">${stepHead(1, t("step_qty"))}
       <input class="input" id="qty" type="number" inputmode="numeric" min="${min}" step="1" value="${esc(d.qty)}">
@@ -403,23 +473,27 @@ function viewStars(v) {
     const good = Number.isInteger(d.qty) && d.qty >= min;
     $("#qtyErr", v).hidden = good;
     $("#starsTotal", v).textContent = d.pay === "installment" ? t("price_by_admin") : good ? som(round2(d.qty * price)) : "—";
-    $("#go", v).disabled = !(good && d.pay && (d.pay === "cash" || d.itype));
+    $("#go", v).disabled = !isReady();
     v.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(Number(c.dataset.q) === d.qty)));
   });
   v.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { d.qty = Number(c.dataset.q); render(); }));
   wireForm(v, d, "stars", () => placeOrder({
     service: "stars", quantity: d.qty, paymentMethod: d.pay, installmentType: d.pay === "installment" ? d.itype : undefined,
+    ...(d.pay === "installment" ? instBody(d) : {}),
     recipient: { self: d.rcp === "me", username: d.rcpUser }, idempotencyKey: d.key,
-  }, round2(d.qty * price)));
+  }, round2(d.qty * price)), isReady);
 }
 
 /** Umumiy: radio tanlovlar, username maydoni, "Davom etish" tugmasi */
-function wireForm(v, d, _svc, submit) {
+function wireForm(v, d, _svc, submit, isReady) {
   bindOpts(v, (g, val) => {
     if (g === "pay" && val !== d.pay) d.itype = null;
+    if (g === "itype" && val !== d.itype) resetInst(d, val);
     d[g] = val;
     render();
   });
+  v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { d.months = Number(c.dataset.v); render(); }));
+  bindInst(v, d, () => { if (isReady) $("#go", v).disabled = !isReady(); });
   const u = $("#rcpUser", v);
   if (u) u.addEventListener("input", () => (d.rcpUser = u.value));
   $("#go", v).addEventListener("click", () => {
@@ -461,14 +535,17 @@ async function viewNft(v) {
     </section>
     <section class="step">${stepHead(3, t("inst_type"))}
       <div class="opts" role="radiogroup">${["plan1", "plan2", "uzum"].map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", d.itype === ty, "itype")).join("")}</div>
+      ${instExtra(d)}
       <p class="hint">${esc(t("pay_inst_note"))}</p>
     </section>
     <div class="cta">
       ${hasId ? "" : `<p class="hint" style="text-align:center">${esc(t("need_one"))}</p>`}
-      <button class="btn btn-primary" id="go" type="button" ${hasId && d.itype ? "" : "disabled"}>${esc(t("send_request"))}</button>
+      <button class="btn btn-primary" id="go" type="button" ${hasId && instOk(d) ? "" : "disabled"}>${esc(t("send_request"))}</button>
     </div>`;
 
-  const upd = () => { $("#go", v).disabled = !((d.name.trim() || d.link.trim() || d.image) && d.itype); };
+  const upd = () => { $("#go", v).disabled = !((d.name.trim() || d.link.trim() || d.image) && instOk(d)); };
+  bindInst(v, d, upd);
+  v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { d.months = Number(c.dataset.v); render(); }));
   const name = $("#gName", v);
   name.addEventListener("input", () => { d.name = name.value; upd(); });
   name.addEventListener("change", async () => {
@@ -492,14 +569,15 @@ async function viewNft(v) {
     if (tx) tx.addEventListener("input", () => (d[id] = tx.value.trim() || "custom"));
   }
   bindOpts(v, (g, val) => {
-    if (g === "itype") d.itype = val;
+    if (g === "itype") { if (val !== d.itype) resetInst(d, val); d.itype = val; }
+    else if (g === "dp") d.dp = val;
     else if (g === "model" || g === "backdrop") d[g] = val === "any" ? "any" : (d[g] !== "any" ? d[g] : "custom");
     render();
   });
   $("#go", v).addEventListener("click", () => {
     const clean = (x) => (x === "custom" || !x ? "any" : x);
     placeOrder({
-      service: "nft_gift", paymentMethod: "installment", installmentType: d.itype,
+      service: "nft_gift", paymentMethod: "installment", installmentType: d.itype, ...instBody(d),
       giftName: d.name.trim() || undefined, giftLink: d.link.trim() || undefined, giftImage: d.image || undefined,
       collectionAddress: d.collection || undefined, model: clean(d.model), backdrop: clean(d.backdrop), idempotencyKey: d.key,
     });
@@ -797,7 +875,7 @@ async function viewHelp(v) {
     </form>
     <div id="trkRes"></div>
     <h1 class="page-title">${esc(t("help_title"))}</h1>
-    <div class="list">${[1, 2, 3, 4, 5, 6].map((n) => `<details class="item"><summary style="cursor:pointer;font-weight:800">${esc(t("q" + n))}</summary><p class="hint" style="margin-top:8px">${esc(t("a" + n))}</p></details>`).join("")}</div>
+    <div class="list">${[2, 3, 4, 5].map((n) => `<details class="item"><summary style="cursor:pointer;font-weight:800">${esc(t("q" + n))}</summary><p class="hint" style="margin-top:8px">${esc(t("a" + n))}</p></details>`).join("")}</div>
     ${admin ? `<p style="margin-top:16px"><a class="btn btn-ghost" href="https://t.me/${esc(admin)}" target="_blank" rel="noopener">${esc(t("write_admin"))}</a></p>` : ""}
     <h1 class="page-title">${esc(t("reviews_title"))}</h1>
     <div class="list" id="revs"><div class="spin"></div></div>`;

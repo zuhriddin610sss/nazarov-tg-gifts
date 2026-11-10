@@ -38,6 +38,9 @@ async function storeImage(base64, caption, withButtonsFor) {
       const m = await api.sendPhoto({ chat_id: id, photo: fileId || new InputFile(bytes, name, { type }), caption,
         ...(withButtonsFor ? { reply_markup: receiptButtons(withButtonsFor) } : { disable_notification: true }) });
       if (!fileId && m && Array.isArray(m.photo)) fileId = m.photo[m.photo.length - 1].file_id;
+      // Buyurtma rasmi alohida xabar bo'lib qolmasin: file_id olingach o'chiriladi (rasm buyurtma xabari bilan birga keladi)
+      if (!withButtonsFor && m && m.message_id) { try { await api.deleteMessage({ chat_id: id, message_id: m.message_id }); } catch (e) {} }
+      if (!withButtonsFor && fileId) break;
     } catch (e) {
       await logError('upload', e && (e.description || e.message));
     }
@@ -157,6 +160,17 @@ export const actions = {
         details: { address: item.nft_address, name: item.nft_name, days, pricePerDayNano: String(item.price_per_day), marketappTotalTon: P,
           attributes: item.attributes, formula: s.rent_formula, ...(method === 'installment' ? { quotedPrice: price } : {}) } };
     } else throw fail('VALIDATION', { field: 'service' });
+
+    if (method === 'installment' && o.installmentType) {
+      const months = int(i.months, { min: 1, max: 240, name: 'months' });
+      if (o.installmentType === 'uzum' && ![3, 6, 12].includes(months)) throw fail('VALIDATION', { field: 'months' });
+      o.details = { ...(o.details || {}), months };
+      if (o.installmentType === 'plan2' || o.installmentType === 'uzum') {
+        const dp = Number(i.downPayment || 0);
+        if (!Number.isFinite(dp) || dp < 0 || dp > 1000000000) throw fail('VALIDATION', { field: 'downPayment' });
+        o.details.downPayment = Math.round(dp);
+      }
+    }
 
     const r = await createOrder({ ...o, customerId: c.id, paymentMethod: method, idempotencyKey: key,
       promoCode: method === 'cash' && i.promoCode ? String(i.promoCode).trim().slice(0, 32) : null });

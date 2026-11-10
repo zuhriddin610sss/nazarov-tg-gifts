@@ -140,9 +140,10 @@ async function dashboard(v) {
   };
 }
 
+const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif" };
 function orderSheet(o) {
   const d = o.details || {};
-  const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
+  const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
   sheet(`<h2>${esc(o.public_id)} · ${esc(o.title)}</h2>
     <div class="kv"><span>Holat</span><b>${esc(ST[o.status])}${o.position ? ` · navbat #${String(o.position).padStart(2, "0")}` : ""}</b>
       <span>Xizmat</span><b>${esc(SVC[o.service])}</b>
@@ -157,11 +158,13 @@ function orderSheet(o) {
     ${lines ? `<div class="det">${esc(lines)}</div>` : ""}
     ${d.image ? `<button class="btn btn-ghost btn-sm" id="img" type="button">Sovg'a rasmini ko'rish</button>` : ""}
     ${o.customer_username ? `<a class="btn btn-ghost btn-sm" href="https://t.me/${esc(o.customer_username)}" target="_blank" rel="noopener">Mijozga yozish</a>` : ""}
+    ${o.customer_id ? `<button class="btn btn-primary btn-sm" id="topUp" type="button">Balansni to'ldirish${o.balance != null ? ` (hozir: ${esc(money(o.balance))})` : ""}</button>` : ""}
     ${o.payment_method === "installment" && !o.agreementId ? `<button class="btn btn-ghost btn-sm" id="mkAgr" type="button">Shartnoma tuzish</button>` : ""}
     ${o.status === "queued" ? `<textarea class="input" id="note" rows="2" placeholder="Izoh (ixtiyoriy)"></textarea>
       <div class="row2"><button class="btn btn-primary" id="done" type="button">Amalga oshirildi</button>
       <button class="btn btn-ghost" id="cancel" type="button">Bekor qilish${Number(o.paid_amount) > 0 ? " (pul qaytadi)" : ""}</button></div>` : ""}`);
   const img = $("#img"); if (img) img.onclick = () => showFile(d.image);
+  const tu = $("#topUp"); if (tu) tu.onclick = () => customerSheet(o.customer_id);
   const mk = $("#mkAgr"); if (mk) mk.onclick = () => agreementForm({ order_id: o.id, product_name: o.title, installment_type: o.installment_type, client_username: o.customer_username, client_phone: o.customer_phone });
   const close = async (status, btn) => {
     if (status === "cancelled" && !btn.dataset.sure) { btn.dataset.sure = "1"; btn.textContent = "Tasdiqlash: bekor qilinsinmi?"; return; }

@@ -6,7 +6,9 @@ import { getSecret, logError, fail, run, get, nowMs } from 'lib/core';
 const BASE = 'https://api.marketapp.org';
 
 async function call(method, path, { body, query } = {}) {
-  const token = await getSecret('marketapp_token');
+  const raw = await getSecret('marketapp_token');
+  // Token oldidagi "Bearer", bo'sh joy va qo'shtirnoqlar olib tashlanadi (Marketapp ularsiz kutadi)
+  const token = raw ? String(raw).trim().replace(/^bearer\s+/i, '').replace(/^["']|["']$/g, '').trim() : '';
   if (!token) throw fail('MARKETAPP_NOT_CONFIGURED');
   const qs = Object.entries(query || {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v))).join('&');
@@ -25,7 +27,9 @@ async function call(method, path, { body, query } = {}) {
   const text = await res.text();
   if (!res.ok) {
     await logError('marketapp', `${method} ${path} -> ${res.status}`, { body: text.slice(0, 800) });
-    throw fail('MARKETAPP_ERROR', { status: res.status });
+    let mcode = '';
+    try { mcode = String((JSON.parse(text) || {}).code || '').slice(0, 20); } catch (e) {}
+    throw fail('MARKETAPP_ERROR', { status: res.status, mcode });
   }
   try { return JSON.parse(text); } catch (e) {
     await logError('marketapp', `${method} ${path}: JSON emas`, { body: text.slice(0, 300) });

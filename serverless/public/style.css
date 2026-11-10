@@ -210,3 +210,10 @@ select.input option{background:var(--bg)}
 
 .metal{background:var(--silver);color:#1A1D1B}
 @media (prefers-reduced-motion:reduce){.reveal,.spin{animation:none}}
+
+/* Muddat barabani */
+.wheel{height:132px;overflow-y:auto;scroll-snap-type:y mandatory;border:1.5px solid var(--line);border-radius:16px;background:linear-gradient(transparent 44px,var(--sage-soft) 44px,var(--sage-soft) 88px,transparent 88px),var(--card);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.wheel::-webkit-scrollbar{display:none}
+.wheel-pad{height:44px}
+.wheel-i{height:44px;display:grid;place-items:center;scroll-snap-align:center;font:700 1.05rem var(--f-display);color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer}
+.wheel-i.on{color:var(--ink);font-weight:800}
