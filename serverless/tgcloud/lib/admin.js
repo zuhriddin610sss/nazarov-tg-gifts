@@ -1,10 +1,10 @@
 // Admin panel amallari (endpoints/admin.js orqali; faqat ADMIN_IDS dagi akkauntlar).
-import { api } from 'sdk';
+import { api, InputFile } from 'sdk';
 import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS } from 'lib/core';
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs } from 'lib/jobs';
-import { encode } from 'lib/b64';
+import { encode, decode } from 'lib/b64';
 
 const SERVICES = ['nft_gift', 'gift_rent', 'username_rent', 'number_rent', 'premium', 'stars'];
 const som = (x) => toSom(x);
@@ -263,6 +263,29 @@ export const actions = {
     const id = int(i.id, { min: 1 });
     await run('DELETE FROM own_products WHERE id = :id', { id });
     await audit(admin, 'own.delete', String(id));
+    return { ok: true };
+  },
+
+  // ---------- Excel ----------
+  async exportData(i) {
+    const from = date(i.from, 'from') ? Date.parse(i.from + 'T00:00:00+05:00') : 0;
+    const to = date(i.to, 'to') ? Date.parse(i.to + 'T00:00:00+05:00') + 86400000 : 8.64e15;
+    const orders = await all(`SELECT * FROM orders WHERE status NOT IN ('pending','failed') AND created_at >= :from AND created_at < :to ORDER BY id`, { from, to });
+    const customers = await all(`SELECT c.*, (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id AND o.status NOT IN ('pending','failed')) AS orders_count
+        FROM customers c ORDER BY c.id`);
+    const agreements = await listAgreements({});
+    return { orders: orders.map(orderOut), customers: customers.map((c) => ({ ...c, balance: som(c.balance), created_at: Number(c.created_at) })),
+      agreements: agreements.map(agreementOut) };
+  },
+  /** Brauzerda tayyorlangan Excel faylni adminning Telegram chatiga hujjat qilib yuboradi. */
+  async sendExport(i, admin) {
+    const chatId = Number(String(admin).split(':')[1]);
+    const bytes = decode(str(i.file, 15000000, { required: true, name: 'file' }));
+    if (bytes.length < 100 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) throw fail('VALIDATION', { field: 'file' }); // xlsx = zip ("PK")
+    const name = (String(i.name || 'hisobot.xlsx').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 80)).replace(/(\.xlsx)?$/, '.xlsx');
+    await api.sendDocument({ chat_id: chatId, document: new InputFile(bytes, name, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      caption: 'Excel hisobot' });
+    await audit(admin, 'export.excel', name);
     return { ok: true };
   },
 

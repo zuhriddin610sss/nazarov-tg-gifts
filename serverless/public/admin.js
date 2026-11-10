@@ -115,6 +115,54 @@ async function ensureAuth() {
 }
 
 // ---------- sahifalar ----------
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const todayStr = () => ymd(new Date());
+const monthStart = () => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth(), 1)); };
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((res, rej) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    sc.onload = () => res(window.XLSX); sc.onerror = () => rej(new Error("Excel kutubxonasi yuklanmadi, internetni tekshiring"));
+    document.head.appendChild(sc);
+  });
+}
+async function exportExcel(btn, from, to) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = "Tayyorlanmoqda...";
+  try {
+    const [X, d] = await Promise.all([loadXlsx(), call("exportData", { from, to })]);
+    const dts = (ms) => (ms ? new Date(Number(ms)).toLocaleString("ru-RU", { timeZone: "Asia/Tashkent" }) : "");
+    const orders = d.orders.map((o) => ({
+      "Raqam": o.public_id, "Sana": dts(o.created_at), "Mijoz": o.customer_username ? "@" + o.customer_username : "", "Telefon": o.customer_phone || "",
+      "Xizmat": SVC[o.service] || o.service, "Mahsulot": o.title, "To'lov": o.payment_method === "cash" ? "Naqd" : "Bo'lib to'lash",
+      "Bo'lib to'lash turi": o.installment_type ? IT[o.installment_type] || o.installment_type : "",
+      "Muddat (oy)": (o.details && o.details.months) || "", "Boshlang'ich to'lov": (o.details && o.details.downPayment) || "",
+      "Narx (so'm)": o.price != null ? Number(o.price) : "", "Chegirma": Number(o.discount) || "", "Tannarx": o.cost != null ? Number(o.cost) : "",
+      "Holat": ST[o.status] || o.status, "Yopilgan": dts(o.closed_at),
+    }));
+    const inst = d.agreements.map((a) => ({
+      "Mahsulot": a.product_name, "Mijoz": a.client_name || "", "Username": (a.cust_username || a.client_username) ? "@" + (a.cust_username || a.client_username) : "",
+      "Telefon": a.cust_phone || a.client_phone || "", "Turi": a.installment_type ? IT[a.installment_type] || a.installment_type : "",
+      "Umumiy narx": Number(a.total_price), "Boshlang'ich": Number(a.down_payment), "Oylik to'lov": Number(a.monthly_payment),
+      "To'langan": Number(a.summary.paid), "Qolgan qarz": Number(a.summary.remaining), "Kechikkan": a.summary.overdue ? "Ha" : "Yo'q",
+      "Kechikkan summa": Number(a.summary.overdueAmount) || "", "Keyingi to'lov": a.summary.nextDueDate || "",
+      "Boshlangan": a.start_date, "Tugaydi": a.final_date, "Holat": a.status === "active" ? "Faol" : "Yopilgan",
+    }));
+    const cust = d.customers.map((c) => ({
+      "Username": c.username ? "@" + c.username : "", "Ism": [c.first_name, c.last_name].filter(Boolean).join(" "), "Telefon": c.phone || "",
+      "Telegram ID": String(c.telegram_id), "Balans (so'm)": Number(c.balance), "Buyurtmalar": Number(c.orders_count), "Qo'shilgan": dts(c.created_at),
+    }));
+    const wb = X.utils.book_new();
+    const add = (rows, name) => { const ws = X.utils.json_to_sheet(rows.length ? rows : [{ "": "Ma'lumot yo'q" }]);
+      ws["!cols"] = Object.keys(rows[0] || { "": "" }).map((k) => ({ wch: Math.max(10, Math.min(40, k.length + 4)) })); X.utils.book_append_sheet(wb, ws, name); };
+    add(orders, "Buyurtmalar"); add(inst, "Bo'lib to'lash"); add(cust, "Mijozlar");
+    const file = X.write(wb, { bookType: "xlsx", type: "base64" });
+    await call("sendExport", { file, name: `hisobot_${from || "boshidan"}_${to || "bugun"}.xlsx` });
+    toast("Excel fayl botdagi chatingizga yuborildi");
+  } catch (e) { toast(e.message || "Xato"); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
 async function dashboard(v) {
   const s = await api("/api/admin/stats");
   const o = s.orders, i = s.installments;
@@ -134,9 +182,14 @@ async function dashboard(v) {
     </div>
     <p class="hint">Tushum: bajarilgan naqd buyurtmalar + bo'lib to'lash to'lovlari + boshlang'ich to'lovlar. Mijozlar balansi tushum emas: bu mijozlarga qarzdorlik. Foyda hozircha faqat ijara uchun hisoblanadi (narx − Marketapp narxi × kurs).</p></div>
     <div class="section"><h2>NFT ijara</h2><div class="stats">${box("Ijara buyurtmalari", o.rent_orders)}${box("Ijara tushumi", money(o.rent_revenue))}</div></div>
+    <div class="section"><h2>Excel hisobot</h2>
+      <p class="hint">Buyurtmalar (tanlangan sanalar bo'yicha), bo'lib to'lashlar va mijozlar bitta Excel faylga yoziladi. Fayl shu botdagi chatingizga yuboriladi.</p>
+      <div class="row2"><input class="input" type="date" id="xFrom" value="${esc(monthStart())}"><input class="input" type="date" id="xTo" value="${esc(todayStr())}"></div>
+      <button class="btn btn-primary btn-sm" id="xls" type="button">⬇ Excel</button></div>
     <div class="section"><h2>Eslatmalar</h2><p class="hint">Ijara va oylik to'lov eslatmalari bot faol bo'lganda o'zi yuboriladi. Hozir tekshirish uchun bosing.</p>
       <button class="btn btn-ghost btn-sm" id="runJobs" type="button">Eslatmalarni hozir yuborish</button></div>
     ${s.pendingReceipts ? `<p class="alert">Tekshirilmagan cheklar: ${s.pendingReceipts}. <a href="#receipts">Ko'rish</a></p>` : ""}`;
+  $("#xls").onclick = (e) => exportExcel(e.currentTarget, $("#xFrom").value, $("#xTo").value);
   $("#runJobs").onclick = async (e) => {
     e.currentTarget.disabled = true;
     try { const r = await call("runJobs"); toast(`Yuborildi: ijara ${r.rent}, oylik to'lov ${r.inst}`); }

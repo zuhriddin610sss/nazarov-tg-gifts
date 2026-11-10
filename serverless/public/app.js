@@ -737,7 +737,7 @@ async function viewRent(v) {
       <div class="filters">
         <button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
         ${cat === "gifts" ? chip("collection", t("f_gift"), st.f.collection && st.f.collection.name)
-          + chip("model", t("f_model"), st.f.model, !st.f.collection) + chip("backdrop", t("f_backdrop"), st.f.backdrop, !st.f.collection)
+          + chip("model", t("f_model"), st.f.model, !st.f.collection) + chip("backdrop", t("f_backdrop"), st.f.backdrop)
           + chip("symbol", t("f_symbol"), st.f.symbol, !st.f.collection) : ""}
         ${cfs.map((c) => chip("cf:" + c.k, t(c.label), st.cf[c.k] != null ? cfLabel(c, st.cf[c.k]) : "")).join("")}
         ${anyFilter() ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
@@ -782,11 +782,23 @@ async function viewRent(v) {
       if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } }
       const cols = Array.isArray(S.giftCollections) ? S.giftCollections : [];
       return pickSheet(t("f_gift"), cols.map((c) => ({ value: c.address, label: c.name, c })), st.f.collection && st.f.collection.address, async (o) => {
-        st.f = { collection: o ? { name: o.c.name, address: o.c.address } : null, model: null, backdrop: null, symbol: null };
+        st.f = { collection: o ? { name: o.c.name, address: o.c.address } : null, model: null, backdrop: st.f.backdrop, symbol: null };
         st.attrs = null;
         if (o) { try { st.attrs = (await api("/api/nft/collections/" + encodeURIComponent(o.c.address) + "/attributes")).attributes; } catch { st.attrs = []; } }
         reload();
       });
+    }
+    if (k === "backdrop" && !st.f.collection) {
+      // Fonlar hamma sovg'alarda bir xil: ro'yxat birinchi sovg'aning fonlaridan olinadi
+      if (!S.allBackdrops) {
+        if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } }
+        const c0 = (S.giftCollections || [])[0];
+        let vals = [];
+        if (c0) { try { const at = (await api("/api/nft/collections/" + encodeURIComponent(c0.address) + "/attributes")).attributes || [];
+          const b = at.find((x) => String(x.trait_type).toLowerCase() === "backdrop"); vals = b ? b.values.map((x) => x.value) : []; } catch {} }
+        if (vals.length) S.allBackdrops = vals.sort();
+      }
+      return pickSheet(t("f_backdrop"), (S.allBackdrops || []).map((x) => ({ value: x, label: x })), st.f.backdrop, (o) => { st.f.backdrop = o ? o.value : null; reload(); });
     }
     if (!st.f.collection) return toast(t("f_pick_gift_first"));
     const a = (st.attrs || []).find((x) => String(x.trait_type).toLowerCase() === TRAITS[k]);
