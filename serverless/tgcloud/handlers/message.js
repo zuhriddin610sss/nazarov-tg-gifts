@@ -1,10 +1,10 @@
 // Bot xabarlari: /start, /balance, /orders, /admin, /help, telefon raqamini ulashish.
 import { api } from 'sdk';
-import { ensureSchema, get, all, run, getSettings, isAdmin, logError } from '../lib/core.js';
-import { upsertCustomer } from '../lib/customer.js';
-import { t, money } from '../lib/texts.js';
-import { openAppButton, adminPanelButton } from '../lib/notify.js';
-import { maybeRunJobs } from '../lib/jobs.js';
+import { ensureSchema, get, all, run, getSettings, isAdmin, logError } from 'lib/core';
+import { upsertCustomer } from 'lib/customer';
+import { t, money } from 'lib/texts';
+import { openAppButton, adminPanelButton } from 'lib/notify';
+import { maybeRunJobs } from 'lib/jobs';
 
 const reply = (chat, text, extra = {}) => api.sendMessage({ chat_id: chat, text, ...extra });
 const phoneKb = (lang) => ({ keyboard: [[{ text: t(lang, 'share_btn'), request_contact: true }]], resize_keyboard: true, one_time_keyboard: true });

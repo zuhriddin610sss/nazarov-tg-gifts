@@ -1,12 +1,12 @@
 // Mijoz Mini App'i uchun amallar (endpoints/app.js orqali chaqiriladi).
 import { api, InputFile } from 'sdk';
-import { all, get, run, fail, getSettings, toSom, toTiyin, nowMs, int, str, idemKey, USERNAME_RE, cleanUser, adminIds, logError } from './core.js';
-import * as mk from './marketapp.js';
-import { PREMIUM_PLANS, PREMIUM_LABEL, rentTotalTon, rentPriceTiyin, rentCostTiyin, starsPriceTiyin } from './pricing.js';
-import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, summarize } from './shop.js';
-import { notifyNewOrder, receiptButtons } from './notify.js';
-import { decode, imageType } from './b64.js';
-import { fmt } from './core.js';
+import { all, get, run, fail, getSettings, toSom, toTiyin, nowMs, int, str, idemKey, USERNAME_RE, cleanUser, adminIds, logError } from 'lib/core';
+import * as mk from 'lib/marketapp';
+import { PREMIUM_PLANS, PREMIUM_LABEL, rentTotalTon, rentPriceTiyin, rentCostTiyin, starsPriceTiyin } from 'lib/pricing';
+import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, summarize } from 'lib/shop';
+import { notifyNewOrder, receiptButtons } from 'lib/notify';
+import { decode, imageType } from 'lib/b64';
+import { fmt } from 'lib/core';
 
 const LANGS = ['uz', 'ru', 'en', 'zh'];
 const RENT = { gift_rent: 'gifts', username_rent: 'usernames', number_rent: 'numbers' };

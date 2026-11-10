@@ -1,9 +1,9 @@
 // Eslatmalar. Serverless'da jadval (cron) yo'q: ular botga yoki Mini App'ga har qanday murojaatda
 // ko'pi bilan 30 daqiqada bir marta ishga tushadi (maybeRunJobs). Admin panelda qo'lda ishga tushirish tugmasi ham bor.
-import { all, get, run, claim, logError, adminIds, nowMs } from './core.js';
-import { listAgreements } from './shop.js';
-import { t, money } from './texts.js';
-import { send, tashkent, openAppButton } from './notify.js';
+import { all, get, run, claim, logError, adminIds, nowMs } from 'lib/core';
+import { listAgreements } from 'lib/shop';
+import { t, money } from 'lib/texts';
+import { send, tashkent, openAppButton } from 'lib/notify';
 
 const WHAT = { gift_rent: 'rent_what_gift', username_rent: 'rent_what_username', number_rent: 'rent_what_number' };
 const DAY = 86_400_000;

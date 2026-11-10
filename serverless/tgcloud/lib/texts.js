@@ -1,4 +1,4 @@
-import { groupNum } from './core.js';
+import { groupNum } from 'lib/core';
 
 // Bot xabarlari (4 til). money() so'mda qabul qiladi.
 const T = {

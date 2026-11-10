@@ -1,10 +1,10 @@
 // Admin panel amallari (endpoints/admin.js orqali; faqat ADMIN_IDS dagi akkauntlar).
 import { api } from 'sdk';
-import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS } from './core.js';
-import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from './shop.js';
-import { notifyOrderClosed, notifyReceiptReviewed } from './notify.js';
-import { maybeRunJobs } from './jobs.js';
-import { encode } from './b64.js';
+import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS } from 'lib/core';
+import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
+import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
+import { maybeRunJobs } from 'lib/jobs';
+import { encode } from 'lib/b64';
 
 const SERVICES = ['nft_gift', 'gift_rent', 'username_rent', 'number_rent', 'premium', 'stars'];
 const som = (x) => toSom(x);

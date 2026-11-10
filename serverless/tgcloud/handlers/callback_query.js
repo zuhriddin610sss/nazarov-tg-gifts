@@ -1,8 +1,8 @@
 // Admin: chekni bot ichida tasdiqlash / rad etish.
 import { api } from 'sdk';
-import { ensureSchema, isAdmin, logError, fmt } from '../lib/core.js';
-import { approveReceipt, rejectReceipt } from '../lib/shop.js';
-import { notifyReceiptReviewed } from '../lib/notify.js';
+import { ensureSchema, isAdmin, logError, fmt } from 'lib/core';
+import { approveReceipt, rejectReceipt } from 'lib/shop';
+import { notifyReceiptReviewed } from 'lib/notify';
 
 export default async function (q, ctx) {
   const m = /^rc:(ok|no):(\d+)$/.exec(String(q.data || ''));

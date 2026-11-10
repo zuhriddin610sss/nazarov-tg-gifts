@@ -1,8 +1,8 @@
 // Mijoz Mini App'i: Telegram.WebApp.Serverless.call('app', { action, ...params })
 import { EndpointError } from 'sdk';
-import { ensureSchema, logError } from '../lib/core.js';
-import { actions, upsertCustomer } from '../lib/customer.js';
-import { maybeRunJobs } from '../lib/jobs.js';
+import { ensureSchema, logError } from 'lib/core';
+import { actions, upsertCustomer } from 'lib/customer';
+import { maybeRunJobs } from 'lib/jobs';
 
 export default async function (input, ctx) {
   const user = ctx.initData && ctx.initData.user;

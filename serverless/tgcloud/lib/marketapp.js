@@ -1,7 +1,7 @@
 // Marketapp API (https://api.marketapp.org/docs/). Faqat hujjatdagi endpointlar.
 // Token admin panel orqali kiritiladi va bazada saqlanadi; mijozga hech qachon qaytarilmaydi.
 import { fetch } from 'sdk';
-import { getSecret, logError, fail, run, get, nowMs } from './core.js';
+import { getSecret, logError, fail, run, get, nowMs } from 'lib/core';
 
 const BASE = 'https://api.marketapp.org';
 

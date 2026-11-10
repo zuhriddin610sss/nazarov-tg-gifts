@@ -1,7 +1,7 @@
 // Admin panel: Telegram.WebApp.Serverless.call('admin', { action, ...params }). Faqat ADMIN_IDS.
 import { EndpointError } from 'sdk';
-import { ensureSchema, isAdmin, logError } from '../lib/core.js';
-import { actions } from '../lib/admin.js';
+import { ensureSchema, isAdmin, logError } from 'lib/core';
+import { actions } from 'lib/admin';
 
 export default async function (input, ctx) {
   const user = ctx.initData && ctx.initData.user;

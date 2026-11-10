@@ -1,9 +1,9 @@
 // Telegram xabarnomalari (admin va mijozlarga). Har bir xabar bir marta yuboriladi (claim).
 import { api } from 'sdk';
-import { get, claim, logError, adminIds, getSettings, fmt } from './core.js';
-import { queuePosition } from './shop.js';
-import { t, money } from './texts.js';
-import { MINI_APP_URL } from './config.js';
+import { get, claim, logError, adminIds, getSettings, fmt } from 'lib/core';
+import { queuePosition } from 'lib/shop';
+import { t, money } from 'lib/texts';
+import { MINI_APP_URL } from 'lib/config';
 
 const SERVICE = { nft_gift: "NFT sovg'a", gift_rent: "NFT sovg'a ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
 const ITYPE = { plan1: '1-tur', plan2: "Boshlang'ich to'lovsiz", uzum: 'Uzum Nasiya' };

@@ -1,6 +1,6 @@
 // Biznes mantiq: balans, buyurtmalar, navbat, cheklar, bo'lib to'lash, promo-kodlar, sharhlar.
 // Barcha pul miqdorlari tiyinda.
-import { all, get, run, fail, dbCode, audit, newPublicId, nowMs } from './core.js';
+import { all, get, run, fail, dbCode, audit, newPublicId, nowMs } from 'lib/core';
 
 // ---------- balans ----------
 /**

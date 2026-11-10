@@ -1,7 +1,7 @@
 // Umumiy yordamchilar: baza, sxema, xatolar, sozlamalar, jurnallar.
 import { db, EndpointError } from 'sdk';
-import { DDL, SCHEMA_VERSION } from './ddl.js';
-import { ADMIN_IDS } from './config.js';
+import { DDL, SCHEMA_VERSION } from 'lib/ddl';
+import { ADMIN_IDS } from 'lib/config';
 
 // ---------- baza ----------
 /** {id: 5} -> {':id': 5}; boolean -> 0/1; obyekt -> JSON */
