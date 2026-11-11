@@ -551,8 +551,8 @@ function ownForm(p) {
   sheet(`<h2>${edit ? "Mahsulotni tahrirlash" : "Yangi mahsulot"}</h2>
     <form class="form" id="of">
       <div class="field"><label>Turi</label><select class="input" name="kind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="field"><label>Nomi</label><input class="input" name="name" required value="${esc(p.name || "")}" placeholder="Plush Pepe #123 yoki @nazarov yoki +888 0123 4567"></div>
-      <div class="field full"><label>Rasm havolasi (ixtiyoriy, https://...). Bo'sh qolsa, NFT rasmi nomidan avtomatik olinadi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url"></div>
+      <div class="field"><label>Nomi</label><input class="input" name="name" id="ofName" required value="${esc(p.name || "")}" placeholder="Plush Pepe #123 yoki @nazarov yoki +888 0123 4567"></div>
+      <div class="field full"><label>Sovg'a havolasi yoki rasm havolasi (ixtiyoriy). Masalan: t.me/nft/TrappedHeart-19604. Bo'sh qolsa, rasm nomidan olinadi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url" placeholder="t.me/nft/TrappedHeart-19604"></div>
       <div class="field"><label>Model (ixtiyoriy)</label><input class="input" name="model" value="${esc(p.model || "")}"></div>
       <div class="field"><label>Fon (ixtiyoriy)</label><input class="input" name="backdrop" value="${esc(p.backdrop || "")}"></div>
       <div class="field"><label>Belgi (ixtiyoriy)</label><input class="input" name="symbol" value="${esc(p.symbol || "")}"></div>
@@ -567,6 +567,12 @@ function ownForm(p) {
       <p class="alert full" id="ofErr" hidden></p>
       <button class="btn btn-primary full" type="submit">Saqlash</button>
     </form>`);
+  // Sovg'a havolasi qo'yilsa, nomi o'zi to'ldiriladi: TrappedHeart-19604 -> "Trapped Heart #19604"
+  $("#of [name=image]").addEventListener("input", (e) => {
+    const m = /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(e.target.value);
+    const nm = $("#ofName");
+    if (m && !nm.value.trim()) nm.value = m[1].replace(/([a-z])([A-Z])/g, "$1 $2") + " #" + m[2];
+  });
   $("#of").onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);

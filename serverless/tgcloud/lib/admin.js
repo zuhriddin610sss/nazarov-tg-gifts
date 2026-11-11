@@ -231,9 +231,15 @@ export const actions = {
     const kind = ['gifts', 'usernames', 'numbers'].includes(i.kind) ? i.kind : null;
     if (!kind) throw fail('VALIDATION', { field: 'kind' });
     const rentOn = Boolean(i.rent_enabled), cashOn = Boolean(i.cash_enabled);
+    // Foiz yozilgan bo'lsa olib tashlanadi: "Crime Scene 2.6%" -> "Crime Scene"
+    const attr = (v) => { const x = str(v, 80); return x ? x.replace(/\s*\(?[\d.,]+\s*%\)?\s*$/, '').trim() || null : null; };
+    // Sovg'a havolasi (t.me/nft/TrappedHeart-19604) rasm manziliga aylantiriladi
+    let image = str(i.image, 500);
+    const nft = image && /^(?:https?:\/\/)?t\.me\/nft\/([A-Za-z0-9]+)-(\d+)\/?$/i.exec(image);
+    if (nft) image = `https://nft.fragment.com/gift/${nft[1].toLowerCase()}-${nft[2]}.webp`;
     const p = {
-      kind, name: str(i.name, 120, { required: true, name: 'name' }), image: str(i.image, 500),
-      model: str(i.model, 80), backdrop: str(i.backdrop, 80), symbol: str(i.symbol, 80),
+      kind, name: str(i.name, 120, { required: true, name: 'name' }), image,
+      model: attr(i.model), backdrop: attr(i.backdrop), symbol: attr(i.symbol),
       rent_enabled: rentOn ? 1 : 0, rent_price: rentOn ? toTiyin(num(i.rent_price, { min: 1, name: 'rent_price' })) : null,
       rent_min: rentOn ? int(i.rent_min, { min: 1, max: 3650, name: 'rent_min' }) : null,
       rent_max: rentOn ? int(i.rent_max, { min: 1, max: 3650, name: 'rent_max' }) : null,
