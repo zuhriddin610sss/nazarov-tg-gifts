@@ -31,7 +31,7 @@ function call(action, params = {}) {
     tg.Serverless.call("admin", { ...params, action }, (err, result) => {
       if (err) {
         const code = (err.parameters && err.parameters.code) || err.message;
-        const e = new Error(ERR[code] || code || "Xato"); e.code = code; return reject(e);
+        const e = new Error(ERR[code] || code || "Xato"); e.code = code; e.extra = err.parameters || {}; return reject(e);
       }
       resolve(result);
     });
@@ -564,6 +564,7 @@ function ownForm(p) {
       <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
       <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
       <div class="field"><label>Holat</label><select class="input" name="visible"><option value="1" ${p.visible !== false ? "selected" : ""}>Ko'rinadi</option><option value="0" ${p.visible === false ? "selected" : ""}>Yashirin (sotilgan)</option></select></div>
+      <p class="alert full" id="ofErr" hidden></p>
       <button class="btn btn-primary full" type="submit">Saqlash</button>
     </form>`);
   $("#of").onsubmit = async (e) => {
@@ -577,9 +578,19 @@ function ownForm(p) {
       inst_enabled: f.get("inst_enabled") === "on", cash_enabled: f.get("cash_enabled") === "on", cash_price: n("cash_price"),
       position: n("position"), visible: f.get("visible") === "1",
     };
-    if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) return toast("Kamida bittasini belgilang: ijara, bo'lib to'lash yoki naqd");
+    if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) {
+      const box = $("#ofErr"); const m = "Kamida bittasini belgilang: Ijaraga olish, Bo'lib to'lab sotib olish yoki Naqd sotib olish";
+      box.textContent = m; box.hidden = false; box.scrollIntoView({ block: "center" }); return toast(m);
+    }
     try { await api("/api/admin/own" + (edit ? "/" + p.id : ""), { body }); closeSheet(); toast("Saqlandi"); render(); }
-    catch (er) { toast(er.code === "VALIDATION" ? "Maydonlarni tekshiring (narx, kunlar, rasm havolasi)" : er.message); }
+    catch (er) {
+      const F = { name: "Nomi", image: "Rasm havolasi (https:// bilan boshlanishi kerak)", rent_price: "Ijara: kunlik narx", rent_min: "Ijara: eng kam kun",
+        rent_max: "Ijara: eng ko'p kun (eng kam kundan kichik bo'lmasin)", cash_price: "Naqd sotuv narxi", modes: "Mijoz nima qila oladi", kind: "Turi" };
+      const field = er.code === "VALIDATION" && er.extra && er.extra.field;
+      const msg = field ? "Shu maydonni tekshiring: " + (F[field] || field) : (er.message || "Xato") + " (Jurnallar bo'limida batafsil)";
+      const box = $("#ofErr"); if (box) { box.textContent = msg; box.hidden = false; box.scrollIntoView({ block: "center" }); }
+      toast(msg);
+    }
   };
 }
 
