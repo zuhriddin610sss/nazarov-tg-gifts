@@ -363,15 +363,27 @@ function instExtra(d) {
   }
   return h + `<div id="instSum">${instSummary(d)}</div>`;
 }
-/** Mijozga faqat boshlang'ich va oylik to'lov (taxminiy) ko'rsatiladi. */
-function instSummary(d) {
+/** Taxminiy hisob: { down, monthly } yoki null (ma'lumot yetarli bo'lmasa). */
+function instCalc(d) {
   const c = d._ctx ? d._ctx() : {};
   const months = Number(d.months);
-  if (!d.itype || !(months >= 1) || !(c.base > 0)) return "";
-  const down = d.itype === "plan1" ? c.down1 : needsDown(d.itype) ? (d.dp === "yes" ? Number(d.dpAmt) || 0 : d.dp === "no" ? 0 : null) : 0;
-  if (down == null || down >= c.base) return "";
+  if (!d.itype || !(months >= 1) || !(c.base > 0)) return null;
+  // "Ha" tanlanib summa hali yozilmagan bo'lsa hisob ko'rsatilmaydi
+  const down = d.itype === "plan1" ? c.down1 : needsDown(d.itype) ? (d.dp === "yes" ? (Number(d.dpAmt) > 0 ? Number(d.dpAmt) : null) : d.dp === "no" ? 0 : null) : 0;
+  if (down == null || down >= c.base) return null;
   const yearPct = S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100;
-  const monthly = Math.ceil(Math.ceil((c.base - down) * (1 + (months * yearPct) / 12 / 100)) / months);
+  return { down, monthly: Math.ceil(Math.ceil((c.base - down) * (1 + (months * yearPct) / 12 / 100)) / months) };
+}
+/** Pastki "Jami" qatori: hisob bo'lsa "Oyiga ≈ …", bo'lmasa "Narxni admin aytadi". */
+function instCta(d) {
+  const r = instCalc(d);
+  return r ? `${t("inst_monthly")} ≈ ${som(r.monthly)}` : t("price_by_admin");
+}
+/** Mijozga faqat boshlang'ich va oylik to'lov (taxminiy) ko'rsatiladi. */
+function instSummary(d) {
+  const r = instCalc(d);
+  if (!r) return "";
+  const { down, monthly } = r;
   return `<div class="isum"><div><span>${esc(t("inst_down"))}</span><b>${esc(som(down))}</b></div>
     <div><span>${esc(t("inst_monthly"))}</span><b>${esc(som(monthly))}</b></div><small>${esc(t("approx"))}</small></div>`;
 }
@@ -398,14 +410,18 @@ function bindInst(v, d, upd) {
         const m = Math.min(WHEEL_MAX, Math.max(1, Math.round(w.scrollTop / WHEEL_H) + 1));
         d.months = m;
         w.querySelectorAll(".wheel-i").forEach((el, i) => el.classList.toggle("on", i + 1 === m));
-        const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d);
+        refreshInst(v, d);
         upd();
       }, 90);
     });
     w.querySelectorAll(".wheel-i").forEach((el, i) => el.addEventListener("click", () => w.scrollTo({ top: i * WHEEL_H, behavior: "smooth" })));
   }
   const a = $("#dpAmt", v);
-  if (a) a.addEventListener("input", () => { d.dpAmt = a.value; const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d); upd(); });
+  if (a) a.addEventListener("input", () => { d.dpAmt = a.value; refreshInst(v, d); upd(); });
+}
+function refreshInst(v, d) {
+  const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d);
+  const cb = v.querySelector(".cta .sum b"); if (cb && d.pay === "installment") cb.textContent = instCta(d);
 }
 
 // ---------- sahifalar ----------
@@ -464,7 +480,7 @@ function viewPremium(v) {
     ${recipientStep(2, d, d.plan === "m1" || d.plan === "m12_login")}
     ${payStep(d.plan === "m1" || d.plan === "m12_login" ? 2 : 3, d, ["plan2", "uzum"])}
     <div class="cta">
-      <div class="sum"><span>${esc(t("total"))}</span><b>${d.pay === "installment" ? esc(t("price_by_admin")) : cashPrice ? esc(som(cashPrice)) : "—"}</b></div>
+      <div class="sum"><span>${esc(t("total"))}</span><b>${d.pay === "installment" ? esc(instCta(d)) : cashPrice ? esc(som(cashPrice)) : "—"}</b></div>
       <button class="btn btn-primary" id="go" type="button" ${ready ? "" : "disabled"}>${esc(t("next"))}</button>
     </div>`;
   wireForm(v, d, "premium", () => placeOrder({
@@ -492,7 +508,7 @@ function viewStars(v) {
     ${recipientStep(2, d)}
     ${payStep(3, d, ["plan2", "uzum"])}
     <div class="cta">
-      <div class="sum"><span>${esc(t("total"))}</span><b id="starsTotal">${d.pay === "installment" ? esc(t("price_by_admin")) : ok ? esc(som(total)) : "—"}</b></div>
+      <div class="sum"><span>${esc(t("total"))}</span><b id="starsTotal">${d.pay === "installment" ? esc(instCta(d)) : ok ? esc(som(total)) : "—"}</b></div>
       <button class="btn btn-primary" id="go" type="button" ${ready ? "" : "disabled"}>${esc(t("next"))}</button>
     </div>`;
   const qty = $("#qty", v);
@@ -500,7 +516,7 @@ function viewStars(v) {
     d.qty = parseInt(qty.value, 10);
     const good = Number.isInteger(d.qty) && d.qty >= min;
     $("#qtyErr", v).hidden = good;
-    $("#starsTotal", v).textContent = d.pay === "installment" ? t("price_by_admin") : good ? som(round2(d.qty * price)) : "—";
+    $("#starsTotal", v).textContent = d.pay === "installment" ? instCta(d) : good ? som(round2(d.qty * price)) : "—";
     $("#go", v).disabled = !isReady();
     const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d);
     v.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(Number(c.dataset.q) === d.qty)));
@@ -925,7 +941,7 @@ function viewRentItem(v) {
         ${["plan1", "plan2", "uzum"].map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", p.itype === ty, "itype")).join("")}</div></div>${instExtra(p)}` : ""}
       </section>
       <div class="cta">
-        <div class="sum"><span>${esc(t("total"))}</span><b>${p.pay === "cash" ? esc(som(it.cashPrice)) : esc(t("price_by_admin"))}</b></div>
+        <div class="sum"><span>${esc(t("total"))}</span><b>${p.pay === "cash" ? esc(som(it.cashPrice)) : esc(instCta(p))}</b></div>
         <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("next"))}</button>
       </div>`;
     bindMode();
@@ -963,7 +979,7 @@ function viewRentItem(v) {
     </section>
     ${payStep(2, p, ["plan2", "uzum"])}
     <div class="cta">
-      <div class="sum"><span id="lbl">${esc(t("rent_total", { n: ok(p.days) ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(t("price_by_admin")) : ok(p.days) ? esc(som(price(p.days))) : "—"}</b></div>
+      <div class="sum"><span id="lbl">${esc(t("rent_total", { n: ok(p.days) ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(instCta(p)) : ok(p.days) ? esc(som(price(p.days))) : "—"}</b></div>
       <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("next"))}</button>
     </div>`;
   bindMode();
@@ -977,7 +993,7 @@ function viewRentItem(v) {
     p.days = parseInt(di.value, 10);
     const good = ok(p.days);
     $("#lbl", v).textContent = t("rent_total", { n: good ? p.days : "—" });
-    $("#tot", v).textContent = p.pay === "installment" ? t("price_by_admin") : good ? som(price(p.days)) : "—";
+    $("#tot", v).textContent = p.pay === "installment" ? instCta(p) : good ? som(price(p.days)) : "—";
     $("#pdl", v).textContent = perDayLine(p.days);
     $("#upsWrap", v).innerHTML = upsell(p.days); bindUps();
     $("#go", v).disabled = !isReady();
