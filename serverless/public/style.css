@@ -227,3 +227,18 @@ select.input option{background:var(--bg)}
 .chip .save{color:var(--ok,#7fd19b);font-weight:800;margin-left:2px}
 .upsell{display:grid;gap:8px;background:var(--sage-soft);border:1px solid var(--sage);border-radius:14px;padding:12px;font-size:.9rem}
 .upsell .btn{justify-self:start}
+
+/* Ijara / sotib olish tanlovi */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mcard{display:grid;gap:6px;justify-items:start;text-align:left;padding:18px 16px;border-radius:18px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.mcard i{font-style:normal;font-size:30px}
+.mcard b{font:800 1.05rem var(--f-display)}
+.mcard small{color:var(--muted);font-size:.8rem}
+.mcard em{font-style:normal;font-weight:800;font-size:.86rem;color:var(--sage-2);margin-top:4px}
+.mcard.on{border-color:var(--sage);background:var(--sage-soft);box-shadow:0 0 0 3px rgba(126,166,134,.18)}
+/* Taxminiy oylik to'lov */
+.isum{display:grid;gap:6px;margin-top:10px;padding:14px 16px;border-radius:16px;border:1.5px solid var(--sage);background:var(--sage-soft)}
+.isum div{display:flex;justify-content:space-between;gap:12px}
+.isum span{color:var(--muted)}
+.isum b{font:800 1.02rem var(--f-display);font-variant-numeric:tabular-nums}
+.isum small{color:var(--muted);font-size:.75rem;text-align:right}

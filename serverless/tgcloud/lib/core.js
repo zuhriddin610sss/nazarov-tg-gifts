@@ -1,6 +1,6 @@
 // Umumiy yordamchilar: baza, sxema, xatolar, sozlamalar, jurnallar.
 import { db, EndpointError } from 'sdk';
-import { DDL, SCHEMA_VERSION } from 'lib/ddl';
+import { DDL, COLUMNS, SCHEMA_VERSION } from 'lib/ddl';
 import { ADMIN_IDS } from 'lib/config';
 
 // ---------- baza ----------
@@ -36,6 +36,10 @@ export async function ensureSchema() {
       const m = /IF NOT EXISTS\s+(\w+)/i.exec(stmt);
       if (m && have.has(m[1])) continue;
       await db.run(stmt);
+    }
+    for (const [table, col, def] of COLUMNS) {
+      const cols = (await db.all(`SELECT name FROM pragma_table_info('${table}')`)).map((r) => r.name);
+      if (!cols.includes(col)) await db.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
     }
     await db.run("INSERT INTO meta (key, value) VALUES ('schema', :v) ON CONFLICT (key) DO UPDATE SET value = excluded.value", { ':v': String(SCHEMA_VERSION) });
   }
@@ -100,6 +104,12 @@ export const DEFAULT_SETTINGS = {
   stars_min: 50,
   premium_prices: { m1: 42000, m3: 171600, m6: 231000, m12_login: 297000, m12: 418000 },
   rent_formula: { add: 0.15, mult: 2, rate: 19000 },
+  // Bo'lib to'lash ustamasi: 12 oyga necha foiz (oyiga = shu / 12). 3 oy +25%, 6 oy +50%, 12 oy +100%.
+  inst_markup_year: 100,
+  // 1-tur boshlang'ich to'lovi: (Marketapp kunlik ijara × days + add) × rate × mult
+  down_formula: { days: 45, add: 0.1, rate: 17000, mult: 3 },
+  // O'z sovg'alarining sotuv narxi: Marketapp TON narxi × sale_rate so'm
+  sale_rate: 17000,
   services_enabled: { nft_gift: true, gift_rent: true, username_rent: true, number_rent: true, premium: true, stars: true },
   mini_app_url: '',
 };
@@ -109,7 +119,7 @@ export async function getSettings() {
   let saved = {};
   try { saved = row ? JSON.parse(row.value) : {}; } catch (e) {}
   const s = { ...DEFAULT_SETTINGS, ...saved };
-  for (const k of ['payment_warning', 'premium_prices', 'rent_formula', 'services_enabled']) s[k] = { ...DEFAULT_SETTINGS[k], ...(saved[k] || {}) };
+  for (const k of ['payment_warning', 'premium_prices', 'rent_formula', 'services_enabled', 'down_formula']) s[k] = { ...DEFAULT_SETTINGS[k], ...(saved[k] || {}) };
   return s;
 }
 export async function saveSettings(s) {

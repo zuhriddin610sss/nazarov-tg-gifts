@@ -79,3 +79,25 @@ export async function searchRecipient(service, username) {
 export async function marketappConfigured() {
   return Boolean(await getSecret('marketapp_token'));
 }
+
+/** Sotuvdagi eng arzon sovg'a narxi (TON) berilgan filtrlar bo'yicha. Topilmasa null. */
+export async function giftsOnSaleFloor(filters) {
+  const q = { sort_by: 'min_bid_asc', limit: 1 };
+  for (const k of ['collection_address', 'model', 'backdrop', 'symbol', 'item_num_from', 'item_num_to']) if (filters[k] != null && filters[k] !== '') q[k] = String(filters[k]).slice(0, 100);
+  const data = await call('GET', '/v1/gifts/onsale/', { query: q });
+  const it = Array.isArray(data.items) ? data.items[0] : null;
+  if (!it || it.min_bid == null) return null;
+  return toTon(it.min_bid);
+}
+/** Sotuvdagi aniq bitta sovg'a (kolleksiya + raqam), bo'lsa atributlari bilan. */
+export async function giftOnSaleByNumber(collectionAddress, num) {
+  const data = await call('GET', '/v1/gifts/onsale/', { query: { collection_address: collectionAddress, item_num_from: num, item_num_to: num, limit: 1 } });
+  return Array.isArray(data.items) && data.items[0] ? data.items[0] : null;
+}
+/** Narx satri nanoTON yoki TON bo'lishi mumkin: katta butun son bo'lsa nano deb olinadi. */
+export function toTon(v) {
+  const s = String(v);
+  if (/^\d{7,}$/.test(s)) return Number(BigInt(s)) / 1e9;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}

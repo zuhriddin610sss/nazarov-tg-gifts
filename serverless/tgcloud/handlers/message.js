@@ -5,6 +5,7 @@ import { upsertCustomer } from 'lib/customer';
 import { t, money } from 'lib/texts';
 import { openAppButton, adminPanelButton } from 'lib/notify';
 import { maybeRunJobs } from 'lib/jobs';
+import { handleAdminText, ADMIN_HELP } from 'lib/admintools';
 
 const reply = (chat, text, extra = {}) => api.sendMessage({ chat_id: chat, text, ...extra });
 const phoneKb = (lang) => ({ keyboard: [[{ text: t(lang, 'share_btn'), request_contact: true }]], resize_keyboard: true, one_time_keyboard: true });
@@ -26,6 +27,10 @@ export default async function (message, ctx) {
       return reply(chat, '👇', { reply_markup: openAppButton(t(lang, 'open')) });
     }
 
+    if (isAdmin(message.from.id) && message.text) {
+      const out = await handleAdminText(message.text);
+      if (out) return reply(chat, out, { disable_web_page_preview: true });
+    }
     const cmd = String(message.text || '').split(/[\s@]/)[0].toLowerCase();
     if (cmd === '/start') {
       await reply(chat, t(lang, 'welcome'), { reply_markup: openAppButton(t(lang, 'open')) });
@@ -44,7 +49,7 @@ export default async function (message, ctx) {
           { reply_markup: openAppButton(t(lang, 'open'), 'orders') });
       }
     } else if (cmd === '/admin') {
-      if (isAdmin(message.from.id)) await reply(chat, 'Admin panel', { reply_markup: adminPanelButton() });
+      if (isAdmin(message.from.id)) await reply(chat, 'Admin panel\n\n' + ADMIN_HELP, { reply_markup: adminPanelButton() });
       const s = await getSettings();
       if (s.admin_contact) await reply(chat, t(lang, 'admin_contact', { u: s.admin_contact }),
         { reply_markup: { inline_keyboard: [[{ text: t(lang, 'write_admin'), url: `https://t.me/${s.admin_contact}` }]] } });

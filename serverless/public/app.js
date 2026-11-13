@@ -317,7 +317,7 @@ function bindOpts(root, onPick) {
 
 function recipientStep(n, d, selfOnly) {
   const noUser = S.me && !S.me.username;
-  if (selfOnly) d.rcp = "me";
+  if (selfOnly) { d.rcp = "me"; return ""; }
   return `<section class="step">${stepHead(n, t("step_recipient"))}
     <div class="row2" role="radiogroup">
       ${opt("me", t("rcp_me"), "", "", d.rcp === "me", "rcp")}
@@ -352,12 +352,28 @@ function instExtra(d) {
     h += `<div class="wheel" id="mWheel"><div class="wheel-pad"></div>${items}<div class="wheel-pad"></div></div><p class="hint">${esc(t("months_pick"))}</p>`;
   }
   h += `</div>`;
+  if (d.itype === "plan1") {
+    const c = d._ctx ? d._ctx() : {};
+    h += `<div class="field"><label>${esc(t("inst_down"))}</label><p class="alert" style="margin:0">${c.down1 != null ? esc(som(c.down1)) : esc(t("down_by_admin"))}</p></div>`;
+  }
   if (needsDown(d.itype)) {
     h += `<div class="field"><label>${esc(t("down_q"))}</label><div class="row2" role="radiogroup">
       ${opt("no", t("dp_no"), "", "", d.dp === "no", "dp")}${opt("yes", t("dp_yes"), "", "", d.dp === "yes", "dp")}</div>
       ${d.dp === "yes" ? `<input class="input" id="dpAmt" type="number" inputmode="numeric" min="1" step="1" placeholder="${esc(t("down_ph"))}" value="${esc(d.dpAmt || "")}">` : ""}</div>`;
   }
-  return h;
+  return h + `<div id="instSum">${instSummary(d)}</div>`;
+}
+/** Mijozga faqat boshlang'ich va oylik to'lov (taxminiy) ko'rsatiladi. */
+function instSummary(d) {
+  const c = d._ctx ? d._ctx() : {};
+  const months = Number(d.months);
+  if (!d.itype || !(months >= 1) || !(c.base > 0)) return "";
+  const down = d.itype === "plan1" ? c.down1 : needsDown(d.itype) ? (d.dp === "yes" ? Number(d.dpAmt) || 0 : d.dp === "no" ? 0 : null) : 0;
+  if (down == null || down >= c.base) return "";
+  const yearPct = S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100;
+  const monthly = Math.ceil(Math.ceil((c.base - down) * (1 + (months * yearPct) / 12 / 100)) / months);
+  return `<div class="isum"><div><span>${esc(t("inst_down"))}</span><b>${esc(som(down))}</b></div>
+    <div><span>${esc(t("inst_monthly"))}</span><b>${esc(som(monthly))}</b></div><small>${esc(t("approx"))}</small></div>`;
 }
 function instOk(d) {
   if (!d.itype || !(Number(d.months) >= 1)) return false;
@@ -382,13 +398,14 @@ function bindInst(v, d, upd) {
         const m = Math.min(WHEEL_MAX, Math.max(1, Math.round(w.scrollTop / WHEEL_H) + 1));
         d.months = m;
         w.querySelectorAll(".wheel-i").forEach((el, i) => el.classList.toggle("on", i + 1 === m));
+        const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d);
         upd();
       }, 90);
     });
     w.querySelectorAll(".wheel-i").forEach((el, i) => el.addEventListener("click", () => w.scrollTo({ top: i * WHEEL_H, behavior: "smooth" })));
   }
   const a = $("#dpAmt", v);
-  if (a) a.addEventListener("input", () => { d.dpAmt = a.value; upd(); });
+  if (a) a.addEventListener("input", () => { d.dpAmt = a.value; const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d); upd(); });
 }
 
 // ---------- sahifalar ----------
@@ -437,6 +454,7 @@ function viewPremium(v) {
   const p = S.cfg.premiumPrices;
   const plans = [["m1", "months_1", "m1_note"], ["m3", "months_3"], ["m6", "months_6"], ["m12_login", "months_12_login", "m12_login_note"], ["m12", "months_12"]];
   const cashPrice = d.plan ? p[d.plan] : null;
+  d._ctx = () => ({ base: d.plan ? Number(p[d.plan]) : null });
   const isReady = () => d.plan && d.pay && (d.pay === "cash" || instOk(d)) && (d.rcp === "me" ? !S.me || Boolean(S.me.username) : true);
   const ready = isReady();
   v.innerHTML = `<h1 class="page-title">Telegram Premium</h1>
@@ -444,7 +462,7 @@ function viewPremium(v) {
       ${plans.map(([id, l, note]) => opt(id, t(l), note ? t(note) : "", d.pay === "installment" ? "" : som(p[id]), d.plan === id, "plan")).join("")}
     </div></section>
     ${recipientStep(2, d, d.plan === "m1" || d.plan === "m12_login")}
-    ${payStep(3, d, ["plan2", "uzum"])}
+    ${payStep(d.plan === "m1" || d.plan === "m12_login" ? 2 : 3, d, ["plan2", "uzum"])}
     <div class="cta">
       <div class="sum"><span>${esc(t("total"))}</span><b>${d.pay === "installment" ? esc(t("price_by_admin")) : cashPrice ? esc(som(cashPrice)) : "—"}</b></div>
       <button class="btn btn-primary" id="go" type="button" ${ready ? "" : "disabled"}>${esc(t("next"))}</button>
@@ -461,6 +479,7 @@ function viewStars(v) {
   const d = S.drafts.stars ||= { qty: Math.max(min, 100), rcp: "me", rcpUser: "", pay: null, itype: null, key: key() };
   const ok = Number.isInteger(d.qty) && d.qty >= min;
   const total = ok ? round2(d.qty * price) : 0;
+  d._ctx = () => ({ base: Number.isInteger(d.qty) && d.qty >= min ? Math.ceil(d.qty * price) : null });
   const isReady = () => Number.isInteger(d.qty) && d.qty >= min && d.pay && (d.pay === "cash" || instOk(d));
   const ready = isReady();
   v.innerHTML = `<h1 class="page-title">Telegram Stars</h1>
@@ -483,6 +502,7 @@ function viewStars(v) {
     $("#qtyErr", v).hidden = good;
     $("#starsTotal", v).textContent = d.pay === "installment" ? t("price_by_admin") : good ? som(round2(d.qty * price)) : "—";
     $("#go", v).disabled = !isReady();
+    const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(d);
     v.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(Number(c.dataset.q) === d.qty)));
   });
   v.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { d.qty = Number(c.dataset.q); render(); }));
@@ -527,6 +547,7 @@ async function viewNft(v) {
     </div>`;
   };
   const hasId = Boolean(d.name.trim() || d.link.trim() || d.image);
+  d._ctx = () => ({ base: null, down1: null });
   v.innerHTML = `<h1 class="page-title">${esc(t("nft_title"))}</h1>
     <div id="ownSale"></div>
     <section class="step">${stepHead(1, t("gift_name"))}
@@ -641,7 +662,7 @@ function normOwn(o) {
   return { own: true, id: o.id, address: "own" + o.id, name: o.name, image: o.image, kind: o.kind,
     attributes: [["Model", o.model], ["Backdrop", o.backdrop], ["Symbol", o.symbol]].filter((a) => a[1]).map(([trait_type, value]) => ({ trait_type, value })),
     rent: Boolean(o.rent), ppd: o.rent ? Number(o.rent.pricePerDay) : 0, minDays: o.rent ? o.rent.minDays : 1, maxDays: o.rent ? o.rent.maxDays : 1,
-    installment: o.installment, cashPrice: o.cashPrice };
+    installment: o.installment, cashPrice: o.cashPrice, salePrice: o.salePrice ?? null, down1: o.down1 ?? null };
 }
 async function loadOwn(cat) {
   const st = rentState(cat);
@@ -885,12 +906,15 @@ function viewRentItem(v) {
     <h1 class="page-title" style="text-align:center">${esc(p.category === "gifts" ? shortName(it.name) : it.name)}${p.category === "gifts" && /#\d+$/.test(it.name) ? ` <span class="num">#${esc(it.name.split("#").pop())}</span>` : ""}</h1>
     ${it.own ? `<p style="text-align:center"><span class="adtag inline">${esc(t("ad_tag"))}</span></p>` : ""}
     ${attrsOf(it).length ? `<div class="attrs" style="justify-content:center">${attrsOf(it).map((a) => `<span>${esc(a.trait_type)}: ${esc(a.value)}</span>`).join("")}</div>` : ""}
-    ${canRent && canBuy ? `<div class="seg" role="tablist" style="margin:12px 0">
-      <button type="button" class="sg${p.mode === "rent" ? " on" : ""}" data-mode="rent">${esc(t("mode_rent"))}</button>
-      <button type="button" class="sg${p.mode === "buy" ? " on" : ""}" data-mode="buy">${esc(t("mode_buy"))}</button></div>` : ""}`;
+    ${canRent && canBuy ? `<section class="step"><div class="step-h"><h2>${esc(t("mode_q"))}</h2></div><div class="modes">
+      <button type="button" class="mcard${p.mode === "rent" ? " on" : ""}" data-mode="rent"><i>⏳</i><b>${esc(t("mode_rent"))}</b><small>${esc(t("mode_rent_note"))}</small>
+        <em>${esc(money(bestPerDay(it, p.formula)))} ${esc(t("per_day_from"))}</em></button>
+      <button type="button" class="mcard${p.mode === "buy" ? " on" : ""}" data-mode="buy"><i>💎</i><b>${esc(t("mode_buy"))}</b><small>${esc(t("mode_buy_note"))}</small>
+        <em>${it.cashPrice ? esc(som(it.cashPrice)) : esc(t("pay_inst"))}</em></button></div></section>` : ""}`;
   const bindMode = () => v.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { p.mode = b.dataset.mode; p.pay = null; p.itype = null; render(); }));
 
   if (p.mode === "buy") {
+    p._ctx = () => ({ base: it.salePrice, down1: it.down1 });
     const opts = [];
     if (it.cashPrice) opts.push(opt("cash", t("pay_full"), t("pay_full_note"), som(it.cashPrice), p.pay === "cash", "pay"));
     if (it.installment) opts.push(opt("installment", t("pay_inst"), t("pay_inst_note"), "", p.pay === "installment", "pay"));
@@ -923,6 +947,8 @@ function viewRentItem(v) {
   if (!preset.includes(max)) preset.push(max);
   const saving = max > min ? Math.floor((1 - (price(max) / max) / (price(min) / min)) * 100) : 0;
   const ok = (d) => Number.isInteger(d) && d >= min && d <= max;
+  p._ctx = () => ({ base: ok(p.days) ? price(p.days) : null });
+  const isReady = () => ok(p.days) && p.pay && (p.pay === "cash" || instOk(p));
   const perDayLine = (d) => (ok(d) ? t("per_day_is", { d: money(Math.ceil(price(d) / d)) }) : "");
   const upsell = (d) => (ok(d) && d !== max && max > min && p.pay !== "installment"
     ? `<div class="upsell" id="ups">💡 ${esc(t("upsell", { n: max, d: money(bestPerDay(it, f)), tot: money(price(max)) }))}
@@ -935,12 +961,14 @@ function viewRentItem(v) {
       <p class="hint" id="pdl">${esc(perDayLine(p.days))}</p>
       <div id="upsWrap">${upsell(p.days)}</div>
     </section>
-    ${payStep(2, p, null)}
+    ${payStep(2, p, ["plan2", "uzum"])}
     <div class="cta">
       <div class="sum"><span id="lbl">${esc(t("rent_total", { n: ok(p.days) ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(t("price_by_admin")) : ok(p.days) ? esc(som(price(p.days))) : "—"}</b></div>
-      <button class="btn btn-primary" id="go" type="button" ${ok(p.days) && p.pay ? "" : "disabled"}>${esc(t("next"))}</button>
+      <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("next"))}</button>
     </div>`;
   bindMode();
+  v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { p.months = Number(c.dataset.v); render(); }));
+  bindInst(v, p, () => ($("#go", v).disabled = !isReady()));
   const bindUps = () => { const b = $("#upsBtn", v); if (b) b.onclick = () => { p.days = max; render(); }; };
   bindUps();
   v.querySelectorAll(".chip[data-d]").forEach((c) => c.addEventListener("click", () => { p.days = Number(c.dataset.d); render(); }));
@@ -952,13 +980,15 @@ function viewRentItem(v) {
     $("#tot", v).textContent = p.pay === "installment" ? t("price_by_admin") : good ? som(price(p.days)) : "—";
     $("#pdl", v).textContent = perDayLine(p.days);
     $("#upsWrap", v).innerHTML = upsell(p.days); bindUps();
-    $("#go", v).disabled = !(good && p.pay);
+    $("#go", v).disabled = !isReady();
+    const sm = $("#instSum", v); if (sm) sm.innerHTML = instSummary(p);
     v.querySelectorAll(".chip[data-d]").forEach((c) => c.setAttribute("aria-pressed", String(Number(c.dataset.d) === p.days)));
   });
-  bindOpts(v, (g, val) => { p[g] = val; render(); });
+  bindOpts(v, (g, val) => { if (g === "pay" && val !== p.pay) p.itype = null; if (g === "itype" && val !== p.itype) resetInst(p, val); p[g] = val; render(); });
+  const inst = () => (p.pay === "installment" ? { installmentType: p.itype, ...instBody(p) } : {});
   $("#go", v).addEventListener("click", () => placeOrder(it.own
-    ? { service: "own", ownId: it.id, ownMode: "rent", days: p.days, paymentMethod: p.pay, idempotencyKey: p.key }
-    : { service: p.service, address: it.address, days: p.days, paymentMethod: p.pay, idempotencyKey: p.key }, price(p.days)));
+    ? { service: "own", ownId: it.id, ownMode: "rent", days: p.days, paymentMethod: p.pay, idempotencyKey: p.key, ...inst() }
+    : { service: p.service, address: it.address, days: p.days, paymentMethod: p.pay, idempotencyKey: p.key, ...inst() }, price(p.days)));
 }
 
 function viewDone(v) {

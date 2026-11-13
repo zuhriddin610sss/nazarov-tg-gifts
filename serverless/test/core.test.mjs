@@ -230,3 +230,86 @@ test("o'z mahsulotlari: admin qo'shadi, mijoz ijaraga va sotib oladi; ijara narx
   await admin({ action: 'saveOwnProduct', id: p.id, kind: 'gifts', name: 'Plush Pepe #9', inst_enabled: true, visible: false });
   assert.equal((await app({ action: 'ownList', category: 'gifts' })).some((x) => x.id === p.id), false);
 });
+
+test("bo'lib to'lash hisobi: ustama 25/50/100%, boshlang'ich to'lov qolgan summadan ayriladi; 1-tur formulasi", async () => {
+  const { monthlyPayment, downByFormula } = await import('../tgcloud/lib/calc.js');
+  const s = { ...core.DEFAULT_SETTINGS };
+  assert.equal(monthlyPayment(1000000, 0, 6, s).monthly, 250000);
+  assert.equal(monthlyPayment(1000000, 200000, 6, s).monthly, 200000);
+  assert.equal(monthlyPayment(1000000, 0, 3, s).total, 1250000);
+  assert.equal(monthlyPayment(1000000, 0, 12, s).total, 2000000);
+  // kuniga 0.05 TON: (0.05*45 + 0.1) * 17000 * 3 = 119 850
+  assert.equal(downByFormula('50000000', s), 119850);
+  const { calcText } = await import('../tgcloud/lib/admintools.js');
+  assert.match(calcText(['1000000', '6', '200000'], s), /oyiga 200 000 so'm/);
+});
+
+test("yangilanish: eski bazadagi mijoz, balans va mahsulotlar saqlanadi, yangi ustunlar qo'shiladi", async () => {
+  await withPhone();
+  await topup(50000);
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Old Gift #1', inst_enabled: true });
+  // Eski (2-versiya) bazani taqlid qilamiz: yangi ustunlarni olib tashlab, versiyani 2 ga qaytaramiz
+  const { db } = await import('sdk');
+  await db.run('CREATE TABLE own_old AS SELECT id, kind, name, image, model, backdrop, symbol, rent_enabled, rent_price, rent_min, rent_max, inst_enabled, cash_enabled, cash_price, visible, position, created_at FROM own_products');
+  await db.run('DROP TABLE own_products');
+  await db.run('ALTER TABLE own_old RENAME TO own_products');
+  await db.run("UPDATE meta SET value = '2' WHERE key = 'schema'");
+  core.__resetForTests();
+  const me = await app({ action: 'me' });
+  assert.equal(me.balance, 50000);
+  const cols = (await db.all("SELECT name FROM pragma_table_info('own_products')")).map((r) => r.name);
+  for (const c of ['price_source', 'down_mode', 'mk_price_ton']) assert.ok(cols.includes(c), c);
+  const list = await admin({ action: 'ownProducts' });
+  assert.ok(list.some((p) => p.name === 'Old Gift #1'));
+});
+
+test("o'z sovg'asi: qo'lda narx va boshlang'ich to'lov, buyurtmada taxminiy oylik; admin boshlang'ich to'lovni o'zgartiradi", async () => {
+  await withPhone();
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Sale Gift #5', inst_enabled: true, price_source: 'manual_som', price_manual: 1000000, down_mode: 'manual', down_manual: 200000 });
+  const p = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.name === 'Sale Gift #5');
+  assert.equal(p.salePrice, 1000000);
+  assert.equal(p.down1, 200000);
+  const r = await app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'plan1', months: 6, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(o.details.downPayment, 200000);
+  assert.equal(o.details.estMonthly, 200000);
+  const res = await admin({ action: 'setOrderDown', id: o.id, amount: 400000 });
+  assert.equal(res.estMonthly, 150000);
+  assert.ok(sent.some((m) => m.params && /boshlang'ich to'lov 400 000/.test(m.params.text || '')));
+});
+
+test("ijara bo'lib to'lashda: turi va muddat so'raladi", async () => {
+  await withPhone();
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Rent Gift #7', rent_enabled: true, rent_price: 1000, rent_min: 1, rent_max: 30 });
+  const p = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.name === 'Rent Gift #7');
+  assert.equal(await code(app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'rent', days: 10, paymentMethod: 'installment', idempotencyKey: key() })), 'INSTALLMENT_TYPE_REQUIRED');
+  const r = await app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'rent', days: 10, paymentMethod: 'installment', installmentType: 'uzum', months: 3, downPayment: 0, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(o.installment_type, 'uzum');
+  assert.equal(o.details.estMonthly, Math.ceil(10000 * 1.25 / 3));
+});
+
+test("admin bot: sovg'a havolasi bo'yicha bozor narxi, ijara va 1-tur boshlang'ich to'lovi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST' });
+  const rentItem = { nft_address: 'EQ_TRAPPED_19604_XXXXXXXXXXXXXX', nft_name: 'Trapped Heart #19604', price_per_day: '50000000', min_duration: 86400, max_duration: 30 * 86400,
+    attributes: [{ trait_type: 'Model', value: 'Crime Scene' }, { trait_type: 'Backdrop', value: 'Persimmon' }] };
+  setFetch(async (url) => {
+    const u = String(url);
+    let body;
+    if (u.startsWith('https://t.me/nft/')) body = '<table><tr><th>Model</th><td>Crime Scene <mark>2.6%</mark></td></tr><tr><th>Backdrop</th><td>Persimmon <mark>1.5%</mark></td></tr><tr><th>Symbol</th><td>Patched Heart</td></tr></table>';
+    else if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/gifts/onsale/')) body = { cursor: null, items: [{ min_bid: u.includes('model=') && u.includes('backdrop=') ? '45000000000' : '20000000000', attributes: [] }] };
+    else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [rentItem] };
+    else body = {};
+    return { ok: true, status: 200, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) };
+  });
+  sent.length = 0;
+  await messageHandler({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Admin' }, text: 'https://t.me/nft/TrappedHeart-19604' });
+  const txt = sent.map((m) => m.params.text || '').join('\n');
+  assert.match(txt, /Model: Crime Scene · Fon: Persimmon/);
+  assert.match(txt, /Model \+ fon: 45 TON ≈ 765 000 so'm/);
+  assert.match(txt, /1-tur boshlang'ich to'lovi \(formula\): 119 850 so'm/);
+  sent.length = 0;
+  await messageHandler({ chat: { id: 5001, type: 'private' }, from: user, text: '/hisob 1000000 6' });
+  assert.ok(!sent.some((m) => /oyiga/.test(m.params.text || '')), 'mijozga kalkulyator ishlamaydi');
+});

@@ -41,7 +41,9 @@ export async function notifyNewOrder(orderId) {
     det.link ? `Havola: ${det.link}` : null,
     `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
     det.months ? `Muddat: ${det.months} oy` : null,
-    det.downPayment != null ? `Boshlang'ich to'lov: ${det.downPayment > 0 ? money(det.downPayment) + " so'm" : "yo'q"}` : null,
+    det.downPayment != null ? `Boshlang'ich to'lov: ${det.downPayment > 0 ? money(det.downPayment) + " so'm" : "yo'q"}`
+      : o.installment_type === 'plan1' ? "Boshlang'ich to'lov: admin belgilaydi" : null,
+    det.estMonthly ? `Taxminiy oylik: ${money(det.estMonthly)} so'm (narx ${money(det.estPrice)} so'm asosida)` : null,
     `Narx: ${o.price != null ? fmt(o.price) : 'admin belgilaydi'}${o.discount > 0 ? ` (promo ${o.promo_code}: −${fmt(o.discount)})` : ''}`,
     o.cost != null ? `Tannarx: ${fmt(o.cost)}` : null,
     det.quotedPrice ? `Formula bo'yicha narx: ${fmt(det.quotedPrice)}` : null,

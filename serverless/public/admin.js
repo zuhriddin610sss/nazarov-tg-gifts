@@ -197,7 +197,7 @@ async function dashboard(v) {
   };
 }
 
-const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif" };
+const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif" };
 function orderSheet(o) {
   const d = o.details || {};
   const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
@@ -215,6 +215,7 @@ function orderSheet(o) {
     ${lines ? `<div class="det">${esc(lines)}</div>` : ""}
     ${d.image ? `<button class="btn btn-ghost btn-sm" id="img" type="button">Sovg'a rasmini ko'rish</button>` : ""}
     ${o.customer_username ? `<a class="btn btn-ghost btn-sm" href="https://t.me/${esc(o.customer_username)}" target="_blank" rel="noopener">Mijozga yozish</a>` : ""}
+    ${o.payment_method === "installment" && o.status === "queued" ? `<div class="row2" style="grid-template-columns:1fr auto"><input class="input" id="downIn" inputmode="numeric" placeholder="Boshlang'ich to'lov, so'm" value="${esc(d.downPayment != null ? d.downPayment : "")}"><button class="btn btn-ghost btn-sm" id="downSave" type="button">Saqlash</button></div>` : ""}
     ${o.customer_id ? `<button class="btn btn-primary btn-sm" id="topUp" type="button">Balansni to'ldirish${o.balance != null ? ` (hozir: ${esc(money(o.balance))})` : ""}</button>` : ""}
     ${o.payment_method === "installment" && !o.agreementId ? `<button class="btn btn-ghost btn-sm" id="mkAgr" type="button">Shartnoma tuzish</button>` : ""}
     ${o.status === "queued" ? `<textarea class="input" id="note" rows="2" placeholder="Izoh (ixtiyoriy)"></textarea>
@@ -222,7 +223,14 @@ function orderSheet(o) {
       <button class="btn btn-ghost" id="cancel" type="button">Bekor qilish${Number(o.paid_amount) > 0 ? " (pul qaytadi)" : ""}</button></div>` : ""}`);
   const img = $("#img"); if (img) img.onclick = () => showFile(d.image);
   const tu = $("#topUp"); if (tu) tu.onclick = () => customerSheet(o.customer_id);
-  const mk = $("#mkAgr"); if (mk) mk.onclick = () => agreementForm({ order_id: o.id, product_name: o.title, installment_type: o.installment_type, client_username: o.customer_username, client_phone: o.customer_phone });
+  const ds = $("#downSave"); if (ds) ds.onclick = async () => {
+    const v = Number(String($("#downIn").value).replace(/[\s,]/g, ""));
+    if (!(v >= 0)) return toast("Summani kiriting");
+    try { const r = await call("setOrderDown", { id: o.id, amount: v }); toast("Saqlandi, mijozga xabar yuborildi" + (r.estMonthly ? ` (oyiga ≈ ${money(r.estMonthly)})` : "")); }
+    catch (e) { toast(e.message); }
+  };
+  const mk = $("#mkAgr"); if (mk) mk.onclick = () => agreementForm({ order_id: o.id, product_name: o.title, installment_type: o.installment_type, client_username: o.customer_username, client_phone: o.customer_phone,
+    down_payment: d.downPayment || 0, monthly_payment: d.estMonthly || "", total_price: d.estMonthly && d.months ? (d.downPayment || 0) + d.estMonthly * d.months : "" });
   const close = async (status, btn) => {
     if (status === "cancelled" && !btn.dataset.sure) { btn.dataset.sure = "1"; btn.textContent = "Tasdiqlash: bekor qilinsinmi?"; return; }
     btn.disabled = true;
@@ -437,6 +445,16 @@ async function settings(v) {
       <div class="field"><label>Koeffitsiyent</label><input class="input" name="rf_mult" value="${esc(s.rent_formula.mult)}"></div>
       <div class="field"><label>Kurs</label><input class="input" name="rf_rate" value="${esc(s.rent_formula.rate)}"></div>
     </div><p class="hint">Misol: P = 1.5 → ${esc(money((1.5 + s.rent_formula.add) * s.rent_formula.mult * s.rent_formula.rate))}</p></div>
+    <div class="section"><h2>Bo'lib to'lash</h2><div class="form">
+      <div class="field"><label>12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
+      <div class="field"><label>O'z sovg'alari: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
+    </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%</p>
+      <h2 style="margin-top:8px">1-tur boshlang'ich to'lovi: (kunlik ijara × kun + qo'shimcha) × kurs × koeffitsiyent</h2><div class="form">
+      <div class="field"><label>Kun</label><input class="input" name="df_days" value="${esc(s.down_formula.days)}"></div>
+      <div class="field"><label>Qo'shimcha (TON)</label><input class="input" name="df_add" value="${esc(s.down_formula.add)}"></div>
+      <div class="field"><label>Kurs</label><input class="input" name="df_rate" value="${esc(s.down_formula.rate)}"></div>
+      <div class="field"><label>Koeffitsiyent</label><input class="input" name="df_mult" value="${esc(s.down_formula.mult)}"></div>
+    </div><p class="hint">Misol: kuniga 0.05 TON → ${esc(money(Math.ceil((0.05 * s.down_formula.days + Number(s.down_formula.add)) * s.down_formula.rate * s.down_formula.mult)))}</p></div>
     <div class="section"><h2>Xizmatlar</h2><div class="form">
       ${Object.entries(svcL).map(([k, l]) => `<label class="opt" style="cursor:pointer"><input type="checkbox" name="se_${k}" ${s.services_enabled[k] ? "checked" : ""}> ${l}</label>`).join("")}
     </div></div>
@@ -444,13 +462,15 @@ async function settings(v) {
   $("#sf").onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
-    const n = (k) => Number(String(f.get(k)).replace(/[\s,]/g, ""));
+    const n = (k) => Number(String(f.get(k)).replace(/\s/g, "").replace(",", "."));
     const body = {
       card_number: String(f.get("card_number")).trim(), card_holder: String(f.get("card_holder")).trim(), admin_contact: String(f.get("admin_contact")).trim().replace(/^@/, ""),
       payment_instructions: Object.fromEntries(L.map((l) => [l, String(f.get("pi_" + l))])),
       stars_price: n("stars_price"), stars_min: n("stars_min"),
       premium_prices: Object.fromEntries(["m1", "m3", "m6", "m12_login", "m12"].map((k) => [k, n("pp_" + k)])),
       rent_formula: { add: n("rf_add"), mult: n("rf_mult"), rate: n("rf_rate") },
+      inst_markup_year: n("inst_markup_year"), sale_rate: n("sale_rate"),
+      down_formula: { days: n("df_days"), add: n("df_add"), rate: n("df_rate"), mult: n("df_mult") },
       services_enabled: Object.fromEntries(Object.keys(svcL).map((k) => [k, f.get("se_" + k) === "on"])),
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,
     };
@@ -533,7 +553,7 @@ async function own(v) {
     ${rows.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>
       <td>${p.rent_enabled ? `${esc(money(p.rent_price))}/kun<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
-      <td>${p.inst_enabled ? "Ha" : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))}</small>` : `<br><small class="hint">1-tur: admin</small>`) : '<span class="over">narx topilmadi</span>') : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}
@@ -562,6 +582,15 @@ function ownForm(p) {
       <div class="field"><label>Ijara: eng kam kun</label><input class="input" name="rent_min" inputmode="numeric" value="${esc(p.rent_min || 1)}"></div>
       <div class="field"><label>Ijara: eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 30)}"></div>
       <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
+      <div class="field full"><label>Bo'lib to'lash uchun narx qayerdan olinsin?</label>
+        <select class="input" name="price_source">${[["model_backdrop", "Marketapp: model + fon eng arzoni × kurs"], ["model", "Marketapp: model eng arzoni × kurs"], ["backdrop", "Marketapp: fon eng arzoni × kurs"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
+          .map(([k, l]) => `<option value="${k}" ${(p.price_source || "manual_som") === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="field"><label>Narx, TON (qo'lda TON tanlansa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
+      <div class="field"><label>Narx, so'm (qo'lda so'm tanlansa)</label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>
+      <div class="field"><label>1-tur boshlang'ich to'lovi</label>
+        <select class="input" name="down_mode"><option value="formula" ${p.down_mode !== "manual" ? "selected" : ""}>Formula bo'yicha (Marketapp ijara narxidan)</option><option value="manual" ${p.down_mode === "manual" ? "selected" : ""}>Qo'lda</option></select></div>
+      <div class="field"><label>Boshlang'ich to'lov, so'm (qo'lda tanlansa)</label><input class="input" name="down_manual" inputmode="decimal" value="${esc(p.down_manual != null ? Number(p.down_manual) : "")}"></div>
+      ${p.quote ? `<p class="hint full">Hozirgi hisob: narx ${p.quote.price ? esc(money(p.quote.price)) : "topilmadi"}${p.quote.marketPriceTon ? ` (Marketapp ${esc(p.quote.marketPriceTon)} TON)` : ""} · 1-tur boshlang'ich to'lovi ${p.quote.down1 != null ? esc(money(p.quote.down1)) : "topilmadi (ijarada yo'q)"}</p>` : ""}
       <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
       <div class="field"><label>Holat</label><select class="input" name="visible"><option value="1" ${p.visible !== false ? "selected" : ""}>Ko'rinadi</option><option value="0" ${p.visible === false ? "selected" : ""}>Yashirin (sotilgan)</option></select></div>
       <p class="alert full" id="ofErr" hidden></p>
@@ -583,6 +612,8 @@ function ownForm(p) {
       rent_enabled: f.get("rent_enabled") === "on", rent_price: n("rent_price"), rent_min: n("rent_min"), rent_max: n("rent_max"),
       inst_enabled: f.get("inst_enabled") === "on", cash_enabled: f.get("cash_enabled") === "on", cash_price: n("cash_price"),
       position: n("position"), visible: f.get("visible") === "1",
+      price_source: f.get("price_source"), price_ton: Number(String(f.get("price_ton") || "").replace(",", ".")) || null, price_manual: n("price_manual") || null,
+      down_mode: f.get("down_mode"), down_manual: n("down_manual"),
     };
     if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) {
       const box = $("#ofErr"); const m = "Kamida bittasini belgilang: Ijaraga olish, Bo'lib to'lab sotib olish yoki Naqd sotib olish";

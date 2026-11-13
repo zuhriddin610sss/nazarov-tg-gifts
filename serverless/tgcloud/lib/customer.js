@@ -7,6 +7,7 @@ import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, su
 import { notifyNewOrder, receiptButtons } from 'lib/notify';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
+import { ownSaleQuote, monthlyPayment } from 'lib/calc';
 
 const LANGS = ['uz', 'ru', 'en', 'zh'];
 const RENT = { gift_rent: 'gifts', username_rent: 'usernames', number_rent: 'numbers' };
@@ -63,6 +64,7 @@ export const actions = {
     return {
       services: s.services_enabled, starsPrice: s.stars_price, starsMin: s.stars_min, premiumPrices: s.premium_prices,
       rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
+      instMarkupYear: s.inst_markup_year,
     };
   },
 
@@ -99,7 +101,14 @@ export const actions = {
   async ownList(i) {
     const kind = ['gifts', 'usernames', 'numbers'].includes(i.category) ? i.category : null;
     const rows = await all(`SELECT * FROM own_products WHERE visible = 1 AND (:k IS NULL OR kind = :k) ORDER BY position, id DESC LIMIT 100`, { k: kind });
-    return rows.map(ownOut);
+    const s = await getSettings();
+    const out = [];
+    for (const p of rows) {
+      const o = ownOut(p);
+      if (p.inst_enabled) { const q = await ownSaleQuote(p, s); o.salePrice = q.price; o.down1 = q.down1; }
+      out.push(o);
+    }
+    return out;
   },
 
   async giftCollections() { return giftCollections(); },
@@ -155,24 +164,26 @@ export const actions = {
         const days = int(i.days, { min: 1, max: 3650, name: 'days' });
         if (days < p.rent_min || days > p.rent_max) throw fail('BAD_DURATION', { minDays: p.rent_min, maxDays: p.rent_max });
         const price = Number(p.rent_price) * days;
-        o = { service: OWN_RENT[p.kind], title: `${p.name} — ${days} kun`, installmentType: null, price: method === 'cash' ? price : null,
+        o = { service: OWN_RENT[p.kind], title: `${p.name} — ${days} kun`, installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? price : null, estBase: price,
           details: { own: p.id, name: p.name, days, ...(method === 'installment' ? { quotedPrice: price } : {}) } };
       } else if (i.ownMode === 'buy') {
         if (method === 'cash' && !(p.cash_enabled && p.cash_price)) throw fail('VALIDATION', { field: 'paymentMethod' });
         if (method === 'installment' && !p.inst_enabled) throw fail('VALIDATION', { field: 'paymentMethod' });
+        const q = method === 'installment' ? await ownSaleQuote(p, s) : null;
         o = { service: 'nft_gift', title: `${p.name} — sotib olish`, installmentType: itype(['plan1', 'plan2', 'uzum']),
+          estBase: q && q.price ? toTiyin(q.price) : null, down1: q ? q.down1 : null,
           price: method === 'cash' ? Number(p.cash_price) : null,
           details: { own: p.id, sale: true, kind: p.kind, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined } };
       } else throw fail('VALIDATION', { field: 'ownMode' });
     } else if (service === 'premium') {
       if (!PREMIUM_PLANS.includes(i.plan)) throw fail('VALIDATION', { field: 'plan' });
       o = { service, title: `Telegram Premium — ${PREMIUM_LABEL[i.plan]}`, details: { plan: i.plan }, recipient: recipient(i.recipient),
-        installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? toTiyin(s.premium_prices[i.plan]) : null };
+        installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? toTiyin(s.premium_prices[i.plan]) : null, estBase: toTiyin(s.premium_prices[i.plan]) };
     } else if (service === 'stars') {
       const q = int(i.quantity, { min: 1, max: 1000000, name: 'quantity' });
       if (q < s.stars_min) throw fail('STARS_MIN', { min: s.stars_min });
       o = { service, title: `Telegram Stars — ${q} ta`, details: { quantity: q }, recipient: recipient(i.recipient),
-        installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? starsPriceTiyin(q, s) : null };
+        installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? starsPriceTiyin(q, s) : null, estBase: starsPriceTiyin(q, s) };
     } else if (service === 'nft_gift') {
       if (method !== 'installment') throw fail('VALIDATION', { field: 'paymentMethod' });
       const name = str(i.giftName, 120), link = str(i.giftLink, 300), image = str(i.giftImage, 300);
@@ -187,7 +198,7 @@ export const actions = {
       if (days < minDays || days > maxDays) throw fail('BAD_DURATION', { minDays, maxDays });
       const P = rentTotalTon(item.price_per_day, days);
       const price = rentPriceTiyin(P, s.rent_formula);
-      o = { service, title: `${item.nft_name} — ${days} kun`, installmentType: null, cost: rentCostTiyin(P, s.rent_formula),
+      o = { service, title: `${item.nft_name} — ${days} kun`, installmentType: itype(['plan2', 'uzum']), cost: rentCostTiyin(P, s.rent_formula), estBase: price,
         price: method === 'cash' ? price : null,
         details: { address: item.nft_address, name: item.nft_name, days, pricePerDayNano: String(item.price_per_day), marketappTotalTon: P,
           attributes: item.attributes, formula: s.rent_formula, ...(method === 'installment' ? { quotedPrice: price } : {}) } };
@@ -202,7 +213,14 @@ export const actions = {
         if (!Number.isFinite(dp) || dp < 0 || dp > 1000000000) throw fail('VALIDATION', { field: 'downPayment' });
         o.details.downPayment = Math.round(dp);
       }
+      if (o.installmentType === 'plan1') o.details.downPayment = o.down1 != null ? o.down1 : null;
+      // Taxminiy oylik to'lov (narxi ma'lum bo'lsa)
+      if (o.estBase && o.details.downPayment != null) {
+        const base = Math.ceil(Number(o.estBase) / 100);
+        if (o.details.downPayment < base) { const m = monthlyPayment(base, o.details.downPayment, months, s); o.details.estPrice = base; o.details.estMonthly = m.monthly; }
+      }
     }
+    delete o.estBase; delete o.down1;
 
     const r = await createOrder({ ...o, customerId: c.id, paymentMethod: method, idempotencyKey: key,
       promoCode: method === 'cash' && i.promoCode ? String(i.promoCode).trim().slice(0, 32) : null });

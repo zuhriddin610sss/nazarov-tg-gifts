@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -205,4 +205,17 @@ export const DDL = [
     position INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL
   )`,
+];
+
+/** Mavjud jadvallarga qo'shiladigan ustunlar (eski ma'lumotlar o'zgarmaydi). */
+export const COLUMNS = [
+  ['own_products', 'price_source', "TEXT NOT NULL DEFAULT 'manual_som'"],
+  ['own_products', 'price_ton', 'REAL'],
+  ['own_products', 'price_manual', 'INTEGER'],
+  ['own_products', 'down_mode', "TEXT NOT NULL DEFAULT 'formula'"],
+  ['own_products', 'down_manual', 'INTEGER'],
+  ['own_products', 'collection_address', 'TEXT'],
+  ['own_products', 'mk_price_ton', 'REAL'],
+  ['own_products', 'mk_ppd_nano', 'TEXT'],
+  ['own_products', 'mk_checked_at', 'INTEGER'],
 ];

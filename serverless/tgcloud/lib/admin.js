@@ -4,6 +4,9 @@ import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSe
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs } from 'lib/jobs';
+import { ownSaleQuote, monthlyPayment } from 'lib/calc';
+import { send } from 'lib/notify';
+import { money } from 'lib/texts';
 import { encode, decode } from 'lib/b64';
 
 const SERVICES = ['nft_gift', 'gift_rent', 'username_rent', 'number_rent', 'premium', 'stars'];
@@ -204,6 +207,10 @@ export const actions = {
       premium_prices: Object.fromEntries(Object.keys(DEFAULT_SETTINGS.premium_prices).map((k) => [k, n(i.premium_prices && i.premium_prices[k], 'premium_' + k, 0.01)])),
       rent_formula: { add: n(i.rent_formula && i.rent_formula.add, 'add'), mult: n(i.rent_formula && i.rent_formula.mult, 'mult', 0.0001), rate: n(i.rent_formula && i.rent_formula.rate, 'rate', 0.0001) },
       services_enabled: Object.fromEntries(SERVICES.map((k) => [k, Boolean(i.services_enabled && i.services_enabled[k])])),
+      inst_markup_year: n(i.inst_markup_year ?? DEFAULT_SETTINGS.inst_markup_year, 'inst_markup_year'),
+      down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
+        rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
+      sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
     };
     const before = await getSettings();
     await saveSettings(s);
@@ -221,11 +228,36 @@ export const actions = {
     return { audit: a.map((x) => ({ ...x, created_at: Number(x.created_at) })), errors: e.map((x) => ({ ...x, created_at: Number(x.created_at) })) };
   },
 
+  /** Buyurtmadagi boshlang'ich to'lovni qo'lda o'zgartirish; mijozga xabar boradi. */
+  async setOrderDown(i, admin) {
+    const id = int(i.id, { min: 1 });
+    const amount = Math.round(num(i.amount, { min: 0, name: 'amount' }));
+    const o = await get('SELECT o.*, c.telegram_id, c.lang FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = :id', { id });
+    if (!o) throw fail('ORDER_NOT_FOUND');
+    if (o.payment_method !== 'installment') throw fail('VALIDATION', { field: 'payment_method' });
+    const det = JSON.parse(o.details || '{}');
+    det.downPayment = amount;
+    if (det.estPrice && det.months && amount < det.estPrice) det.estMonthly = monthlyPayment(det.estPrice, amount, det.months, await getSettings()).monthly;
+    await run('UPDATE orders SET details = :d WHERE id = :id', { d: JSON.stringify(det), id });
+    await audit(admin, 'order.down', o.public_id, { amount });
+    const txt = { uz: `Buyurtma ${o.public_id}: boshlang'ich to'lov ${money(amount)} so'm`, ru: `Заказ ${o.public_id}: первоначальный взнос ${money(amount)} сум`,
+      en: `Order ${o.public_id}: down payment ${money(amount)} UZS`, zh: `订单 ${o.public_id}：首付 ${money(amount)} 苏姆` };
+    await send(o.telegram_id, (txt[o.lang] || txt.uz) + (det.estMonthly ? (o.lang === 'ru' ? `, ежемесячно ≈ ${money(det.estMonthly)} сум` : o.lang === 'en' ? `, monthly ≈ ${money(det.estMonthly)} UZS` : o.lang === 'zh' ? `，月供约 ${money(det.estMonthly)} 苏姆` : `, oyiga ≈ ${money(det.estMonthly)} so'm`) : ''));
+    return { ok: true, estMonthly: det.estMonthly || null };
+  },
+
   // ---------- O'z mahsulotlari ("Reklama") ----------
   async ownProducts() {
     const rows = await all('SELECT * FROM own_products ORDER BY position, id DESC');
-    return rows.map((p) => ({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price),
-      rent_enabled: Boolean(p.rent_enabled), inst_enabled: Boolean(p.inst_enabled), cash_enabled: Boolean(p.cash_enabled), visible: Boolean(p.visible) }));
+    const s = await getSettings();
+    const out = [];
+    for (const p of rows) {
+      const q = p.inst_enabled ? await ownSaleQuote(p, s) : { price: null, down1: null, marketPriceTon: null };
+      out.push({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price), price_manual: som(p.price_manual), down_manual: som(p.down_manual),
+        rent_enabled: Boolean(p.rent_enabled), inst_enabled: Boolean(p.inst_enabled), cash_enabled: Boolean(p.cash_enabled), visible: Boolean(p.visible),
+        quote: q });
+    }
+    return out;
   },
   async saveOwnProduct(i, admin) {
     const kind = ['gifts', 'usernames', 'numbers'].includes(i.kind) ? i.kind : null;
@@ -246,6 +278,11 @@ export const actions = {
       inst_enabled: i.inst_enabled ? 1 : 0, cash_enabled: cashOn ? 1 : 0,
       cash_price: cashOn ? toTiyin(num(i.cash_price, { min: 1, name: 'cash_price' })) : null,
       visible: i.visible === false ? 0 : 1, position: i.position ? int(i.position, { min: -1000, max: 1000 }) : 0,
+      price_source: ['model_backdrop', 'model', 'backdrop', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
+      price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
+      price_manual: i.price_source === 'manual_som' && Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
+      down_mode: i.down_mode === 'manual' ? 'manual' : 'formula',
+      down_manual: i.down_mode === 'manual' ? toTiyin(num(i.down_manual, { min: 0, name: 'down_manual' })) : null,
     };
     if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });
     if (rentOn && p.rent_max < p.rent_min) throw fail('VALIDATION', { field: 'rent_max' });
@@ -254,13 +291,15 @@ export const actions = {
     if (id) {
       const r = await run(`UPDATE own_products SET kind=:kind, name=:name, image=:image, model=:model, backdrop=:backdrop, symbol=:symbol,
           rent_enabled=:rent_enabled, rent_price=:rent_price, rent_min=:rent_min, rent_max=:rent_max, inst_enabled=:inst_enabled,
-          cash_enabled=:cash_enabled, cash_price=:cash_price, visible=:visible, position=:position WHERE id = :id`, { ...p, id });
+          cash_enabled=:cash_enabled, cash_price=:cash_price, visible=:visible, position=:position,
+          price_source=:price_source, price_ton=:price_ton, price_manual=:price_manual, down_mode=:down_mode, down_manual=:down_manual,
+          collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
       if (r.rowsAffected !== 1) throw fail('NOT_FOUND');
     } else {
       await run(`INSERT INTO own_products (kind, name, image, model, backdrop, symbol, rent_enabled, rent_price, rent_min, rent_max,
-          inst_enabled, cash_enabled, cash_price, visible, position, created_at)
+          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual)
           VALUES (:kind, :name, :image, :model, :backdrop, :symbol, :rent_enabled, :rent_price, :rent_min, :rent_max,
-          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now)`, { ...p, now: Date.now() });
+          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual)`, { ...p, now: Date.now() });
     }
     await audit(admin, 'own.save', id ? String(id) : p.name);
     return { ok: true };
