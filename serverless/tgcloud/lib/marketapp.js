@@ -43,7 +43,7 @@ const SORTS = ['price_per_day', 'min_price', 'duration_asc', 'duration_desc', 'i
 /** Ijara katalogi. Ko'rilgan e'lonlar bazaga yoziladi: buyurtma paytida narx shu yozuvdan tekshiriladi. */
 export async function listRent(category, opts = {}) {
   if (!CATS.includes(category)) throw fail('VALIDATION', { field: 'category' });
-  const q = { limit: 24 };
+  const q = { limit: 100 };
   if (opts.cursor) q.cursor = String(opts.cursor).slice(0, 200);
   if (SORTS.includes(opts.sort_by)) q.sort_by = opts.sort_by;
   if (category === 'gifts') for (const k of ['collection_address', 'model', 'backdrop', 'symbol']) if (opts[k]) q[k] = String(opts[k]).slice(0, 100);

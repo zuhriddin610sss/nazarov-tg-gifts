@@ -696,6 +696,9 @@ async function loadRent(cat, more) {
   const r = await api(`/api/rent/${cat}?${qs}`);
   st.formula = r.formula;
   st.items = more ? st.items.concat(r.items) : r.items;
+  // Ilovadagi narx (formula bilan) Marketapp'nikidan farq qiladi: shu narx bo'yicha arzonidan tartiblaymiz
+  if (st.sort === "price_per_day") st.items.sort((a, b) => bestPerDay(a, st.formula) - bestPerDay(b, st.formula));
+  if (st.sort === "min_price") st.items.sort((a, b) => itemPrice(a, st.formula, a.minDays) - itemPrice(b, st.formula, b.minDays));
   st.cursor = r.cursor; st.loaded = true; st.error = null;
 }
 const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
