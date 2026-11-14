@@ -70,6 +70,20 @@ export async function rentListingFor(collectionAddress, name, attrs) {
 }
 
 /**
+ * Istalgan gift uchun 1-tur boshlang'ich to'lovi (so'm): Marketapp'dagi shu giftning ijara narxidan formula bilan.
+ * Gift ijarada bo'lmasa yoki Marketapp ulanmagan bo'lsa null (admin o'zi yozadi).
+ */
+export async function giftDown1(name, attrs, s) {
+  try {
+    if (!(await marketappConfigured())) return null;
+    const c = await collectionByName(splitGiftName(name).collection);
+    if (!c) return null;
+    const r = await rentListingFor(c.address, name, attrs || {});
+    return r ? downByFormula(r.price_per_day, s) : null;
+  } catch (e) { return null; }
+}
+
+/**
  * O'z mahsulotining sotuv narxi va 1-tur boshlang'ich to'lovi (so'm). Marketapp ma'lumoti 30 daqiqa keshlanadi.
  * { price: so'm|null, down1: so'm|null }
  */

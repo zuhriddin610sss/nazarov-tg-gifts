@@ -394,7 +394,9 @@ function instCta(d) {
     if (d.dp === "yes" && !(Number(d.dpAmt) > 0)) return t("cta_dp_amt");
   }
   const r = instCalc(d);
-  return r ? `${t("inst_monthly")} ≈ ${som(r.monthly)}` : t("price_by_admin");
+  if (r) return `${t("inst_monthly")} ≈ ${som(r.monthly)}`;
+  const c = d._ctx ? d._ctx() : {};
+  return d.itype === "plan1" && c.base > 0 && c.down1 == null ? t("down_by_admin") : t("price_by_admin");
 }
 /** Mijozga faqat boshlang'ich va oylik to'lov (taxminiy) ko'rsatiladi. */
 function instSummary(d) {
@@ -1049,13 +1051,19 @@ function viewSaleItem(v) {
   const it = p.item;
   const canInst = saleInstOk(it.price);
   if (!canInst) p.pay = "cash";
-  p._ctx = () => ({ base: it.price });
+  p._ctx = () => ({ base: it.price, down1: it.down1 ?? null });
+  // 1-tur boshlang'ich to'lovi: Marketapp formulasi bo'yicha (bir marta so'raladi); topilmasa "admin aytadi"
+  if (canInst && it.down1 === undefined) {
+    it.down1 = null;
+    call("saleDown1", { name: saleLabel(it), model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined })
+      .then((r) => { it.down1 = r.down1; if (r.down1 != null && S.salePick === p && location.hash.slice(1) === "sale-item") render(); }).catch(() => {});
+  }
   const attrs = [["model", it.model], ["backdrop", it.backdrop], ["f_symbol", it.symbol]].filter(([, x]) => x);
   const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));
   v.innerHTML = `<div class="hero-img">${saleImg(it)}</div>
     <h1 class="page-title" style="text-align:center">${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <span class="num">#${esc(it.num)}</span>` : ""}</h1>
     ${attrs.length ? `<div class="attrs" style="justify-content:center">${attrs.map(([k, x]) => `<span>${esc(t(k))}: ${esc(x)}</span>`).join("")}</div>` : ""}
-    ${canInst ? payStep(1, p, ["plan2", "uzum"]) : `<section class="step">${stepHead(1, t("step_pay"))}
+    ${canInst ? payStep(1, p, ["plan1", "plan2", "uzum"]) : `<section class="step">${stepHead(1, t("step_pay"))}
       <div class="opts" role="radiogroup">${opt("cash", t("pay_full"), t("pay_full_note"), som(it.price), true, "pay")}</div></section>`}
     <p class="hint">${esc(t("sale_hint"))}</p>
     <div class="cta">

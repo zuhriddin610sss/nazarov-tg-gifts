@@ -8,7 +8,7 @@ import { notifyNewOrder, receiptButtons, notifyNewListing } from 'lib/notify';
 import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
-import { ownSaleQuote, monthlyPayment } from 'lib/calc';
+import { ownSaleQuote, monthlyPayment, giftDown1 } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames } from 'lib/portals';
 
 /** Portals narxidan mijoz narxi (so'm): (TON + add) × rate, yuqoriga yaxlitlanadi. */
@@ -174,6 +174,12 @@ export const actions = {
     await notifyNewListing(Number((r.rows && r.rows[0] && r.rows[0].id) ?? r.lastInsertRowid));
     return { ok: true };
   },
+  /** "Sotuvda" gift uchun 1-tur boshlang'ich to'lovi (formula). Topilmasa null: admin yozadi. */
+  async saleDown1(i) {
+    const s = await getSettings();
+    const name = str(i.name, 120, { required: true });
+    return { down1: await giftDown1(name, { model: str(i.model, 80) || null, backdrop: str(i.backdrop, 80) || null, symbol: str(i.symbol, 80) || null }, s) };
+  },
   async portalsCollections() {
     if (!(await portalsConfigured())) return [];
     return portalsCollectionNames();
@@ -262,8 +268,10 @@ export const actions = {
       if (method === 'installment' && !(s.sale_inst.enabled && price <= Number(s.sale_inst.max))) throw fail('VALIDATION', { field: 'paymentMethod' });
       const label = `${it.name}${it.num != null && !/#\d+$/.test(it.name) ? ' #' + it.num : ''}`;
       const seller = listing ? await get('SELECT username, phone FROM customers WHERE id = :id', { id: listing.customer_id }) : null;
-      o = { service: 'nft_gift', title: `${label} — sotib olish`, installmentType: itype(['plan2', 'uzum']),
+      const ty = itype(['plan1', 'plan2', 'uzum']);
+      o = { service: 'nft_gift', title: `${label} — sotib olish`, installmentType: ty,
         price: method === 'cash' ? toTiyin(price) : null, estBase: toTiyin(price),
+        down1: ty === 'plan1' ? await giftDown1(label, { model: it.model, backdrop: it.backdrop, symbol: it.symbol }, s) : null,
         details: { ...(listing ? { listing: listing.id, seller: seller && seller.username ? '@' + seller.username : (seller && seller.phone) || `mijoz #${listing.customer_id}`, link: listing.link }
           : { portals: it.id, ton: it.ton }), name: label, model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined, sale: true,
           ...(method === 'installment' ? { quotedPrice: toTiyin(price) } : {}) } };

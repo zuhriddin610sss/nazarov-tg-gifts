@@ -467,6 +467,12 @@ test("Sotuvda: filtrlar Portals'ga uzatiladi; bo'lib to'lash yoqilsa faqat chega
   const o = (await admin({ action: 'orders', search: ok.publicId }))[0];
   assert.equal(o.details.estMonthly, Math.ceil(Math.ceil(171700 * 1.5) / 6));
   assert.equal(await code(app({ action: 'createOrder', service: 'portals', portalsId: 'b', paymentMethod: 'installment', installmentType: 'plan2', months: 6, downPayment: 0, idempotencyKey: key() })), 'VALIDATION');
+  // 1-tur: Marketapp ulanmagan -> boshlang'ich to'lovni admin yozadi
+  const p1 = await app({ action: 'createOrder', service: 'portals', portalsId: 'a', paymentMethod: 'installment', installmentType: 'plan1', months: 3, idempotencyKey: key() });
+  const o1 = (await admin({ action: 'orders', search: p1.publicId }))[0];
+  assert.equal(o1.installment_type, 'plan1');
+  assert.equal(o1.details.downPayment, null);
+  assert.deepEqual(await app({ action: 'saleDown1', name: 'Trapped Heart #1' }), { down1: null });
 });
 
 test("haftalik Excel hisobot: dushanba 09:00 dan keyin bir marta, .xlsx fayl", async () => {
@@ -487,4 +493,22 @@ test("haftalik Excel hisobot: dushanba 09:00 dan keyin bir marta, .xlsx fayl", a
   const bytes = doc.params.document.bytes;
   assert.equal(String.fromCharCode(bytes[0], bytes[1]), 'PK');
   if (bytes) { const fs = await import('node:fs'); fs.writeFileSync(process.env.XLSX_OUT || '/dev/null', Buffer.from(bytes)); }
+});
+
+test("Sotuvda 1-tur: gift Marketapp ijarasida bo'lsa, boshlang'ich to'lov formula bilan", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST', portalsKey: 'portals_K', sale_inst: { enabled: true, max: 1000000 } });
+  setFetch(async (url) => {
+    const u = String(url);
+    let body = {};
+    if (u.includes('portal-market.com')) body = { total_count: 1, results: [{ id: 'z', name: 'Trapped Heart', external_collection_number: 6329, price: '10', status: 'listed', attributes: [] }] };
+    else if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [{ nft_address: 'EQ_X', nft_name: 'Trapped Heart #6329', price_per_day: '20000000', max_duration: 2592000, min_duration: 86400, attributes: [] }] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  assert.deepEqual(await app({ action: 'saleDown1', name: 'Trapped Heart #6329' }), { down1: 51000 });
+  const r = await app({ action: 'createOrder', service: 'portals', portalsId: 'z', paymentMethod: 'installment', installmentType: 'plan1', months: 6, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(o.details.downPayment, 51000);
+  assert.equal(o.details.estMonthly, Math.ceil(Math.ceil((171700 - 51000) * 1.5) / 6));
 });
