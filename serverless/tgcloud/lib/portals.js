@@ -34,12 +34,19 @@ async function request(path, query) {
   }
 }
 
-/** Javobdan narxlar ro'yxatini ajratib olish (bir nechta ehtimoliy shakl). */
-function pickPrices(data) {
+const low = (x) => String(x || '').trim().toLowerCase();
+const attrVal = (it, type) => { const a = (it.attributes || []).find((x) => low(x.type || x.trait_type) === type); return a ? low(a.value) : null; };
+/** Javobdan narxlar ro'yxatini ajratib olish. want berilsa, faqat nomi/modeli/foni mos keladiganlar olinadi. */
+function pickPrices(data, want) {
   const arr = Array.isArray(data) ? data : data && (data.results || data.items || data.nfts || data.data || data.listings);
   if (!Array.isArray(arr)) return [];
   const out = [];
   for (const it of arr) {
+    if (want && it) {
+      if (want.collection && low(it.name).replace(/\s*#\s*\d+$/, '') !== low(want.collection)) continue;
+      if (want.model && attrVal(it, 'model') !== low(want.model)) continue;
+      if (want.backdrop && attrVal(it, 'backdrop') !== low(want.backdrop)) continue;
+    }
     const v = it && (it.price ?? it.floor_price ?? it.min_price ?? it.ton_price ?? (it.listing && it.listing.price));
     const n = Number(v);
     if (Number.isFinite(n) && n > 0) out.push(n > 1e6 ? n / 1e9 : n); // nanoTON bo'lsa TON ga
@@ -54,7 +61,7 @@ export async function portalsFloor(attrs) {
     filter_by_collections: attrs.collection, filter_by_models: attrs.model, filter_by_backdrops: attrs.backdrop, filter_by_symbols: attrs.symbol,
   });
   if (!r.ok) { await logError('portals', `${r.status} ${r.url.replace(/\?.*$/, '')}: ${String(r.text).slice(0, 300)}`); return null; }
-  try { const p = pickPrices(JSON.parse(r.text)); return p.length ? Math.min(...p) : null; } catch (e) { return null; }
+  try { const p = pickPrices(JSON.parse(r.text), attrs); return p.length ? Math.min(...p) : null; } catch (e) { return null; }
 }
 
 /** /portals buyrug'i uchun: so'rov va javobni ko'rsatish (kalitsiz). */
@@ -63,7 +70,7 @@ export async function portalsDebug(attrs) {
     offset: 0, limit: 3, sort_by: 'price asc', status: 'listed',
     filter_by_collections: attrs.collection, filter_by_models: attrs.model, filter_by_backdrops: attrs.backdrop,
   });
-  let prices = [];
-  try { prices = pickPrices(JSON.parse(r.text)); } catch (e) { /* JSON emas */ }
-  return [`Portals so'rovi: ${r.url}`, `Javob kodi: ${r.status}`, `Topilgan narxlar (TON): ${prices.length ? prices.join(', ') : 'yo\'q'}`, '', 'Javob (boshi):', r.text.slice(0, 700)].join('\n');
+  let prices = [], all = [];
+  try { all = pickPrices(JSON.parse(r.text)); prices = pickPrices(JSON.parse(r.text), attrs); } catch (e) { /* JSON emas */ }
+  return [`Portals so'rovi: ${r.url}`, `Javob kodi: ${r.status}`, `Mos keladigan narxlar (TON): ${prices.length ? prices.join(', ') : 'yo\'q'}`, `Javobdagi barcha narxlar: ${all.length ? all.join(', ') : 'yo\'q'}`, '', 'Javob (boshi):', r.text.slice(0, 700)].join('\n');
 }
