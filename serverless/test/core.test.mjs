@@ -329,3 +329,29 @@ test("o'z sovg'asi narxi: model + fon topilmasa, model bo'yicha olinadi (zanjirl
   assert.equal(p.quote.price, 680000); // 40 TON × 17 000
   assert.equal(p.quote.by, 'model');
 });
+
+test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 'eng arzoni' Marketapp va Portals'ni solishtiradi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST', portalsKey: 'portals_SECRETKEY123' });
+  assert.equal((await admin({ action: 'settings' })).portalsKeySet, true);
+  let auth = null;
+  setFetch(async (url, opts) => {
+    const u = String(url);
+    let body = {};
+    if (u.includes('portals-market.com')) { auth = opts.headers.Authorization; body = { results: [{ price: '18.5' }, { price: '25' }] }; }
+    else if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/gifts/onsale/')) body = { cursor: null, items: [{ min_bid: '40000000000' }] };
+    else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  sent.length = 0;
+  await messageHandler({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Admin' }, text: '/portals Trapped Heart | Crime Scene | Persimmon' });
+  const txt = sent.map((m) => m.params.text || '').join('\n');
+  assert.match(txt, /Javob kodi: 200/);
+  assert.match(txt, /18\.5, 25/);
+  assert.ok(!txt.includes('SECRETKEY'), 'kalit ko\'rinmasligi kerak');
+  assert.equal(auth, 'Bearer portals_SECRETKEY123');
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #777', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'best', down_mode: 'manual', down_manual: 1 });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #777');
+  assert.equal(p.quote.price, Math.ceil(18.5 * 17000));
+  assert.equal(p.quote.by, 'portals_model_backdrop');
+});

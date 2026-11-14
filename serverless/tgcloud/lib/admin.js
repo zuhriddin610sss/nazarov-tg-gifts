@@ -195,7 +195,7 @@ export const actions = {
 
   async settings() {
     const s = await getSettings();
-    return { ...s, marketappTokenSet: Boolean(await getSecret('marketapp_token')) };
+    return { ...s, marketappTokenSet: Boolean(await getSecret('marketapp_token')), portalsKeySet: Boolean(await getSecret('portals_key')) };
   },
   async saveSettings(i, admin) {
     const n = (v, name, min = 0) => num(v, { min, name });
@@ -211,9 +211,14 @@ export const actions = {
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
+      portals_base: /^https:\/\/[^\s]+$/.test(String(i.portals_base || '')) ? String(i.portals_base).trim().slice(0, 200) : DEFAULT_SETTINGS.portals_base,
     };
     const before = await getSettings();
     await saveSettings(s);
+    if (typeof i.portalsKey === 'string' && i.portalsKey.trim()) {
+      await setSecret('portals_key', i.portalsKey.trim().replace(/^bearer\s+/i, '').slice(0, 500));
+      await audit(admin, 'settings.portals_key', null, { set: true });
+    }
     if (typeof i.marketappToken === 'string' && i.marketappToken.trim()) {
       await setSecret('marketapp_token', i.marketappToken.trim().slice(0, 500));
       await audit(admin, 'settings.marketapp_token', null, { set: true });
@@ -278,7 +283,7 @@ export const actions = {
       inst_enabled: i.inst_enabled ? 1 : 0, cash_enabled: cashOn ? 1 : 0,
       cash_price: cashOn ? toTiyin(num(i.cash_price, { min: 1, name: 'cash_price' })) : null,
       visible: i.visible === false ? 0 : 1, position: i.position ? int(i.position, { min: -1000, max: 1000 }) : 0,
-      price_source: ['model_backdrop', 'model', 'backdrop', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
+      price_source: ['model_backdrop', 'model', 'backdrop', 'portals_model_backdrop', 'portals_model', 'portals_backdrop', 'best', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
       price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
       price_manual: i.price_source === 'manual_som' && Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
       down_mode: i.down_mode === 'manual' ? 'manual' : 'formula',

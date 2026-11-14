@@ -434,6 +434,10 @@ async function settings(v) {
     <div class="section"><h2>Marketapp</h2><div class="form">
       <div class="field full"><label>Marketapp API tokeni ${s.marketappTokenSet ? "(saqlangan ✓ — almashtirish uchun yangisini yozing)" : "(hali kiritilmagan)"}</label>
         <input class="input" name="marketapp_token" type="password" autocomplete="off" placeholder="${s.marketappTokenSet ? "••••••••" : "Tokenni shu yerga qo'ying"}"></div>
+      <div class="field full"><label>Portals API kaliti (sinov) ${s.portalsKeySet ? "(saqlangan ✓ — almashtirish uchun yangisini yozing)" : "(hali kiritilmagan)"}</label>
+        <input class="input" name="portals_key" type="password" autocomplete="off" placeholder="${s.portalsKeySet ? "••••••••" : "portals_... kalitni shu yerga qo'ying"}"></div>
+      <div class="field full"><label>Portals API manzili (o'zgartirmang, kerak bo'lsa aytaman)</label>
+        <input class="input" name="portals_base" autocomplete="off" value="${esc(s.portals_base || "")}"></div>
     </div><p class="hint">Token faqat serverda saqlanadi va bu yerda qayta ko'rsatilmaydi.</p></div>
     <div class="section"><h2>Narxlar</h2><div class="form">
       <div class="field"><label>1 star narxi (so'm)</label><input class="input" name="stars_price" value="${esc(s.stars_price)}"></div>
@@ -473,6 +477,8 @@ async function settings(v) {
       down_formula: { days: n("df_days"), add: n("df_add"), rate: n("df_rate"), mult: n("df_mult") },
       services_enabled: Object.fromEntries(Object.keys(svcL).map((k) => [k, f.get("se_" + k) === "on"])),
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,
+      portalsKey: String(f.get("portals_key") || "").trim() || undefined,
+      portals_base: String(f.get("portals_base") || "").trim(),
     };
     try { await api("/api/admin/settings", { method: "PUT", body }); toast("Saqlandi"); } catch (er) { toast(er.message); }
   };
@@ -544,7 +550,8 @@ async function logs(v) {
 
 // ---------- O'z mahsulotlari ("Reklama") ----------
 const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqam" };
-const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm" };
+const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni",
+  portals_model_backdrop: "Portals: model + fon", portals_model: "Portals: model", portals_backdrop: "Portals: fon", portals_collection: "Portals: kolleksiya", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm" };
 const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)" };
 async function own(v) {
   const rows = await api("/api/admin/own");
@@ -585,7 +592,7 @@ function ownForm(p) {
       <div class="field"><label>Ijara: eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 30)}"></div>
       <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
       <div class="field full"><label>Bo'lib to'lash uchun narx qayerdan olinsin?</label>
-        <select class="input" name="price_source">${[["model_backdrop", "Marketapp: model + fon eng arzoni × kurs"], ["model", "Marketapp: model eng arzoni × kurs"], ["backdrop", "Marketapp: fon eng arzoni × kurs"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
+        <select class="input" name="price_source">${[["model_backdrop", "Marketapp: model + fon eng arzoni × kurs"], ["model", "Marketapp: model eng arzoni × kurs"], ["backdrop", "Marketapp: fon eng arzoni × kurs"], ["portals_model_backdrop", "Portals (sinov): model + fon eng arzoni × kurs"], ["portals_model", "Portals (sinov): model eng arzoni × kurs"], ["portals_backdrop", "Portals (sinov): fon eng arzoni × kurs"], ["best", "Eng arzoni: Marketapp yoki Portals × kurs"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
           .map(([k, l]) => `<option value="${k}" ${(p.price_source || "manual_som") === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="field"><label>Narx, TON (qo'lda TON tanlansa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
       <div class="field"><label>Narx, so'm (qo'lda so'm tanlansa)</label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>

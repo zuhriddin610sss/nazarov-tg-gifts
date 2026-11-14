@@ -4,6 +4,7 @@ import { getSettings, logError } from 'lib/core';
 import { money } from 'lib/texts';
 import { marketappConfigured, listRent, giftOnSaleByNumber, toTon } from 'lib/marketapp';
 import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
+import { portalsConfigured, portalsDebug, portalsFloor } from 'lib/portals';
 import { collectionByName, floorPrice, rentListingFor, downByFormula, monthlyPayment, markupPercent, splitGiftName } from 'lib/calc';
 
 export const ADMIN_HELP = [
@@ -11,6 +12,7 @@ export const ADMIN_HELP = [
   '• Sovg\'a havolasini yuboring (t.me/nft/TrappedHeart-19604): bozor narxi, ijara narxi va 1-tur boshlang\'ich to\'lovi',
   '• /narx Trapped Heart | Crime Scene | Persimmon: nomi, model va fon bo\'yicha',
   '• /hisob 1000000 6 200000: narx, oy, boshlang\'ich to\'lov bo\'yicha oylik to\'lov',
+  '• /portals Trapped Heart | Crime Scene | Persimmon: Portals javobini tekshirish (sinov)',
 ].join('\n');
 
 const num = (s) => Number(String(s).replace(/[\s,_']/g, ''));
@@ -55,6 +57,10 @@ async function priceReport(name, attrs) {
     if (by !== 'collection' && ((by !== 'backdrop' && !attrs.model) || (by !== 'model' && !attrs.backdrop))) continue;
     const t = await floorPrice(col.address, attrs, by === 'collection' ? null : by);
     L.push(`• ${label}: ${t ? `${ton(t)} ≈ ${som(Math.ceil(t * Number(s.sale_rate)))}` : 'sotuvda yo\'q'}`);
+  }
+  if (await portalsConfigured()) {
+    const pt = await portalsFloor({ collection, model: attrs.model, backdrop: attrs.backdrop });
+    L.push(`• Portals (model + fon, sinov): ${pt ? `${ton(pt)} ≈ ${som(Math.ceil(pt * Number(s.sale_rate)))}` : 'topilmadi'}`);
   }
   L.push('');
   const own = await rentListingFor(col.address, name, attrs);
@@ -104,6 +110,12 @@ export async function handleAdminText(text) {
       if (!parts.length) return 'Masalan: /narx Trapped Heart | Crime Scene | Persimmon';
       const name = /#\d+$/.test(parts[0]) ? parts[0] : parts[0];
       return priceReport(name, { model: parts[1] || null, backdrop: parts[2] || null, symbol: parts[3] || null });
+    }
+    if (/^\/portals\b/i.test(t)) {
+      if (!(await portalsConfigured())) return 'Portals kaliti kiritilmagan: Admin panel → Sozlamalar → Portals API kaliti.';
+      const parts = t.replace(/^\/portals\s*/i, '').split('|').map((x) => x.trim()).filter(Boolean);
+      if (!parts.length) return 'Masalan: /portals Trapped Heart | Crime Scene | Persimmon';
+      return portalsDebug({ collection: splitGiftName(parts[0]).collection, model: parts[1] || null, backdrop: parts[2] || null });
     }
     if (/^\/(yordam|buyruqlar)\b/i.test(t)) return ADMIN_HELP;
   } catch (e) {

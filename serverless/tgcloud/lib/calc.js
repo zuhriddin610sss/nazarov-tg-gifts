@@ -1,6 +1,7 @@
 // Bo'lib to'lash hisobi va narx manbalari. Barcha summalar so'mda (butun son, yuqoriga yaxlitlangan).
 import { get, run, nowMs, logError } from 'lib/core';
 import { giftsOnSaleFloor, listRent, giftCollections, marketappConfigured } from 'lib/marketapp';
+import { portalsFloor, portalsConfigured } from 'lib/portals';
 
 /** Ustama foizi: oy soni × (yillik ustama / 12). 3 oy -> 25, 6 oy -> 50, 12 oy -> 100. */
 export function markupPercent(months, s) {
@@ -75,7 +76,10 @@ export async function rentListingFor(collectionAddress, name, attrs) {
 export async function ownSaleQuote(p, s, { fresh = false } = {}) {
   const attrs = { model: p.model, backdrop: p.backdrop, symbol: p.symbol };
   const src = p.price_source || 'manual_som';
-  const needMarket = ['model_backdrop', 'model', 'backdrop'].includes(src) || p.down_mode !== 'manual';
+  const MK = ['model_backdrop', 'model', 'backdrop'], PT = ['portals_model_backdrop', 'portals_model', 'portals_backdrop'];
+  const CHAIN = { model_backdrop: ['model_backdrop', 'model', 'backdrop', 'collection'], model: ['model', 'backdrop', 'collection'], backdrop: ['backdrop', 'collection'] };
+  const needMarket = MK.includes(src) || src === 'best' || p.down_mode !== 'manual';
+  const usesMarketPrice = MK.includes(src) || PT.includes(src) || src === 'best';
   let mkPrice = p.mk_price_ton, mkPpd = p.mk_ppd_nano, mkBy = p.mk_by || null;
   const stale = !p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000;
   if (needMarket && (stale || fresh) && p.kind === 'gifts' && (await marketappConfigured())) {
@@ -83,9 +87,9 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
       let col = p.collection_address;
       if (!col) { const c = await collectionByName(splitGiftName(p.name).collection); col = c ? c.address : null; }
       if (col) {
-        if (['model_backdrop', 'model', 'backdrop'].includes(src)) {
+        if (MK.includes(src) || src === 'best') {
           // Zanjirli qidiruv: tanlangan usulda topilmasa, kengroq usulga o'tadi
-          const chain = { model_backdrop: ['model_backdrop', 'model', 'backdrop', 'collection'], model: ['model', 'backdrop', 'collection'], backdrop: ['backdrop', 'collection'] }[src];
+          const chain = CHAIN[src === 'best' ? 'model_backdrop' : src];
           mkPrice = null; mkBy = null;
           for (const by of chain) {
             const t = await floorPrice(col, attrs, by === 'collection' ? null : by);
@@ -100,12 +104,27 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
       }
     } catch (e) { mkBy = 'error'; await logError('narx', `${p.name}: ${e && (e.description || e.message)}`); }
   }
+  // Portals (sinov): xuddi shunday zanjir, Portals narxlari bo'yicha
+  if ((PT.includes(src) || src === 'best') && (stale || fresh) && p.kind === 'gifts' && (await portalsConfigured())) {
+    const chain = CHAIN[src === 'best' ? 'model_backdrop' : src.replace('portals_', '')];
+    const collection = splitGiftName(p.name).collection;
+    let ptPrice = null, ptBy = null;
+    for (const by of chain) {
+      const a = { collection, model: ['model_backdrop', 'model'].includes(by) ? attrs.model : null, backdrop: ['model_backdrop', 'backdrop'].includes(by) ? attrs.backdrop : null };
+      if ((by === 'model_backdrop' && !(a.model && a.backdrop)) || (by === 'model' && !a.model) || (by === 'backdrop' && !a.backdrop)) continue;
+      const t = await portalsFloor(a);
+      if (t) { ptPrice = t; ptBy = by; break; }
+    }
+    if (src === 'best') { if (ptPrice && (!mkPrice || ptPrice < mkPrice)) { mkPrice = ptPrice; mkBy = 'portals_' + ptBy; } }
+    else { mkPrice = ptPrice; mkBy = ptBy ? 'portals_' + ptBy : null; }
+    await run('UPDATE own_products SET mk_price_ton = :pt, mk_by = :by, mk_checked_at = :t WHERE id = :id', { pt: mkPrice ?? null, by: mkBy, t: nowMs(), id: p.id });
+  }
   let price = null;
   if (src === 'manual_som') price = p.price_manual ? Math.ceil(Number(p.price_manual) / 100) : (p.cash_price ? Math.ceil(Number(p.cash_price) / 100) : null);
   else if (src === 'manual_ton') price = p.price_ton ? Math.ceil(Number(p.price_ton) * Number(s.sale_rate)) : null;
-  else price = mkPrice ? Math.ceil(Number(mkPrice) * Number(s.sale_rate)) : null;
+  else if (usesMarketPrice) price = mkPrice ? Math.ceil(Number(mkPrice) * Number(s.sale_rate)) : null;
   let down1 = null;
   if (p.down_mode === 'manual') down1 = p.down_manual ? Math.ceil(Number(p.down_manual) / 100) : null;
   else if (mkPpd) down1 = downByFormula(mkPpd, s);
-  return { price, down1, marketPriceTon: mkPrice ?? null, by: ['model_backdrop', 'model', 'backdrop'].includes(src) ? mkBy : src };
+  return { price, down1, marketPriceTon: mkPrice ?? null, by: usesMarketPrice ? mkBy : src };
 }
