@@ -313,3 +313,19 @@ test("admin bot: sovg'a havolasi bo'yicha bozor narxi, ijara va 1-tur boshlang'i
   await messageHandler({ chat: { id: 5001, type: 'private' }, from: user, text: '/hisob 1000000 6' });
   assert.ok(!sent.some((m) => /oyiga/.test(m.params.text || '')), 'mijozga kalkulyator ishlamaydi');
 });
+
+test("o'z sovg'asi narxi: model + fon topilmasa, model bo'yicha olinadi (zanjirli qidiruv)", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST' });
+  setFetch(async (url) => {
+    const u = String(url);
+    let body = {};
+    if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/gifts/onsale/')) body = { cursor: null, items: u.includes('backdrop=') && u.includes('model=') ? [] : u.includes('model=') ? [{ min_bid: '40000000000' }] : [] };
+    else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #19604', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'model_backdrop', down_mode: 'manual', down_manual: 100000 });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #19604');
+  assert.equal(p.quote.price, 680000); // 40 TON × 17 000
+  assert.equal(p.quote.by, 'model');
+});

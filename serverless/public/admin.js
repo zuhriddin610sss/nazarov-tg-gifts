@@ -544,6 +544,8 @@ async function logs(v) {
 
 // ---------- O'z mahsulotlari ("Reklama") ----------
 const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqam" };
+const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm" };
+const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)" };
 async function own(v) {
   const rows = await api("/api/admin/own");
   v.innerHTML = `<h1>Mening mahsulotlarim</h1>
@@ -553,7 +555,7 @@ async function own(v) {
     ${rows.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>
       <td>${p.rent_enabled ? `${esc(money(p.rent_price))}/kun<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
-      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))}</small>` : `<br><small class="hint">1-tur: admin</small>`) : '<span class="over">narx topilmadi</span>') : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))}</small>` : `<br><small class="hint">1-tur: admin</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": Marketapp'da sotuvda yo'q" : ""}</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}
