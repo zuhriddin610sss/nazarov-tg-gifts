@@ -25,6 +25,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 ## Platforma
 - Bot **Telegram BotFather Serverless** (tgcloud) da ishlaydi.
 - Kod `@tgcloud/cli` orqali yuklanadi: `npx.cmd tgcloud login`, keyin `npx.cmd tgcloud push tgcloud/lib tgcloud/handlers tgcloud/endpoints public --force`.
+- Mening botim: app9267870642 (Mini App: https://app9267870642.tgcloud.ai/).
 - `tgcloud/lib/config.js` ichida mening Telegram ID'im (`ADMIN_IDS = [8644718235]`) va Mini App manzili (`https://app<raqam>.tgcloud.ai/`) bo'ladi. Raqam CLI kalitining boshida turadi (`app1234567890:...`).
 - Kodni yangilash tartibi:
   1. GitHub'dan zip yuklab olinadi (`Invoke-WebRequest ... -OutFile bot.zip`).
@@ -81,6 +82,9 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Balansni faqat admin to'ldiradi (karta yoki chek yuklash yo'q).
 - Referal va admin 2FA kerak emas.
 - Bo'lib to'lashda oylik to'lov eslatmalari bor.
+- Kalitlar (admin panel → Sozlamalarda, chatga hech qachon yozilmaydi): Marketapp API tokeni, Portals Partner API kaliti.
+  - Marketapp: ijara bepul ishlaydi, sotuv narxlari (onsale) pullik (402).
+  - Portals (portal-market.com/partners, sarlavha `Authorization: partners <kalit>`): sekundiga 1 ta so'rov, faqat o'qish uchun.
 - Admin bot buyruqlari:
   - sovg'a havolasi yuborilsa yoki `/narx Nomi | Model | Fon` yozilsa: bozor narxi, ijara narxi va 1-tur boshlang'ich to'lovi;
   - `/hisob narx oy boshlang'ich`: kalkulyator.

@@ -95,9 +95,19 @@ BotFather → botingiz → **Bot Settings → Menu Button** → manzil: `https:/
 2. **Admin panel → ☰ Menyu → Sozlamalar**:
    - **Admin username:** o'z username'ingiz, `@` belgisisiz. Mijozlar "Adminga yozish" bosganda sizga tushadi.
    - **Marketapp API tokeni:** https://marketapp.org/api-token dan nusxalab qo'ying. Ijara katalogi shu bilan ishlaydi.
+   - **Portals API kaliti:** Portals Partner sahifasidan nusxalab qo'ying. "Sotuvda" bo'limi va sovg'a narxlari shu bilan ishlaydi. Kalitni hech kimga bermang.
+   - **"Portals'dagi sotuvdagi giftlar"** bo'limi:
+     - Qo'shimcha, TON: `0.6` (Portals va Telegram komissiyalari uchun);
+     - Kurs: `17000`;
+     - 1-tur formulasi qaysi ijara narxidan: odatda **Model + fon**;
+     - bo'lib to'lash kerak bo'lsa, belgini qo'ying va "… so'mgacha" chegarasini yozing.
    - Narxlar o'zi to'g'ri turadi: Stars 240 so'm (kamida 50), Premium 42 000 / 171 600 / 231 000 / 297 000 / 418 000, ijara formulasi (P + 0,15) × 2 × 19 000. Kerak bo'lsa o'zgartiring.
    - **Saqlash** ni bosing.
-3. Kerak bo'lsa: **Mening mahsulotlarim** bo'limida o'z mahsulotlaringizni qayta qo'shing.
+3. **Mening mahsulotlarim** bo'limida o'z sovg'alaringizni qayta qo'shing. Har biriga:
+   - nomi va gift havolasi (t.me/nft/...);
+   - **Model** va **Fon** (Telegram'dagidek aniq; bo'sh qolsa narx kolleksiyaning eng arzonidan olinadi);
+   - narx qayerdan olinishi (odatda Portals: model + fon);
+   - 1-tur formulasi usuli va, formula topilmasa, boshlang'ich to'lov summasi.
 
 Tayyor! Ilovani ochib sinab ko'ring.
 
@@ -105,9 +115,26 @@ Tayyor! Ilovani ochib sinab ko'ring.
 
 ## Keyinchalik yangilash (kod o'zgarganda)
 
-3-qismdagi **1, 3, 4, 5, 6, 9** buyruqlarni qayta yozasiz. `login` qayta shart emas: u shu papkada saqlanadi. Agar 2-buyruq bilan papkani o'chirgan bo'lsangiz, 7 va 8 ham kerak bo'ladi.
+Hammasi bitta blokda. Nusxalab, terminalga o'ng tugma bilan qo'ying, **oxirida yana bir marta Enter** bosing:
+
+```
+cd C:\Users\user\Downloads
+Remove-Item nazarov-tg-gifts-main, bot.zip -Recurse -Force -ErrorAction SilentlyContinue
+Invoke-WebRequest https://github.com/zuhriddin610sss/nazarov-tg-gifts/archive/refs/heads/main.zip -OutFile bot.zip
+Expand-Archive bot.zip . -Force
+cd C:\Users\user\Downloads\nazarov-tg-gifts-main\serverless
+Set-Content tgcloud\lib\config.js "export const ADMIN_IDS = [8644718235];`nexport const MINI_APP_URL = 'https://app9267870642.tgcloud.ai/';"
+npm.cmd install
+npx.cmd tgcloud login
+npx.cmd tgcloud push tgcloud/lib tgcloud/handlers tgcloud/endpoints public --force
+```
+
+`login` kalit so'raganda BotFather → Serverless → CLI Access'dagi kalitni qo'ying. Oxirida `Done` chiqishi kerak.
 
 ## Kunlik ishlar
+
+- **E'lonlar:** mijozlar "Giftimni sotaman" orqali yuborgan giftlar. Admin panel → **E'lonlar** → Tasdiqlash yoki Rad etish.
+- **Haftalik Excel:** har dushanba botga o'zi keladi. Boshqaruv panelida "O'tgan hafta hisobotini hozir olish" tugmasi ham bor.
 
 - **Balans to'ldirish:** Admin panel → Mijozlar → mijoz → **Balansni o'zgartirish** → summa va sabab → Saqlash. Yoki Navbat → buyurtma → **Balansni to'ldirish**. Yechish uchun summa oldiga minus qo'ying: `-50000`.
 - **Buyurtmalar:** Navbat → buyurtma → **Amalga oshirildi** yoki **Bekor qilish** (naqd bo'lsa pul balansga qaytadi).
@@ -120,6 +147,10 @@ Tayyor! Ilovani ochib sinab ko'ring.
 |---|---|
 | `npx` "Need to install tgcloud... Ok to proceed?" deb so'rasa | **`n`** bosing! Siz noto'g'ri papkadasiz. 5-buyruq bilan to'g'ri papkaga o'ting. |
 | `Token format looks wrong` | Kalit to'liq nusxalanmagan. BotFather'dan qayta nusxalab, `login` ni takrorlang. |
+| Oxirgi buyruq (`push`) yozilib turib, hech narsa chiqmayapti | Terminalni bosib **Enter** ni bosing. Bir nechta qatorni birdan qo'yganda oxirgi qator Enter'siz qoladi. |
+| `No CLI access token found` | `npx.cmd tgcloud login` ni qayta yozing (eski papka o'chirilganda ulanish ham o'chadi). |
+| Yuklangandan keyin ilovada hech narsa o'zgarmadi | Ilovani **×** bilan yoping va qayta oching. Bo'lmasa Telegram → Sozlamalar → Ma'lumotlar va xotira → Keshni tozalash. |
+| 1-tur boshlang'ich to'lovi "admin aytadi" chiqyapti | Mahsulotda Model va Fon yozilganini tekshiring yoki formula topilmasa summani qo'lda yozing. |
 | Bot `/start` ga javob bermaydi | `npx.cmd tgcloud run handlers/message "{chat:{id:ID,type:'private'},from:{id:ID,first_name:'Test'},text:'/start'}"` (ID o'rniga o'z ID'ingiz). Chiqqan qizil xatoni saqlang. |
 | Ijara bo'limi bo'sh yoki xato | Sozlamalardagi Marketapp tokenini qaytadan qo'ying (marketapp.org/api-token). |
 | Admin panel "admin huquqi berilmagan" desa | 6-buyruqdagi ID noto'g'ri. To'g'rilab, 9-buyruqni qayta yozing. |
