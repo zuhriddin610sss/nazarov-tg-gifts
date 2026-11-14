@@ -62,7 +62,10 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
   - Muddat: 1–240 oy (barabanda), Uzum Nasiya'da 3 · 6 · 12 oy.
   - Ustama: oyiga 100% ÷ 12 (3 oy +25%, 6 oy +50%, 12 oy +100%). Boshlang'ich to'lov ayrilgandan keyin qolgan summaga qo'yiladi.
   - Mijozga faqat boshlang'ich to'lov va taxminiy oylik to'lov ko'rsatiladi.
-- 1-tur boshlang'ich to'lovi: (Marketapp'dagi 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Uni qo'lda ham yozish mumkin.
+- 1-tur boshlang'ich to'lovi: (Marketapp'dagi 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Sovg'a Marketapp ijarasida bo'lmasa, admin yozgan summa olinadi.
+- Marketapp'ning sotuv narxlari (onsale) pullik tarifda (402). Ijara ro'yxati bepul.
+- "Sotuvda" bo'limi: Portals'da sotuvdagi giftlar. Narx (Portals narxi + 0,1) × 17 000 so'm, faqat to'liq to'lov (bo'lib to'lash yo'q). Buyurtmada narx Portals'dan qayta tekshiriladi, giftni admin qo'lda sotib oladi.
+- Portals API: sekundiga 1 ta so'rov, kalit faqat o'qish uchun ishlatiladi.
 - O'z sovg'alarim ("Reklama" yorlig'i bilan har doim birinchi) narxi quyidagilardan biri:
   - Marketapp (model + fon, model yoki fon) × 17 000;
   - qo'lda TON;

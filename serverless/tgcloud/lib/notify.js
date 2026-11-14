@@ -34,11 +34,12 @@ export async function notifyNewOrder(orderId) {
     `🆕 Yangi buyurtma ${o.public_id}`,
     `Navbat: #${String(pos || '-').padStart(2, '0')}`,
     `Mijoz: ${o.customer_username ? '@' + o.customer_username : "(username yo'q)"} · ${o.customer_phone || '-'}`,
-    `Xizmat: ${det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
+    `Xizmat: ${det.portals ? "Portals'dagi giftni sotib olish" : det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
     `Mahsulot: ${o.title}`,
     o.recipient ? `Qabul qiluvchi: @${o.recipient}` : null,
     det.model || det.backdrop ? [det.model ? `Model: ${det.model === 'any' ? "Farqi yo'q" : det.model}` : null, det.backdrop ? `Fon: ${det.backdrop === 'any' ? "Farqi yo'q" : det.backdrop}` : null].filter(Boolean).join(' · ') : null,
     det.link ? `Havola: ${det.link}` : null,
+    det.portals ? `Portals narxi: ${det.ton} TON (ID: ${det.portals}). Avval Portals'da hali sotuvdaligini tekshiring.` : null,
     `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
     det.months ? `Muddat: ${det.months} oy` : null,
     det.downPayment != null ? `Boshlang'ich to'lov: ${det.downPayment > 0 ? money(det.downPayment) + " so'm" : "yo'q"}`

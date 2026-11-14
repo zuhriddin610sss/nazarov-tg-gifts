@@ -25,12 +25,16 @@ async function request(path, query) {
   const wait = 1100 - (Date.now() - lastCall);
   if (wait > 0) await sleep(wait);
   lastCall = Date.now();
-  try {
-    const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `partners ${key}` } });
-    const text = await res.text();
-    return { ok: res.ok, status: res.status, text, url };
-  } catch (e) {
-    return { ok: false, status: 0, text: String(e && e.message), url };
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `partners ${key}` } });
+      const text = await res.text();
+      // Sekundiga 1 ta so'rov chegarasi: band bo'lsa bir marta kutib, qayta urinamiz
+      if (res.status === 429 && attempt === 0) { await sleep(1200); lastCall = Date.now(); continue; }
+      return { ok: res.ok, status: res.status, text, url };
+    } catch (e) {
+      return { ok: false, status: 0, text: String(e && e.message), url };
+    }
   }
 }
 
@@ -113,4 +117,52 @@ export async function portalsDebug(attrs) {
     if (!r.ok) L.push('', 'Javob (boshi):', r.text.slice(0, 500));
   }
   return L.join('\n');
+}
+
+// ---------- Portals'dagi sotuvdagi giftlar (mijozga katalog) ----------
+const attrOf = (it, type) => { const a = (it.attributes || []).find((x) => low(x.type || x.trait_type) === type); return a ? String(a.value) : null; };
+/** Portals javobidagi bitta giftni ilova uchun qisqa ko'rinishga keltiradi. */
+function saleItem(it) {
+  const ton = Number(it.price);
+  return {
+    id: String(it.id), name: String(it.name || ''), num: it.external_collection_number ?? null,
+    photo: /^https:\/\//.test(String(it.photo_url || '')) ? it.photo_url : null,
+    model: attrOf(it, 'model'), backdrop: attrOf(it, 'backdrop'), symbol: attrOf(it, 'symbol'),
+    ton: Number.isFinite(ton) && ton > 0 ? ton : null,
+  };
+}
+const marketCache = new Map();
+/**
+ * Sotuvdagi giftlar: bitta so'rovda 30 tagacha. Javob 3 daqiqa eslab qolinadi, shuning uchun
+ * ko'p mijoz bir vaqtda ochsa ham Portals'ga ortiqcha so'rov ketmaydi (sekundiga 1 ta chegara).
+ * { items, total } yoki null (kalit yo'q yoki Portals javob bermadi).
+ */
+export async function portalsMarket({ collection = null, offset = 0, sort = 'price asc' } = {}) {
+  let colId = null;
+  if (collection) { const c = await portalsCollection(collection); if (!c) return { items: [], total: 0 }; colId = c.id; }
+  const k = `${colId}|${offset}|${sort}`;
+  const hit = marketCache.get(k);
+  if (hit && Date.now() - hit.at < 180000) return hit.v;
+  const r = await request('/nfts/search', { collection_id: colId, status: 'listed', sort_by: sort, limit: 30, offset });
+  if (!r.ok) { await logError('portals', `${r.status} /nfts/search (katalog): ${String(r.text).slice(0, 300)}`); return null; }
+  let d; try { d = JSON.parse(r.text); } catch (e) { return null; }
+  const v = { items: (Array.isArray(d.results) ? d.results : []).map(saleItem).filter((x) => x.ton), total: Number(d.total_count) || 0 };
+  if (marketCache.size > 200) marketCache.clear();
+  marketCache.set(k, { at: Date.now(), v });
+  return v;
+}
+/** Bitta giftni Portals ID'si bo'yicha yangidan tekshiradi (buyurtma paytida). Sotuvda bo'lmasa null. */
+export async function portalsSaleItem(id) {
+  const r = await request('/nfts/search', { ids: id, limit: 1, offset: 0 });
+  if (!r.ok) { await logError('portals', `${r.status} /nfts/search?ids: ${String(r.text).slice(0, 300)}`); throw new Error('PORTALS_UNAVAILABLE'); }
+  let d; try { d = JSON.parse(r.text); } catch (e) { throw new Error('PORTALS_UNAVAILABLE'); }
+  const it = (Array.isArray(d.results) ? d.results : []).find((x) => String(x.id) === String(id));
+  if (!it || (it.status && String(it.status) !== 'listed')) return null;
+  const out = saleItem(it);
+  return out.ton ? out : null;
+}
+/** Kolleksiyalar nomi (filtr uchun), 1 soat eslab qolinadi. */
+export async function portalsCollectionNames() {
+  await portalsCollection('');
+  return (colCache || []).map((c) => String(c.name)).filter(Boolean).sort((a, b) => a.localeCompare(b));
 }

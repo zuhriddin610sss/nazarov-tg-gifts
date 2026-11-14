@@ -14,7 +14,15 @@ const ITEMS = ['Plush Pepe #1042', 'Durov\'s Cap #318', 'Precious Peach #2207', 
   nft_address: 'EQ_SAMPLE_ADDRESS_' + i + 'XXXXXX', nft_name: n, owner: 'x',
   attributes: [{ trait_type: 'Model', value: ['Gold', 'Ruby', 'Ocean', 'Mint'][i] }, { trait_type: 'Backdrop', value: ['Black', 'Amber', 'Navy', 'Ivory'][i] }],
   min_duration: 86400, max_duration: 30 * 86400, price_per_day: String([420000000, 750000000, 1100000000, 1500000000][i]), discount_per_day: 0, listed_at: 1 }));
+const PORTALS = ['Plush Pepe', 'Trapped Heart', 'Swiss Watch', 'Precious Peach', 'Durov\'s Cap', 'Lol Pop'].map((n, i) => ({
+  id: 'nft-' + i, name: n, external_collection_number: 1000 + i * 37, price: String([4.4, 12, 18.5, 33, 270, 2.1][i]), status: 'listed', photo_url: null,
+  attributes: [{ type: 'model', value: ['Gold', 'Crime Scene', 'Mint', 'Ruby', 'Ocean', 'Candy'][i] }, { type: 'backdrop', value: 'Black' }] }));
 setFetch(async (url) => {
+  if (url.includes('portal-market.com')) {
+    const b = url.includes('/collections/preview') ? { collections: PORTALS.map((x, i) => ({ id: 'c' + i, name: x.name, short_name: x.name, floor_price: x.price })) }
+      : { total_count: PORTALS.length, results: url.includes('ids=') ? PORTALS.filter((x) => url.includes('ids=' + x.id)) : url.includes('collection_id=c') ? [PORTALS[Number(/collection_id=c(\d+)/.exec(url)[1])]] : [...PORTALS].sort((a, b) => a.price - b.price) };
+    return { ok: true, status: 200, text: async () => JSON.stringify(b) };
+  }
   const body = url.includes('/collections/gifts/') ? [{ name: 'Plush Pepe', address: 'EQ_COLLECTION_PLUSH_PEPE_0001', extra_data: {} }]
     : url.includes('/attributes/') ? { attributes: [{ trait_type: 'Model', values: [{ value: 'Gold', perc: 1.2 }, { value: 'Ruby', perc: 2.5 }] },
         { trait_type: 'Backdrop', values: [{ value: 'Black', perc: 2 }] }, { trait_type: 'Symbol', values: [{ value: 'Crown', perc: 0.4 }] }] }

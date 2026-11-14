@@ -242,6 +242,11 @@ async function placeOrder(body, cashAmount) {
       if (btn) btn.disabled = false;
       if (e.code === "PHONE_REQUIRED") { S.me && (S.me.hasPhone = false); closeSheet(); return placeOrder(body, cashAmount); }
       if (e.code === "INSUFFICIENT_BALANCE") return insufficient(cashAmount);
+      // Portals'da narx o'zgarsa: yangi narxni ko'rsatib, qayta tasdiqlashni so'raymiz
+      if (e.code === "PRICE_CHANGED" && body.service === "portals" && S.salePick && e.extra && e.extra.price) {
+        S.salePick.item.price = Number(e.extra.price); closeSheet(); toast(t("err_PRICE_CHANGED", { price: money(e.extra.price) })); render(); return;
+      }
+      if (e.code === "GIFT_SOLD" && S.sale) S.sale.loaded = false;
       closeSheet(); toast(errText(e));
     }
   };
@@ -577,6 +582,7 @@ async function viewNft(v) {
   const hasId = Boolean(d.name.trim() || d.link.trim() || d.image);
   d._ctx = () => ({ base: null, down1: null });
   v.innerHTML = `<h1 class="page-title">${esc(t("nft_title"))}</h1>
+    ${S.cfg && S.cfg.portalsSale ? `<a class="svc" href="#rent" id="toSale"><span class="svc-ic">💎</span><span class="svc-t"><b>${esc(t("sale_link"))}</b><small>${esc(t("sale_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : ""}
     <div id="ownSale"></div>
     <section class="step">${stepHead(1, t("gift_name"))}
       <p class="hint">${esc(t("nft_intro"))}</p>
@@ -602,6 +608,7 @@ async function viewNft(v) {
       <button class="btn btn-primary" id="go" type="button" ${hasId && instOk(d) ? "" : "disabled"}>${esc(t("send_request"))}</button>
     </div>`;
 
+  const toSale = $("#toSale", v); if (toSale) toSale.addEventListener("click", () => { S.rentTab = "sale"; });
   const upd = () => { $("#go", v).disabled = !((d.name.trim() || d.link.trim() || d.image) && instOk(d)); };
   bindInst(v, d, upd);
   v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { d.months = Number(c.dataset.v); render(); }));
@@ -757,12 +764,13 @@ function pickSheet(title, options, current, onPick) {
 async function viewRent(v) {
   const tab = S.rentTab || "gifts";
   const en = (S.cfg && S.cfg.services) || {};
-  const tabs = [["gifts", "tab_gifts", "gift_rent"], ["numbers", "tab_numbers", "number_rent"], ["usernames", "tab_usernames", "username_rent"], ["mine", "tab_mine", null]]
-    .filter(([, , svc]) => !svc || en[svc] !== false);
+  const tabs = [["gifts", "tab_gifts", "gift_rent"], ["sale", "tab_sale", "nft_gift"], ["numbers", "tab_numbers", "number_rent"], ["usernames", "tab_usernames", "username_rent"], ["mine", "tab_mine", null]]
+    .filter(([k, , svc]) => (!svc || en[svc] !== false) && (k !== "sale" || (S.cfg && S.cfg.portalsSale)));
   const head = `<h1 class="page-title">${esc(t("store_title"))}</h1>
     <div class="seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sg${tab === k ? " on" : ""}" data-tab="${k}">${esc(t(l))}</button>`).join("")}</div>`;
   const bindTabs = () => v.querySelectorAll(".sg").forEach((b) => (b.onclick = () => { S.rentTab = b.dataset.tab; render(); }));
 
+  if (tab === "sale") return viewSale(v, head, bindTabs);
   if (tab === "mine") {
     v.innerHTML = head + `<div class="spin"></div>`; bindTabs();
     if (!(await needLogin())) return;
@@ -925,6 +933,71 @@ const CF = {
 function cfLabel(c, val) {
   const o = c.opts(rentState(c === CF.numbers.find((x) => x.k === c.k) ? "numbers" : "usernames").items).find((x) => x.value === val);
   return o ? o.label : String(val);
+}
+
+// ---------- Portals'dagi sotuvdagi giftlar (faqat naqd) ----------
+const saleLabel = (it) => (it.num != null && !/#\d+$/.test(it.name) ? `${it.name} #${it.num}` : it.name);
+const saleImg = (it) => (it.photo ? `<img src="${esc(it.photo)}" alt="" loading="lazy">` : imgTag("gifts", saleLabel(it)));
+async function loadSale(more) {
+  const st = S.sale;
+  st.loading = true;
+  try {
+    const r = await call("portalsSale", { collection: st.collection || undefined, offset: more ? st.next : 0 });
+    st.items = more ? st.items.concat(r.items) : r.items;
+    st.next = r.next; st.loaded = true; st.error = null;
+  } catch (e) { st.error = errText(e); }
+  st.loading = false;
+}
+async function viewSale(v, head, bindTabs) {
+  const st = S.sale ||= { items: [], next: null, loaded: false, collection: null, error: null, cols: null };
+  const draw = () => {
+    v.innerHTML = head + `<p class="hint" style="margin-top:10px">${esc(t("sale_note"))}</p>
+      <div class="filters"><button type="button" class="fchip${st.collection ? " on" : ""}" id="sCol">${esc(st.collection || t("f_gift"))}<span aria-hidden="true">⌄</span></button>
+        ${st.collection ? `<button type="button" class="fchip clr" id="sClr">✕ ${esc(t("f_clear"))}</button>` : ""}</div>
+      ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
+      ${!st.loaded && !st.error ? `<div class="spin"></div>` : ""}
+      ${st.loaded && !st.items.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
+      <div class="grid3">${st.items.map((it, i) => `<button type="button" class="gcard" data-i="${i}">
+        <span class="gimg">${saleImg(it)}</span>
+        <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
+          ${it.model ? `<small>${esc(it.model)}</small>` : ""}
+          <span class="gp"><b>${esc(money(it.price))}</b> ${esc(t("som"))}</span></span></button>`).join("")}</div>
+      ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
+    bindTabs();
+    v.querySelectorAll(".gcard[data-i]").forEach((c) => c.addEventListener("click", () => {
+      S.salePick = { item: st.items[Number(c.dataset.i)], key: key() };
+      location.hash = "sale-item";
+    }));
+    const more = $("#more", v); if (more) more.onclick = async () => { more.disabled = true; await loadSale(true); draw(); };
+    const retry = $("#retry", v); if (retry) retry.onclick = async () => { st.error = null; draw(); await loadSale(); draw(); };
+    const clr = $("#sClr", v); if (clr) clr.onclick = async () => { st.collection = null; st.loaded = false; draw(); await loadSale(); draw(); };
+    $("#sCol", v).onclick = async () => {
+      if (!st.cols) { try { st.cols = await call("portalsCollections"); } catch { st.cols = []; } }
+      pickSheet(t("f_gift"), st.cols.map((n) => ({ label: n, value: n })), st.collection, async (o) => {
+        st.collection = o ? o.value : null; st.loaded = false; draw(); await loadSale(); draw();
+      });
+    };
+  };
+  draw();
+  if (!st.loaded && !st.loading) { await loadSale(); if (S.rentTab === "sale" && location.hash.slice(1) === "rent") draw(); }
+}
+function viewSaleItem(v) {
+  const p = S.salePick;
+  if (!p) { location.hash = "rent"; return; }
+  const it = p.item;
+  const attrs = [["model", it.model], ["backdrop", it.backdrop], ["f_symbol", it.symbol]].filter(([, x]) => x);
+  v.innerHTML = `<div class="hero-img">${saleImg(it)}</div>
+    <h1 class="page-title" style="text-align:center">${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <span class="num">#${esc(it.num)}</span>` : ""}</h1>
+    ${attrs.length ? `<div class="attrs" style="justify-content:center">${attrs.map(([k, x]) => `<span>${esc(t(k))}: ${esc(x)}</span>`).join("")}</div>` : ""}
+    <section class="step">${stepHead(1, t("step_pay"))}
+      <div class="opts" role="radiogroup">${opt("cash", t("pay_full"), t("pay_full_note"), som(it.price), true, "pay")}</div>
+      <p class="hint">${esc(t("sale_hint"))}</p>
+    </section>
+    <div class="cta">
+      <div class="sum"><span>${esc(t("total"))}</span><b>${esc(som(it.price))}</b></div>
+      <button class="btn btn-primary" id="go" type="button">${esc(t("sale_buy"))}</button>
+    </div>`;
+  $("#go", v).addEventListener("click", () => placeOrder({ service: "portals", portalsId: it.id, expectedPrice: it.price, paymentMethod: "cash", idempotencyKey: p.key }, it.price));
 }
 
 function viewRentItem(v) {
@@ -1150,10 +1223,10 @@ const VIEWS = {
   home: viewHome, premium: viewPremium, stars: viewStars, nft: viewNft,
   rent: viewRent,
   "rent-gifts": (v) => { S.rentTab = "gifts"; location.replace("#rent"); }, "rent-usernames": (v) => { S.rentTab = "usernames"; location.replace("#rent"); }, "rent-numbers": (v) => { S.rentTab = "numbers"; location.replace("#rent"); },
-  "rent-item": viewRentItem, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
+  "rent-item": viewRentItem, "sale-item": viewSaleItem, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
 const TOP = new Set(["home", "rent", "orders", "balance", "login", "done"]);
-const PARENT = { "rent-item": () => "rent" };
+const PARENT = { "rent-item": () => "rent", "sale-item": () => "rent" };
 
 function applyStatic() {
   document.documentElement.lang = S.lang === "zh" ? "zh-CN" : S.lang;
@@ -1165,7 +1238,7 @@ async function render() {
   const route = location.hash.slice(1) || "home";
   const fn = VIEWS[route] || viewHome;
   applyStatic();
-  const tab = ["orders", "balance", "rent"].includes(route) ? route : route === "rent-item" ? "rent" : "home";
+  const tab = ["orders", "balance", "rent"].includes(route) ? route : route === "rent-item" || route === "sale-item" ? "rent" : "home";
   document.querySelectorAll(".tab").forEach((a) => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   $("#backBtn").hidden = TOP.has(route);
   $("#brand").hidden = !TOP.has(route);

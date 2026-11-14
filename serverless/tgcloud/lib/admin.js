@@ -211,6 +211,8 @@ export const actions = {
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
+      portals_sale: { add: n(i.portals_sale && i.portals_sale.add != null ? i.portals_sale.add : DEFAULT_SETTINGS.portals_sale.add, 'ps_add'),
+        rate: n(i.portals_sale && i.portals_sale.rate != null ? i.portals_sale.rate : DEFAULT_SETTINGS.portals_sale.rate, 'ps_rate', 0.0001) },
       portals_base: /^https:\/\/[^\s]+$/.test(String(i.portals_base || '')) ? String(i.portals_base).trim().slice(0, 200) : DEFAULT_SETTINGS.portals_base,
     };
     const before = await getSettings();

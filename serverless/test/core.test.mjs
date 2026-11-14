@@ -380,3 +380,31 @@ test("Marketapp sotuv narxi 402 bersa ham, boshlang'ich to'lov ijara narxidan fo
   assert.equal(p.quote.down1By, 'formula');
 });
 
+
+test("Portals'dagi sotuvdagi giftlar: narx (TON + 0.1) × 17 000, faqat naqd, buyurtmada narx qayta tekshiriladi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_SECRETKEY123' });
+  let price = '10';
+  const urls = [];
+  setFetch(async (url) => {
+    const u = String(url); urls.push(u);
+    let body = {};
+    if (u.includes('/collections/preview')) body = { collections: [{ id: 'col-uuid-1', name: 'Trapped Heart', short_name: 'trappedheart', floor_price: '9' }] };
+    else if (u.includes('/nfts/search')) body = { total_count: 45, results: [{ id: 'nft-1', name: 'Trapped Heart', external_collection_number: 6329, price, status: 'listed', photo_url: 'https://cdn.example/x.png',
+      attributes: [{ type: 'model', value: 'Crime Scene' }, { type: 'backdrop', value: 'Persimmon' }] }] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  assert.equal((await app({ action: 'config' })).portalsSale, true);
+  const list = await app({ action: 'portalsSale', collection: 'Trapped Heart' });
+  assert.equal(list.items[0].price, 171700); // (10 + 0.1) × 17 000
+  assert.equal(list.items[0].model, 'Crime Scene');
+  assert.equal(list.items[0].ton, undefined);
+  assert.equal(list.next, 30);
+  assert.ok(urls.some((u) => u.includes('collection_id=col-uuid-1') && u.includes('status=listed')));
+  await assert.rejects(app({ action: 'createOrder', service: 'portals', portalsId: 'nft-1', paymentMethod: 'installment', installmentType: 'plan2', months: 3, idempotencyKey: key() }), (e) => e.parameters.code === 'VALIDATION');
+  await assert.rejects(app({ action: 'createOrder', service: 'portals', portalsId: 'nft-1', expectedPrice: 171700, paymentMethod: 'cash', idempotencyKey: key() }, { id: 99123, first_name: 'Yangi' }),
+    (e) => ['INSUFFICIENT_BALANCE', 'PHONE_REQUIRED'].includes(e.parameters.code));
+  price = '11';
+  await assert.rejects(app({ action: 'createOrder', service: 'portals', portalsId: 'nft-1', expectedPrice: 171700, paymentMethod: 'cash', idempotencyKey: key() }), (e) => e.parameters.code === 'PRICE_CHANGED' && e.parameters.price === 188700);
+  setFetch(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ results: [], total_count: 0 }) }));
+  await assert.rejects(app({ action: 'createOrder', service: 'portals', portalsId: 'nft-1', paymentMethod: 'cash', idempotencyKey: key() }), (e) => e.parameters.code === 'GIFT_SOLD');
+});

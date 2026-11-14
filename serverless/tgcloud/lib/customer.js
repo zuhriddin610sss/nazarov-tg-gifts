@@ -8,6 +8,10 @@ import { notifyNewOrder, receiptButtons } from 'lib/notify';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
 import { ownSaleQuote, monthlyPayment } from 'lib/calc';
+import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames } from 'lib/portals';
+
+/** Portals narxidan mijoz narxi (so'm): (TON + add) × rate, yuqoriga yaxlitlanadi. */
+export const portalsSom = (ton, s) => Math.ceil((Number(ton) + Number(s.portals_sale.add)) * Number(s.portals_sale.rate));
 
 const LANGS = ['uz', 'ru', 'en', 'zh'];
 const RENT = { gift_rent: 'gifts', username_rent: 'usernames', number_rent: 'numbers' };
@@ -65,6 +69,7 @@ export const actions = {
       services: s.services_enabled, starsPrice: s.stars_price, starsMin: s.stars_min, premiumPrices: s.premium_prices,
       rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
       instMarkupYear: s.inst_markup_year,
+      portalsSale: Boolean(s.services_enabled.nft_gift) && (await portalsConfigured()),
     };
   },
 
@@ -111,6 +116,21 @@ export const actions = {
     return out;
   },
 
+  /** Portals'da sotuvdagi giftlar (faqat naqd sotib olish). */
+  async portalsSale(i) {
+    const s = await getSettings();
+    if (!s.services_enabled.nft_gift) throw fail('SERVICE_DISABLED');
+    if (!(await portalsConfigured())) throw fail('SERVICE_DISABLED');
+    const offset = i.offset ? int(i.offset, { min: 0, max: 100000, name: 'offset' }) : 0;
+    const sort = ['price asc', 'price desc', 'listed_at desc'].includes(i.sort) ? i.sort : 'price asc';
+    const r = await portalsMarket({ collection: str(i.collection, 80) || null, offset, sort });
+    if (!r) throw fail('MARKET_UNAVAILABLE');
+    return { items: r.items.map((x) => ({ ...x, price: portalsSom(x.ton, s), ton: undefined })), total: r.total, next: offset + 30 < r.total ? offset + 30 : null };
+  },
+  async portalsCollections() {
+    if (!(await portalsConfigured())) return [];
+    return portalsCollectionNames();
+  },
   async giftCollections() { return giftCollections(); },
   async collectionAttributes(i) { return collectionAttributes(i.address); },
 
@@ -137,7 +157,7 @@ export const actions = {
   async createOrder(i, c) {
     const s = await getSettings();
     const service = i.service;
-    if (service !== 'own' && !s.services_enabled[service]) throw fail(service in s.services_enabled ? 'SERVICE_DISABLED' : 'VALIDATION');
+    if (service !== 'own' && service !== 'portals' && !s.services_enabled[service]) throw fail(service in s.services_enabled ? 'SERVICE_DISABLED' : 'VALIDATION');
     const method = i.paymentMethod === 'cash' ? 'cash' : i.paymentMethod === 'installment' ? 'installment' : null;
     if (!method) throw fail('VALIDATION', { field: 'paymentMethod' });
     const key = idemKey(i.idempotencyKey);
@@ -175,6 +195,19 @@ export const actions = {
           price: method === 'cash' ? Number(p.cash_price) : null,
           details: { own: p.id, sale: true, kind: p.kind, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined } };
       } else throw fail('VALIDATION', { field: 'ownMode' });
+    } else if (service === 'portals') {
+      // Portals'dagi sotuvdagi gift: faqat naqd. Narx buyurtma paytida Portals'dan qayta tekshiriladi.
+      if (!s.services_enabled.nft_gift) throw fail('SERVICE_DISABLED');
+      if (method !== 'cash') throw fail('VALIDATION', { field: 'paymentMethod' });
+      const id = str(i.portalsId, 64, { required: true });
+      let it;
+      try { it = await portalsSaleItem(id); } catch (e) { throw fail('MARKET_UNAVAILABLE'); }
+      if (!it) throw fail('GIFT_SOLD');
+      const price = portalsSom(it.ton, s);
+      if (i.expectedPrice != null && Number(i.expectedPrice) !== price) throw fail('PRICE_CHANGED', { price });
+      const label = `${it.name}${it.num != null && !/#\d+$/.test(it.name) ? ' #' + it.num : ''}`;
+      o = { service: 'nft_gift', title: `${label} — Portals'dan sotib olish`, installmentType: null, price: toTiyin(price),
+        details: { portals: it.id, name: label, ton: it.ton, model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined, sale: true } };
     } else if (service === 'premium') {
       if (!PREMIUM_PLANS.includes(i.plan)) throw fail('VALIDATION', { field: 'plan' });
       o = { service, title: `Telegram Premium — ${PREMIUM_LABEL[i.plan]}`, details: { plan: i.plan }, recipient: recipient(i.recipient),

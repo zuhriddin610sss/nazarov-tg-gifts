@@ -197,7 +197,7 @@ async function dashboard(v) {
   };
 }
 
-const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif" };
+const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif", portals: "Portals ID", ton: "Portals narxi (TON)", symbol: "Belgi", sale: "Sotuv" };
 function orderSheet(o) {
   const d = o.details || {};
   const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
@@ -444,6 +444,10 @@ async function settings(v) {
       <div class="field"><label>Eng kam star</label><input class="input" name="stars_min" value="${esc(s.stars_min)}"></div>
       ${[["m1", "Premium 1 oy"], ["m3", "Premium 3 oy"], ["m6", "Premium 6 oy"], ["m12_login", "Premium 12 oy (akkauntga kirib)"], ["m12", "Premium 12 oy (akkauntga kirmasdan)"]].map(([k, l]) => `<div class="field"><label>${l}</label><input class="input" name="pp_${k}" value="${esc(s.premium_prices[k])}"></div>`).join("")}
     </div></div>
+    <div class="section"><h2>Portals'dagi sotuvdagi giftlar: (Portals narxi + qo'shimcha) × kurs</h2><div class="form">
+      <div class="field"><label>Qo'shimcha, TON</label><input class="input" name="ps_add" value="${esc(s.portals_sale ? s.portals_sale.add : 0.1)}"></div>
+      <div class="field"><label>Kurs, so'm</label><input class="input" name="ps_rate" value="${esc(s.portals_sale ? s.portals_sale.rate : 17000)}"></div>
+    </div><p class="hint">Ilovadagi "Sotuvda" bo'limi: faqat to'liq to'lov. Misol: Portals'da 10 TON → ${esc(money(Math.ceil((10 + Number(s.portals_sale ? s.portals_sale.add : 0.1)) * Number(s.portals_sale ? s.portals_sale.rate : 17000))))} so'm</p></div>
     <div class="section"><h2>Ijara formulasi: (P + qo'shimcha) × koeffitsiyent × kurs</h2><div class="form">
       <div class="field"><label>Qo'shimcha</label><input class="input" name="rf_add" value="${esc(s.rent_formula.add)}"></div>
       <div class="field"><label>Koeffitsiyent</label><input class="input" name="rf_mult" value="${esc(s.rent_formula.mult)}"></div>
@@ -479,6 +483,7 @@ async function settings(v) {
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,
       portalsKey: String(f.get("portals_key") || "").trim() || undefined,
       portals_base: String(f.get("portals_base") || "").trim(),
+      portals_sale: { add: n("ps_add"), rate: n("ps_rate") },
     };
     try { await api("/api/admin/settings", { method: "PUT", body }); toast("Saqlandi"); } catch (er) { toast(er.message); }
   };
