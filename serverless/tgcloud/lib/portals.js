@@ -16,7 +16,9 @@ async function request(path, query) {
   const key = String((await getSecret('portals_key')) || '').trim();
   if (!key) return { ok: false, status: 0, text: 'Portals kaliti kiritilmagan', url: path };
   const s = await getSettings();
-  const base = String(s.portals_base || 'https://portals-market.com/api').replace(/\/+$/, '');
+  // Eski noto'g'ri manzil saqlangan bo'lsa ham, hujjatdagi to'g'ri manzil ishlatiladi
+  let base = String(s.portals_base || '').replace(/\/+$/, '');
+  if (!/^https:\/\//.test(base) || /portals-market\.com\/api$/.test(base)) base = 'https://portal-market.com/partners';
   const qs = Object.entries(query || {}).filter(([, v]) => v != null && v !== '')
     .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v))).join('&');
   const url = base + path + (qs ? '?' + qs : '');
@@ -24,7 +26,7 @@ async function request(path, query) {
   if (wait > 0) await sleep(wait);
   lastCall = Date.now();
   try {
-    const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${key}`, 'X-API-Key': key } });
+    const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `partners ${key}` } });
     const text = await res.text();
     return { ok: res.ok, status: res.status, text, url };
   } catch (e) {

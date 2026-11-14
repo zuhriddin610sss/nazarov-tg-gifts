@@ -337,7 +337,7 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   setFetch(async (url, opts) => {
     const u = String(url);
     let body = {};
-    if (u.includes('portals-market.com')) { auth = opts.headers.Authorization; body = { results: [{ price: '18.5' }, { price: '25' }] }; }
+    if (u.includes('portal-market.com')) { auth = opts.headers.Authorization; body = { results: [{ price: '18.5' }, { price: '25' }] }; }
     else if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
     else if (u.includes('/gifts/onsale/')) body = { cursor: null, items: [{ min_bid: '40000000000' }] };
     else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [] };
@@ -349,7 +349,7 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   assert.match(txt, /Javob kodi: 200/);
   assert.match(txt, /18\.5, 25/);
   assert.ok(!txt.includes('SECRETKEY'), 'kalit ko\'rinmasligi kerak');
-  assert.equal(auth, 'Bearer portals_SECRETKEY123');
+  assert.equal(auth, 'partners portals_SECRETKEY123');
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #777', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'best', down_mode: 'manual', down_manual: 1 });
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #777');
   assert.equal(p.quote.price, Math.ceil(18.5 * 17000));

@@ -111,7 +111,7 @@ export const DEFAULT_SETTINGS = {
   // O'z sovg'alarining sotuv narxi: Marketapp TON narxi × sale_rate so'm
   sale_rate: 17000,
   // Portals Partner API manzili (sinov)
-  portals_base: 'https://portals-market.com/api',
+  portals_base: 'https://portal-market.com/partners',
   services_enabled: { nft_gift: true, gift_rent: true, username_rent: true, number_rent: true, premium: true, stars: true },
   mini_app_url: '',
 };
