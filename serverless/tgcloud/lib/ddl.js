@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -204,6 +204,18 @@ export const DDL = [
     visible INTEGER NOT NULL DEFAULT 1,
     position INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL
+  )`,
+
+  // Mijozlarning "Giftimni sotaman" e'lonlari. Narx tiyinda (egasi o'zi yozadi).
+  // status: pending (admin tasdig'ini kutmoqda), active (sotuvda), sold, hidden
+  `CREATE TABLE IF NOT EXISTS sell_listings (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    name TEXT NOT NULL, link TEXT NOT NULL, image TEXT,
+    model TEXT, backdrop TEXT, symbol TEXT,
+    price INTEGER NOT NULL CHECK (price > 0),
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL, updated_at INTEGER
   )`,
 ];
 

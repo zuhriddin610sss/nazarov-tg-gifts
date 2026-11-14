@@ -34,11 +34,12 @@ export async function notifyNewOrder(orderId) {
     `🆕 Yangi buyurtma ${o.public_id}`,
     `Navbat: #${String(pos || '-').padStart(2, '0')}`,
     `Mijoz: ${o.customer_username ? '@' + o.customer_username : "(username yo'q)"} · ${o.customer_phone || '-'}`,
-    `Xizmat: ${det.portals ? "Portals'dagi giftni sotib olish" : det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
+    `Xizmat: ${det.portals ? "Portals'dagi giftni sotib olish" : det.listing ? "Mijoz e'lonidan sotib olish" : det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
     `Mahsulot: ${o.title}`,
     o.recipient ? `Qabul qiluvchi: @${o.recipient}` : null,
     det.model || det.backdrop ? [det.model ? `Model: ${det.model === 'any' ? "Farqi yo'q" : det.model}` : null, det.backdrop ? `Fon: ${det.backdrop === 'any' ? "Farqi yo'q" : det.backdrop}` : null].filter(Boolean).join(' · ') : null,
     det.link ? `Havola: ${det.link}` : null,
+    det.listing ? `Sotuvchi (gift egasi): ${det.seller}. Unga yozib, giftni oling. E'lon "Sotildi" deb belgilandi.` : null,
     det.portals ? `Portals narxi: ${det.ton} TON (ID: ${det.portals}). Avval Portals'da hali sotuvdaligini tekshiring.` : null,
     `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
     det.months ? `Muddat: ${det.months} oy` : null,
@@ -83,4 +84,14 @@ export async function notifyReceiptReviewed(receiptId, ok) {
   await send(r.telegram_id, ok ? t(r.lang, 'receipt_ok', { a: money(r.amount / 100), b: money(r.balance / 100) }) : t(r.lang, 'receipt_no'));
 }
 
+/** Yangi "Giftimni sotaman" e'loni: adminlarga xabar. */
+export async function notifyNewListing(id) {
+  const l = await get('SELECT l.*, c.username, c.phone FROM sell_listings l JOIN customers c ON c.id = l.customer_id WHERE l.id = :id', { id });
+  if (!l) return;
+  const text = [`🏷 Yangi e'lon: ${l.name}`, `Narxi: ${fmt(l.price)}`,
+    [l.model && `Model: ${l.model}`, l.backdrop && `Fon: ${l.backdrop}`, l.symbol && `Belgi: ${l.symbol}`].filter(Boolean).join(' · ') || null,
+    `Havola: ${l.link}`, `Egasi: ${l.username ? '@' + l.username : "(username yo'q)"} · ${l.phone || '-'}`,
+    "Admin panel → E'lonlar bo'limida tasdiqlang yoki rad eting."].filter(Boolean).join('\n');
+  for (const a of adminIds()) await send(a, text, { reply_markup: adminPanelButton() });
+}
 export { send, tashkent };

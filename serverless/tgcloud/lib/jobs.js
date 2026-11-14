@@ -1,6 +1,8 @@
 // Eslatmalar. Serverless'da jadval (cron) yo'q: ular botga yoki Mini App'ga har qanday murojaatda
 // ko'pi bilan 30 daqiqada bir marta ishga tushadi (maybeRunJobs). Admin panelda qo'lda ishga tushirish tugmasi ham bor.
+import { api, InputFile } from 'sdk';
 import { all, get, run, claim, logError, adminIds, nowMs } from 'lib/core';
+import { buildXlsx } from 'lib/xlsx';
 import { listAgreements } from 'lib/shop';
 import { t, money } from 'lib/texts';
 import { send, tashkent, openAppButton } from 'lib/notify';
@@ -61,6 +63,46 @@ export async function sendInstallmentReminders(now = nowMs()) {
   return sent;
 }
 
+const SVC = { nft_gift: "NFT sovg'a", gift_rent: "NFT sovg'a ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
+const STATUS = { pending: "To'lanmagan", queued: 'Navbatda', completed: 'Amalga oshirildi', cancelled: 'Bekor qilindi', failed: 'Xato' };
+const som = (tiyin) => (tiyin == null ? '' : Number(tiyin) / 100);
+
+/** Haftalik Excel hisobot: har dushanba (Toshkent vaqti 09:00 dan keyin) o'tgan hafta uchun, adminlarga. */
+export async function sendWeeklyReport(now = nowMs(), force = false) {
+  const local = new Date(now + 5 * 3600000);
+  if (!force && (local.getUTCDay() !== 1 || local.getUTCHours() < 9)) return 0;
+  const dayStart = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - 5 * 3600000;
+  const back = (local.getUTCDay() + 6) % 7; // dushanbagacha necha kun
+  const to = dayStart - back * DAY, from = to - 7 * DAY;
+  const label = tashkentDay(from) + '_' + tashkentDay(to - DAY);
+  if (!force && !(await claim('weekly:' + label))) return 0;
+  const orders = await all(`SELECT * FROM orders WHERE status NOT IN ('pending','failed') AND created_at >= :from AND created_at < :to ORDER BY id`, { from, to });
+  const ok = orders.filter((o) => o.status !== 'cancelled');
+  const income = ok.reduce((a, o) => a + Number(o.paid_amount || 0), 0);
+  const bySvc = {};
+  for (const o of ok) { const k = SVC[o.service] || o.service; bySvc[k] ||= { n: 0, sum: 0 }; bySvc[k].n++; bySvc[k].sum += Number(o.paid_amount || 0); }
+  const top = Object.entries(bySvc).sort((a, b) => b[1].n - a[1].n)[0];
+  const summary = [
+    { "Ko'rsatkich": 'Davr', "Qiymat": `${tashkentDay(from)} — ${tashkentDay(to - DAY)}` },
+    { "Ko'rsatkich": 'Buyurtmalar', "Qiymat": ok.length },
+    { "Ko'rsatkich": 'Bekor qilingan', "Qiymat": orders.length - ok.length },
+    { "Ko'rsatkich": "Bo'lib to'lash buyurtmalari", "Qiymat": ok.filter((o) => o.payment_method === 'installment').length },
+    { "Ko'rsatkich": "Tushum (balansdan yechilgan), so'm", "Qiymat": income / 100 },
+    { "Ko'rsatkich": 'Eng ko\'p sotilgan xizmat', "Qiymat": top ? `${top[0]} (${top[1].n} ta)` : '—' },
+  ];
+  const services = Object.entries(bySvc).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => ({ "Xizmat": k, "Buyurtmalar": v.n, "Tushum, so'm": v.sum / 100 }));
+  const list = orders.map((o) => ({ "Raqam": o.public_id, "Sana": tashkent(o.created_at), "Mijoz": o.customer_username ? '@' + o.customer_username : '', "Telefon": o.customer_phone || '',
+    "Xizmat": SVC[o.service] || o.service, "Mahsulot": o.title, "To'lov": o.payment_method === 'cash' ? 'Naqd' : "Bo'lib to'lash",
+    "Narx, so'm": som(o.price), "Yechilgan, so'm": som(o.paid_amount), "Holat": STATUS[o.status] || o.status }));
+  const file = buildXlsx([{ name: 'Xulosa', rows: summary }, { name: 'Xizmatlar', rows: services }, { name: 'Buyurtmalar', rows: list }]);
+  const caption = `📊 Haftalik hisobot: ${tashkentDay(from)} — ${tashkentDay(to - DAY)}\nBuyurtmalar: ${ok.length} · Tushum: ${money(income / 100)} so'm${top ? `\nEng ko'p: ${top[0]}` : ''}`;
+  for (const id of adminIds()) {
+    try { await api.sendDocument({ chat_id: id, document: new InputFile(file, `hafta_${label}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), caption }); }
+    catch (e) { await logError('weekly', `${id}: ${e && (e.description || e.message)}`); }
+  }
+  return 1;
+}
+
 /** Ko'pi bilan 30 daqiqada bir marta ishlaydi; bir vaqtda faqat bitta chaqiruv "yutadi". */
 export async function maybeRunJobs(force = false) {
   const now = nowMs();
@@ -75,7 +117,8 @@ export async function maybeRunJobs(force = false) {
     // Mijozni tunda bezovta qilmaslik uchun: Toshkent vaqti bilan 09:00–21:00
     const h = new Date(now + 5 * 3600000).getUTCHours();
     const inst = force || (h >= 9 && h < 21) ? await sendInstallmentReminders(now) : 0;
-    return { rent, inst };
+    const weekly = await sendWeeklyReport(now);
+    return { rent, inst, weekly };
   } catch (e) {
     await logError('jobs', e && (e.message || e.description));
     return null;

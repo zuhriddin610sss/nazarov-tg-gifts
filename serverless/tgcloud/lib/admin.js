@@ -3,10 +3,10 @@ import { api, InputFile } from 'sdk';
 import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS } from 'lib/core';
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
-import { maybeRunJobs } from 'lib/jobs';
+import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
 import { ownSaleQuote, monthlyPayment } from 'lib/calc';
 import { send } from 'lib/notify';
-import { money } from 'lib/texts';
+import { money, t } from 'lib/texts';
 import { encode, decode } from 'lib/b64';
 
 const SERVICES = ['nft_gift', 'gift_rent', 'username_rent', 'number_rent', 'premium', 'stars'];
@@ -211,6 +211,7 @@ export const actions = {
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
+      sale_inst: { enabled: Boolean(i.sale_inst && i.sale_inst.enabled), max: n(i.sale_inst && i.sale_inst.max != null ? i.sale_inst.max : DEFAULT_SETTINGS.sale_inst.max, 'si_max', 1) },
       portals_sale: { add: n(i.portals_sale && i.portals_sale.add != null ? i.portals_sale.add : DEFAULT_SETTINGS.portals_sale.add, 'ps_add'),
         rate: n(i.portals_sale && i.portals_sale.rate != null ? i.portals_sale.rate : DEFAULT_SETTINGS.portals_sale.rate, 'ps_rate', 0.0001) },
       portals_base: /^https:\/\/[^\s]+$/.test(String(i.portals_base || '')) ? String(i.portals_base).trim().slice(0, 200) : DEFAULT_SETTINGS.portals_base,
@@ -342,6 +343,31 @@ export const actions = {
     return { ok: true };
   },
 
+  // ---------- Mijozlar e'lonlari ("Giftimni sotaman") ----------
+  async listings(i) {
+    const st = ['pending', 'active', 'sold', 'hidden'].includes(i.status) ? i.status : null;
+    const rows = await all(`SELECT l.*, c.username, c.phone, c.first_name FROM sell_listings l JOIN customers c ON c.id = l.customer_id
+      WHERE (:st IS NULL OR l.status = :st) ORDER BY CASE l.status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END, l.id DESC LIMIT 300`, { st });
+    return rows.map((l) => ({ ...l, price: som(l.price), created_at: Number(l.created_at) }));
+  },
+  async setListing(i, admin) {
+    const id = int(i.id, { min: 1, name: 'id' });
+    const l = await get('SELECT l.*, c.telegram_id, c.lang FROM sell_listings l JOIN customers c ON c.id = l.customer_id WHERE l.id = :id', { id });
+    if (!l) throw fail('NOT_FOUND');
+    if (i.delete) { await run('DELETE FROM sell_listings WHERE id = :id', { id }); await audit(admin, 'listing.delete', String(id)); return { ok: true }; }
+    const status = ['active', 'hidden', 'pending', 'sold'].includes(i.status) ? i.status : null;
+    const price = i.price != null && Number(i.price) > 0 ? toTiyin(num(i.price, { min: 1000, name: 'price' })) : Number(l.price);
+    if (!status) throw fail('VALIDATION', { field: 'status' });
+    await run('UPDATE sell_listings SET status = :st, price = :p, updated_at = :t WHERE id = :id', { st: status, p: price, t: Date.now(), id });
+    if (status !== l.status && (status === 'active' || (status === 'hidden' && l.status === 'pending'))) {
+      const ok = status === 'active';
+      await send(l.telegram_id, t(l.lang, ok ? 'listing_ok' : 'listing_rejected', { name: l.name }));
+    }
+    await audit(admin, 'listing.' + status, String(id));
+    return { ok: true };
+  },
+
+  async weeklyReport() { await sendWeeklyReport(Date.now(), true); return { ok: true }; },
   async runJobs() { return (await maybeRunJobs(true)) || { rent: 0, inst: 0 }; },
 };
 

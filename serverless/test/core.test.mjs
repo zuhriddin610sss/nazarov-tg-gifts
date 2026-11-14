@@ -408,3 +408,83 @@ test("Portals'dagi sotuvdagi giftlar: narx (TON + 0.1) × 17 000, faqat naqd, bu
   setFetch(async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ results: [], total_count: 0 }) }));
   await assert.rejects(app({ action: 'createOrder', service: 'portals', portalsId: 'nft-1', paymentMethod: 'cash', idempotencyKey: key() }), (e) => e.parameters.code === 'GIFT_SOLD');
 });
+
+test("Giftimni sotaman: e'lon admin tasdig'idan keyin Sotuvda chiqadi, sotib olinsa 'sotildi' bo'ladi", async () => {
+  const seller = { id: 6001, username: 'sotuvchi', first_name: 'S' };
+  await withPhone(seller); await withPhone();
+  setFetch(async (url) => {
+    const u = String(url);
+    if (u.startsWith('https://t.me/nft/')) return { ok: true, status: 200, text: async () => '<table><tr><th>Model</th><td>Crime Scene</td></tr><tr><th>Backdrop</th><td>Persimmon</td></tr></table>' };
+    return { ok: true, status: 200, text: async () => '{}' };
+  });
+  assert.equal(await code(app({ action: 'sellGift', link: 'https://example.com', price: 500000 }, seller)), 'BAD_LINK');
+  sent.length = 0;
+  await app({ action: 'sellGift', link: 'https://t.me/nft/TrappedHeart-6329', price: 500000 }, seller);
+  assert.ok(sent.some((m) => /Yangi e'lon: Trapped Heart #6329/.test(m.params.text || '') && /@sotuvchi/.test(m.params.text)));
+  // Tasdiqlanmaguncha ko'rinmaydi (Portals kaliti yo'q: faqat e'lonlar)
+  assert.equal((await app({ action: 'portalsSale' })).items.length, 0);
+  const l = (await admin({ action: 'listings' }))[0];
+  assert.equal(l.status, 'pending'); assert.equal(l.model, 'Crime Scene'); assert.equal(Number(l.price), 500000);
+  sent.length = 0;
+  await admin({ action: 'setListing', id: l.id, status: 'active' });
+  assert.ok(sent.some((m) => m.params.chat_id === 6001 && /tasdiqlandi/.test(m.params.text)));
+  const list = await app({ action: 'portalsSale', collection: 'Trapped Heart', model: 'Crime Scene', maxPrice: 600000 });
+  assert.equal(list.items.length, 1);
+  assert.deepEqual([list.items[0].id, list.items[0].num, list.items[0].price], ['u' + l.id, 6329, 500000]);
+  assert.equal((await app({ action: 'portalsSale', minPrice: 600000 }).catch(() => ({ items: [] }))).items.length, 0);
+  assert.equal(await code(app({ action: 'createOrder', service: 'portals', portalsId: 'u' + l.id, paymentMethod: 'cash', idempotencyKey: key() }, seller)), 'OWN_LISTING');
+  // Bo'lib to'lash o'chiq
+  assert.equal(await code(app({ action: 'createOrder', service: 'portals', portalsId: 'u' + l.id, paymentMethod: 'installment', installmentType: 'plan2', months: 3, idempotencyKey: key() })), 'VALIDATION');
+  await topup(500000);
+  sent.length = 0;
+  const r = await app({ action: 'createOrder', service: 'portals', portalsId: 'u' + l.id, expectedPrice: 500000, paymentMethod: 'cash', idempotencyKey: key() });
+  assert.ok(r.publicId);
+  assert.ok(sent.some((m) => /Sotuvchi \(gift egasi\): @sotuvchi/.test(m.params.text || '')));
+  assert.equal((await admin({ action: 'listings' }))[0].status, 'sold');
+  assert.equal(await code(app({ action: 'createOrder', service: 'portals', portalsId: 'u' + l.id, paymentMethod: 'cash', idempotencyKey: key() })), 'GIFT_SOLD');
+  const o = (await app({ action: 'myOrders' })).orders[0];
+  assert.ok(!/Portals/i.test(o.title));
+});
+
+test("Sotuvda: filtrlar Portals'ga uzatiladi; bo'lib to'lash yoqilsa faqat chegaragacha", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_K', sale_inst: { enabled: true, max: 200000 } });
+  const urls = [];
+  setFetch(async (url) => {
+    const u = String(url); urls.push(u);
+    const body = u.includes('/collections/preview') ? { collections: [{ id: 'col-1', name: 'Trapped Heart', short_name: 'x', floor_price: '9' }] }
+      : { total_count: 2, results: [{ id: 'a', name: 'Trapped Heart', external_collection_number: 1, price: '10', status: 'listed', attributes: [] },
+          { id: 'b', name: 'Trapped Heart', external_collection_number: 2, price: '20', status: 'listed', attributes: [] }].filter((x) => !u.includes('ids=') || u.includes('ids=' + x.id)) };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  assert.deepEqual((await app({ action: 'config' })).saleInst, { max: 200000 });
+  await app({ action: 'portalsSale', collection: 'Trapped Heart', model: 'Crime Scene', backdrop: 'Persimmon', symbol: 'Heart', minPrice: 171700, maxPrice: 345100, num: '#63', sort: 'price desc' });
+  const q = decodeURIComponent(urls.filter((u) => u.includes('/nfts/search')).pop());
+  for (const x of ['collection_id=col-', 'filter_by_models=Crime Scene', 'filter_by_backdrops=Persimmon', 'filter_by_symbols=Heart', 'min_price=10', 'max_price=20.2', 'external_collection_number=63', 'sort_by=price desc'])
+    assert.ok(q.includes(x), x + ' yo\'q: ' + q);
+  // 10 TON -> 171 700 (chegaradan past): bo'lib to'lash mumkin; 20 TON -> 341 700: mumkin emas
+  const ok = await app({ action: 'createOrder', service: 'portals', portalsId: 'a', paymentMethod: 'installment', installmentType: 'plan2', months: 6, downPayment: 0, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: ok.publicId }))[0];
+  assert.equal(o.details.estMonthly, Math.ceil(Math.ceil(171700 * 1.5) / 6));
+  assert.equal(await code(app({ action: 'createOrder', service: 'portals', portalsId: 'b', paymentMethod: 'installment', installmentType: 'plan2', months: 6, downPayment: 0, idempotencyKey: key() })), 'VALIDATION');
+});
+
+test("haftalik Excel hisobot: dushanba 09:00 dan keyin bir marta, .xlsx fayl", async () => {
+  const { sendWeeklyReport } = await import('../tgcloud/lib/jobs.js');
+  await withPhone(); await topup(100000);
+  await app({ action: 'createOrder', service: 'stars', quantity: 100, recipient: { self: true }, paymentMethod: 'cash', idempotencyKey: key() });
+  const created = Number((await admin({ action: 'orders' }))[0].created_at);
+  // Buyurtmadan keyingi dushanba, 10:00 Toshkent
+  let d = new Date(created + 5 * 3600000); let mon = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 5 * 3600000;
+  do { mon += 86400000; } while (new Date(mon + 5 * 3600000).getUTCDay() !== 1);
+  sent.length = 0;
+  assert.equal(await sendWeeklyReport(mon + 8 * 3600000), 0); // 08:00 — hali erta
+  assert.equal(await sendWeeklyReport(mon + 10 * 3600000), 1);
+  assert.equal(await sendWeeklyReport(mon + 11 * 3600000), 0); // ikkinchi marta yo'q
+  const doc = sent.find((m) => m.method === 'sendDocument');
+  assert.ok(doc, 'fayl yuborilmadi');
+  assert.match(doc.params.caption, /Buyurtmalar: 1 · Tushum: 24 000 so'm/);
+  const bytes = doc.params.document.bytes;
+  assert.equal(String.fromCharCode(bytes[0], bytes[1]), 'PK');
+  if (bytes) { const fs = await import('node:fs'); fs.writeFileSync(process.env.XLSX_OUT || '/dev/null', Buffer.from(bytes)); }
+});

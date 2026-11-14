@@ -4,13 +4,20 @@ import { all, get, run, fail, getSettings, toSom, toTiyin, nowMs, int, str, idem
 import { listRent, seenRentItem, giftCollections, collectionAttributes, searchRecipient, marketappConfigured } from 'lib/marketapp';
 import { PREMIUM_PLANS, PREMIUM_LABEL, rentTotalTon, rentPriceTiyin, rentCostTiyin, starsPriceTiyin } from 'lib/pricing';
 import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, summarize } from 'lib/shop';
-import { notifyNewOrder, receiptButtons } from 'lib/notify';
+import { notifyNewOrder, receiptButtons, notifyNewListing } from 'lib/notify';
+import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
 import { ownSaleQuote, monthlyPayment } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames } from 'lib/portals';
 
 /** Portals narxidan mijoz narxi (so'm): (TON + add) × rate, yuqoriga yaxlitlanadi. */
+/** Mijoz e'lonini ilova ko'rinishiga keltiradi. */
+export function listingOut(l) {
+  const m = /#\s*(\d+)\s*$/.exec(l.name);
+  return { id: 'u' + l.id, listing: true, name: l.name.replace(/\s*#\s*\d+$/, ''), num: m ? Number(m[1]) : null, photo: l.image || null,
+    model: l.model || null, backdrop: l.backdrop || null, symbol: l.symbol || null, price: toSom(l.price) };
+}
 export const portalsSom = (ton, s) => Math.ceil((Number(ton) + Number(s.portals_sale.add)) * Number(s.portals_sale.rate));
 
 const LANGS = ['uz', 'ru', 'en', 'zh'];
@@ -69,7 +76,8 @@ export const actions = {
       services: s.services_enabled, starsPrice: s.stars_price, starsMin: s.stars_min, premiumPrices: s.premium_prices,
       rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
       instMarkupYear: s.inst_markup_year,
-      portalsSale: Boolean(s.services_enabled.nft_gift) && (await portalsConfigured()),
+      portalsSale: Boolean(s.services_enabled.nft_gift),
+      saleInst: s.sale_inst.enabled ? { max: Number(s.sale_inst.max) } : null,
     };
   },
 
@@ -116,16 +124,55 @@ export const actions = {
     return out;
   },
 
-  /** Portals'da sotuvdagi giftlar (faqat naqd sotib olish). */
+  /**
+   * "Sotuvda" bo'limi: mijozlar e'lonlari (birinchi sahifada, tepada) + Portals'dagi sotuvdagi giftlar.
+   * Filtrlar: collection, model, backdrop, symbol, minPrice/maxPrice (so'm), num (gift raqami), sort.
+   */
   async portalsSale(i) {
     const s = await getSettings();
     if (!s.services_enabled.nft_gift) throw fail('SERVICE_DISABLED');
-    if (!(await portalsConfigured())) throw fail('SERVICE_DISABLED');
     const offset = i.offset ? int(i.offset, { min: 0, max: 100000, name: 'offset' }) : 0;
     const sort = ['price asc', 'price desc', 'listed_at desc'].includes(i.sort) ? i.sort : 'price asc';
-    const r = await portalsMarket({ collection: str(i.collection, 80) || null, offset, sort });
-    if (!r) throw fail('MARKET_UNAVAILABLE');
-    return { items: r.items.map((x) => ({ ...x, price: portalsSom(x.ton, s), ton: undefined })), total: r.total, next: offset + 30 < r.total ? offset + 30 : null };
+    const f = { collection: str(i.collection, 80) || null, model: str(i.model, 80) || null, backdrop: str(i.backdrop, 80) || null, symbol: str(i.symbol, 80) || null };
+    const minSom = Number(i.minPrice) > 0 ? Number(i.minPrice) : null, maxSom = Number(i.maxPrice) > 0 ? Number(i.maxPrice) : null;
+    const numStr = String(i.num || '').trim().replace(/^#/, '');
+    const num = /^\d{1,9}$/.test(numStr) ? Number(numStr) : null;
+    // So'mdan TON'ga: narx = (TON + add) × rate  =>  TON = so'm / rate − add
+    const toTon = (x) => (x != null ? Math.max(0.001, x / Number(s.portals_sale.rate) - Number(s.portals_sale.add)) : null);
+    let items = [], total = 0, failed = false;
+    if (await portalsConfigured()) {
+      const r = await portalsMarket({ ...f, minTon: toTon(minSom), maxTon: toTon(maxSom), num, offset, sort });
+      if (r) { items = r.items.map((x) => ({ ...x, price: portalsSom(x.ton, s), ton: undefined })); total = r.total; } else failed = true;
+    }
+    let mine = [];
+    if (offset === 0) {
+      const low = (x) => String(x || '').trim().toLowerCase();
+      mine = (await all("SELECT * FROM sell_listings WHERE status = 'active' ORDER BY id DESC LIMIT 100")).map(listingOut).filter((x) =>
+        (!f.collection || low(x.name) === low(f.collection)) && (!f.model || low(x.model) === low(f.model))
+        && (!f.backdrop || low(x.backdrop) === low(f.backdrop)) && (!f.symbol || low(x.symbol) === low(f.symbol))
+        && (minSom == null || x.price >= minSom) && (maxSom == null || x.price <= maxSom) && (num == null || String(x.num || '').startsWith(String(num))));
+    }
+    if (failed && !mine.length && offset === 0) throw fail('MARKET_UNAVAILABLE');
+    // Narx so'mga aylantirilganda yaxlitlanadi: chegaradan chiqqanlarini olib tashlaymiz
+    items = items.filter((x) => (minSom == null || x.price >= minSom) && (maxSom == null || x.price <= maxSom));
+    return { items: mine.concat(items), total, next: !failed && offset + 30 < total ? offset + 30 : null };
+  },
+  /** "Giftimni sotaman": e'lon admin tasdig'iga tushadi. */
+  async sellGift(i, c) {
+    const m = /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(String(i.link || ''));
+    if (!m) throw fail('BAD_LINK');
+    const price = int(i.price, { min: 1000, max: 100000000000, name: 'price' });
+    const pending = await get("SELECT COUNT(*) AS n FROM sell_listings WHERE customer_id = :c AND status = 'pending'", { c: c.id });
+    if (Number(pending.n) >= 5) throw fail('TOO_MANY_LISTINGS');
+    const slug = m[1], n = Number(m[2]);
+    const name = slug.replace(/([a-z])([A-Z])/g, '$1 $2') + ' #' + n;
+    const a = (await attrsFromTelegram(slug, n)) || {};
+    const r = await run(`INSERT INTO sell_listings (customer_id, name, link, image, model, backdrop, symbol, price, status, created_at)
+      VALUES (:c, :name, :link, :img, :model, :backdrop, :symbol, :price, 'pending', :now) RETURNING id`,
+      { c: c.id, name, link: `https://t.me/nft/${slug}-${n}`, img: `https://nft.fragment.com/gift/${slug.toLowerCase()}-${n}.webp`,
+        model: a.model || null, backdrop: a.backdrop || null, symbol: a.symbol || null, price: toTiyin(price), now: nowMs() });
+    await notifyNewListing(Number((r.rows && r.rows[0] && r.rows[0].id) ?? r.lastInsertRowid));
+    return { ok: true };
   },
   async portalsCollections() {
     if (!(await portalsConfigured())) return [];
@@ -196,18 +243,31 @@ export const actions = {
           details: { own: p.id, sale: true, kind: p.kind, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined } };
       } else throw fail('VALIDATION', { field: 'ownMode' });
     } else if (service === 'portals') {
-      // Portals'dagi sotuvdagi gift: faqat naqd. Narx buyurtma paytida Portals'dan qayta tekshiriladi.
+      // "Sotuvda" bo'limidagi gift: Portals'dagi yoki mijoz e'loni ("u123"). Narx buyurtma paytida qayta tekshiriladi.
       if (!s.services_enabled.nft_gift) throw fail('SERVICE_DISABLED');
-      if (method !== 'cash') throw fail('VALIDATION', { field: 'paymentMethod' });
       const id = str(i.portalsId, 64, { required: true });
-      let it;
-      try { it = await portalsSaleItem(id); } catch (e) { throw fail('MARKET_UNAVAILABLE'); }
+      let it, listing = null;
+      if (/^u\d+$/.test(id)) {
+        listing = await get("SELECT * FROM sell_listings WHERE id = :id AND status = 'active'", { id: Number(id.slice(1)) });
+        it = listing ? listingOut(listing) : null;
+        if (it && listing.customer_id === c.id) throw fail('OWN_LISTING');
+      } else {
+        try { it = await portalsSaleItem(id); } catch (e) { throw fail('MARKET_UNAVAILABLE'); }
+        if (it) it.price = portalsSom(it.ton, s);
+      }
       if (!it) throw fail('GIFT_SOLD');
-      const price = portalsSom(it.ton, s);
+      const price = it.price;
       if (i.expectedPrice != null && Number(i.expectedPrice) !== price) throw fail('PRICE_CHANGED', { price });
+      // Bo'lib to'lash: admin yoqqan bo'lsa va narx chegaradan oshmasa
+      if (method === 'installment' && !(s.sale_inst.enabled && price <= Number(s.sale_inst.max))) throw fail('VALIDATION', { field: 'paymentMethod' });
       const label = `${it.name}${it.num != null && !/#\d+$/.test(it.name) ? ' #' + it.num : ''}`;
-      o = { service: 'nft_gift', title: `${label} — Portals'dan sotib olish`, installmentType: null, price: toTiyin(price),
-        details: { portals: it.id, name: label, ton: it.ton, model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined, sale: true } };
+      const seller = listing ? await get('SELECT username, phone FROM customers WHERE id = :id', { id: listing.customer_id }) : null;
+      o = { service: 'nft_gift', title: `${label} — sotib olish`, installmentType: itype(['plan2', 'uzum']),
+        price: method === 'cash' ? toTiyin(price) : null, estBase: toTiyin(price),
+        details: { ...(listing ? { listing: listing.id, seller: seller && seller.username ? '@' + seller.username : (seller && seller.phone) || `mijoz #${listing.customer_id}`, link: listing.link }
+          : { portals: it.id, ton: it.ton }), name: label, model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined, sale: true,
+          ...(method === 'installment' ? { quotedPrice: toTiyin(price) } : {}) } };
+      if (listing) o.afterCreate = async () => run("UPDATE sell_listings SET status = 'sold', updated_at = :t WHERE id = :id AND status = 'active'", { t: nowMs(), id: listing.id });
     } else if (service === 'premium') {
       if (!PREMIUM_PLANS.includes(i.plan)) throw fail('VALIDATION', { field: 'plan' });
       o = { service, title: `Telegram Premium — ${PREMIUM_LABEL[i.plan]}`, details: { plan: i.plan }, recipient: recipient(i.recipient),
@@ -253,10 +313,12 @@ export const actions = {
         if (o.details.downPayment < base) { const m = monthlyPayment(base, o.details.downPayment, months, s); o.details.estPrice = base; o.details.estMonthly = m.monthly; }
       }
     }
-    delete o.estBase; delete o.down1;
+    const afterCreate = o.afterCreate;
+    delete o.estBase; delete o.down1; delete o.afterCreate;
 
     const r = await createOrder({ ...o, customerId: c.id, paymentMethod: method, idempotencyKey: key,
       promoCode: method === 'cash' && i.promoCode ? String(i.promoCode).trim().slice(0, 32) : null });
+    if (!r.duplicate && afterCreate) await afterCreate();
     if (!r.duplicate) await notifyNewOrder(r.id);
     return { publicId: r.publicId, duplicate: r.duplicate, paymentMethod: method };
   },

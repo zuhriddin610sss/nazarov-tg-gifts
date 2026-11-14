@@ -185,11 +185,14 @@ async function dashboard(v) {
     <div class="section"><h2>Excel hisobot</h2>
       <p class="hint">Buyurtmalar (tanlangan sanalar bo'yicha), bo'lib to'lashlar va mijozlar bitta Excel faylga yoziladi. Fayl shu botdagi chatingizga yuboriladi.</p>
       <div class="row2"><input class="input" type="date" id="xFrom" value="${esc(monthStart())}"><input class="input" type="date" id="xTo" value="${esc(todayStr())}"></div>
-      <button class="btn btn-primary btn-sm" id="xls" type="button">⬇ Excel</button></div>
+      <button class="btn btn-primary btn-sm" id="xls" type="button">⬇ Excel</button>
+      <p class="hint" style="margin-top:10px">Har dushanba soat 9:00 dan keyin o'tgan haftaning hisoboti botga o'zi keladi (bot yoki ilovaga birinchi murojaatda).</p>
+      <button class="btn btn-ghost btn-sm" id="weekly" type="button">O'tgan hafta hisobotini hozir olish</button></div>
     <div class="section"><h2>Eslatmalar</h2><p class="hint">Ijara va oylik to'lov eslatmalari bot faol bo'lganda o'zi yuboriladi. Hozir tekshirish uchun bosing.</p>
       <button class="btn btn-ghost btn-sm" id="runJobs" type="button">Eslatmalarni hozir yuborish</button></div>
     ${s.pendingReceipts ? `<p class="alert">Tekshirilmagan cheklar: ${s.pendingReceipts}. <a href="#receipts">Ko'rish</a></p>` : ""}`;
   $("#xls").onclick = (e) => exportExcel(e.currentTarget, $("#xFrom").value, $("#xTo").value);
+  $("#weekly").onclick = async (e) => { e.currentTarget.disabled = true; try { await call("weeklyReport"); toast("Hisobot botdagi chatingizga yuborildi"); } catch (er) { toast(er.message); } };
   $("#runJobs").onclick = async (e) => {
     e.currentTarget.disabled = true;
     try { const r = await call("runJobs"); toast(`Yuborildi: ijara ${r.rent}, oylik to'lov ${r.inst}`); }
@@ -197,7 +200,7 @@ async function dashboard(v) {
   };
 }
 
-const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif", portals: "Portals ID", ton: "Portals narxi (TON)", symbol: "Belgi", sale: "Sotuv" };
+const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif", portals: "Portals ID", listing: "E'lon raqami", seller: "Sotuvchi", quotedPrice: "Narx (tiyin)", ton: "Portals narxi (TON)", symbol: "Belgi", sale: "Sotuv" };
 function orderSheet(o) {
   const d = o.details || {};
   const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
@@ -447,7 +450,9 @@ async function settings(v) {
     <div class="section"><h2>Portals'dagi sotuvdagi giftlar: (Portals narxi + qo'shimcha) × kurs</h2><div class="form">
       <div class="field"><label>Qo'shimcha, TON</label><input class="input" name="ps_add" value="${esc(s.portals_sale ? s.portals_sale.add : 0.1)}"></div>
       <div class="field"><label>Kurs, so'm</label><input class="input" name="ps_rate" value="${esc(s.portals_sale ? s.portals_sale.rate : 17000)}"></div>
-    </div><p class="hint">Ilovadagi "Sotuvda" bo'limi: faqat to'liq to'lov. Misol: Portals'da 10 TON → ${esc(money(Math.ceil((10 + Number(s.portals_sale ? s.portals_sale.add : 0.1)) * Number(s.portals_sale ? s.portals_sale.rate : 17000))))} so'm</p></div>
+      <div class="field full"><label class="chip"><input type="checkbox" name="si_on" ${s.sale_inst && s.sale_inst.enabled ? "checked" : ""}> "Sotuvda" giftlarni bo'lib to'lashga ruxsat berish</label></div>
+      <div class="field"><label>Bo'lib to'lash: shu narxgacha (so'm)</label><input class="input" name="si_max" value="${esc(s.sale_inst ? s.sale_inst.max : 3000000)}"></div>
+    </div><p class="hint">Ilovadagi "Sotuvda" bo'limi. Bo'lib to'lash o'chiq bo'lsa, faqat to'liq to'lov. Yoqilsa, narxi yuqoridagi summagacha bo'lgan giftlarga bo'lib to'lash (Boshlang'ich to'lovsiz yoki Uzum Nasiya) chiqadi. Misol: Portals'da 10 TON → ${esc(money(Math.ceil((10 + Number(s.portals_sale ? s.portals_sale.add : 0.1)) * Number(s.portals_sale ? s.portals_sale.rate : 17000))))} so'm</p></div>
     <div class="section"><h2>Ijara formulasi: (P + qo'shimcha) × koeffitsiyent × kurs</h2><div class="form">
       <div class="field"><label>Qo'shimcha</label><input class="input" name="rf_add" value="${esc(s.rent_formula.add)}"></div>
       <div class="field"><label>Koeffitsiyent</label><input class="input" name="rf_mult" value="${esc(s.rent_formula.mult)}"></div>
@@ -484,6 +489,7 @@ async function settings(v) {
       portalsKey: String(f.get("portals_key") || "").trim() || undefined,
       portals_base: String(f.get("portals_base") || "").trim(),
       portals_sale: { add: n("ps_add"), rate: n("ps_rate") },
+      sale_inst: { enabled: f.get("si_on") === "on", max: n("si_max") },
     };
     try { await api("/api/admin/settings", { method: "PUT", body }); toast("Saqlandi"); } catch (er) { toast(er.message); }
   };
@@ -558,6 +564,41 @@ const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqa
 const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni",
   portals_model_backdrop: "Portals: model + fon", portals_model: "Portals: model", portals_backdrop: "Portals: fon", portals_collection: "Portals: kolleksiya", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm" };
 const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)", paid: "Marketapp sotuv narxlari faqat pullik tarifda, Portals yoki qo'lda narxni tanlang" };
+// ---------- Mijozlar e'lonlari ("Giftimni sotaman") ----------
+const LST = { pending: "Tasdiq kutmoqda", active: "Sotuvda", sold: "Sotildi", hidden: "Yashirilgan / rad etilgan" };
+async function listings(v) {
+  const rows = await call("listings", {});
+  v.innerHTML = `<h1>E'lonlar</h1>
+    <p class="hint" style="margin-bottom:12px">Mijozlar "Giftimni sotaman" orqali yuborgan giftlar. <b>Tasdiqlash</b> bosilsa, gift ilovadagi "Sotuvda" bo'limida egasi yozgan narx bilan chiqadi. Xaridor to'lasa, sizga buyurtma keladi: ichida egasining username'i bo'ladi.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Gift</th><th>Narx</th><th>Egasi</th><th>Holat</th><th></th></tr></thead><tbody>
+    ${rows.map((l) => `<tr><td><a href="${esc(l.link)}" target="_blank" rel="noopener"><b>${esc(l.name)}</b></a>${l.model ? `<br><small class="hint">${esc(l.model)}${l.backdrop ? " · " + esc(l.backdrop) : ""}${l.symbol ? " · " + esc(l.symbol) : ""}</small>` : ""}</td>
+      <td>${esc(money(l.price))}</td>
+      <td>${l.username ? `<a href="https://t.me/${esc(l.username)}" target="_blank" rel="noopener">@${esc(l.username)}</a>` : esc(l.first_name || "—")}<br><small class="hint">${esc(l.phone || "")}</small></td>
+      <td>${esc(LST[l.status] || l.status)}<br><small class="hint">${esc(dt(l.created_at))}</small></td>
+      <td><div class="acts">
+        ${l.status !== "active" && l.status !== "sold" ? `<button class="btn btn-primary btn-sm" data-st="active" data-id="${l.id}" type="button">Tasdiqlash</button>` : ""}
+        ${l.status === "pending" ? `<button class="btn btn-ghost btn-sm" data-st="hidden" data-id="${l.id}" type="button">Rad etish</button>` : ""}
+        ${l.status === "active" ? `<button class="btn btn-ghost btn-sm" data-st="hidden" data-id="${l.id}" type="button">Yashirish</button>` : ""}
+        ${l.status === "sold" ? `<button class="btn btn-ghost btn-sm" data-st="active" data-id="${l.id}" type="button">Qayta sotuvga</button>` : ""}
+        <button class="btn btn-ghost btn-sm" data-price="${l.id}" type="button">Narx</button>
+        <button class="btn btn-ghost btn-sm" data-del="${l.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="5" class="empty">Hali e'lon yo'q</td></tr>`}
+    </tbody></table></div>`;
+  const row = (id) => rows.find((x) => String(x.id) === String(id));
+  v.querySelectorAll("[data-st]").forEach((b) => (b.onclick = async () => {
+    try { await call("setListing", { id: Number(b.dataset.id), status: b.dataset.st }); toast("Saqlandi"); render(); } catch (e) { toast(e.message); }
+  }));
+  v.querySelectorAll("[data-price]").forEach((b) => (b.onclick = async () => {
+    const l = row(b.dataset.price);
+    const x = prompt("Yangi narx, so'm", String(Number(l.price)));
+    if (!x) return;
+    try { await call("setListing", { id: l.id, status: l.status, price: Number(String(x).replace(/[\s,]/g, "")) }); toast("Saqlandi"); render(); } catch (e) { toast(e.message); }
+  }));
+  v.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Rostdan o'chirilsinmi?"; return; }
+    try { await call("setListing", { id: Number(b.dataset.del), delete: true }); toast("O'chirildi"); render(); } catch (e) { toast(e.message); }
+  }));
+}
+
 async function own(v) {
   const rows = await api("/api/admin/own");
   v.innerHTML = `<h1>Mening mahsulotlarim</h1>
@@ -643,7 +684,7 @@ function ownForm(p) {
   };
 }
 
-const VIEWS = { dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own };
+const VIEWS = { dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own, listings };
 async function render() {
   if (!(await ensureAuth())) return;
   const r = location.hash.slice(1) || "dashboard";

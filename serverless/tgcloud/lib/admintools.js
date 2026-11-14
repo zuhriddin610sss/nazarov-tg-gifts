@@ -26,7 +26,7 @@ const ton = (x) => (Math.round(Number(x) * 100) / 100).toLocaleString('ru-RU') +
 const attrOf = (it, t) => { const a = (it && it.attributes || []).find((x) => String(x.trait_type).toLowerCase() === t); return a ? String(a.value) : null; };
 
 /** t.me/nft sahifasidan model, fon, belgini o'qishga urinish. */
-async function attrsFromTelegram(slug, n) {
+export async function attrsFromTelegram(slug, n) {
   try {
     const res = await fetch(`https://t.me/nft/${slug}-${n}`, { headers: { Accept: 'text/html' } });
     const html = await res.text();

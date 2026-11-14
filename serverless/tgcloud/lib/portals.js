@@ -29,10 +29,11 @@ async function request(path, query) {
     try {
       const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `partners ${key}` } });
       const text = await res.text();
-      // Sekundiga 1 ta so'rov chegarasi: band bo'lsa bir marta kutib, qayta urinamiz
-      if (res.status === 429 && attempt === 0) { await sleep(1200); lastCall = Date.now(); continue; }
+      // Sekundiga 1 ta so'rov chegarasi yoki vaqtinchalik xato: kutib, 2 martagacha qayta urinamiz
+      if ((res.status === 429 || res.status >= 500) && attempt < 2) { await sleep(1200 * (attempt + 1)); lastCall = Date.now(); continue; }
       return { ok: res.ok, status: res.status, text, url };
     } catch (e) {
+      if (attempt < 2) { await sleep(1200 * (attempt + 1)); lastCall = Date.now(); continue; }
       return { ok: false, status: 0, text: String(e && e.message), url };
     }
   }
@@ -137,16 +138,20 @@ const marketCache = new Map();
  * ko'p mijoz bir vaqtda ochsa ham Portals'ga ortiqcha so'rov ketmaydi (sekundiga 1 ta chegara).
  * { items, total } yoki null (kalit yo'q yoki Portals javob bermadi).
  */
-export async function portalsMarket({ collection = null, offset = 0, sort = 'price asc' } = {}) {
+export async function portalsMarket(f = {}) {
+  const { collection = null, model = null, backdrop = null, symbol = null, minTon = null, maxTon = null, num = null, offset = 0, sort = 'price asc' } = f;
   let colId = null;
   if (collection) { const c = await portalsCollection(collection); if (!c) return { items: [], total: 0 }; colId = c.id; }
-  const k = `${colId}|${offset}|${sort}`;
+  const tonStr = (x) => (x != null && Number(x) > 0 ? String(Math.round(Number(x) * 1000) / 1000) : null);
+  const q = { collection_id: colId, filter_by_models: model, filter_by_backdrops: backdrop, filter_by_symbols: symbol,
+    min_price: tonStr(minTon), max_price: tonStr(maxTon), external_collection_number: num, status: 'listed', sort_by: sort, limit: 30, offset };
+  const k = JSON.stringify(q);
   const hit = marketCache.get(k);
   if (hit && Date.now() - hit.at < 180000) return hit.v;
-  const r = await request('/nfts/search', { collection_id: colId, status: 'listed', sort_by: sort, limit: 30, offset });
+  const r = await request('/nfts/search', q);
   if (!r.ok) { await logError('portals', `${r.status} /nfts/search (katalog): ${String(r.text).slice(0, 300)}`); return null; }
   let d; try { d = JSON.parse(r.text); } catch (e) { return null; }
-  const v = { items: (Array.isArray(d.results) ? d.results : []).map(saleItem).filter((x) => x.ton), total: Number(d.total_count) || 0 };
+  const v = { items: (Array.isArray(d.results) ? d.results : []).filter((x) => !x.status || x.status === 'listed').map(saleItem).filter((x) => x.ton), total: Number(d.total_count) || 0 };
   if (marketCache.size > 200) marketCache.clear();
   marketCache.set(k, { at: Date.now(), v });
   return v;

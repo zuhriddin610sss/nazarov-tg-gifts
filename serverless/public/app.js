@@ -935,28 +935,56 @@ function cfLabel(c, val) {
   return o ? o.label : String(val);
 }
 
-// ---------- Portals'dagi sotuvdagi giftlar (faqat naqd) ----------
+// ---------- "Sotuvda": sotuvdagi giftlar va mijozlar e'lonlari ----------
 const saleLabel = (it) => (it.num != null && !/#\d+$/.test(it.name) ? `${it.name} #${it.num}` : it.name);
-const saleImg = (it) => (it.photo ? `<img src="${esc(it.photo)}" alt="" loading="lazy">` : imgTag("gifts", saleLabel(it)));
+const saleImg = (it) => (it.photo ? `<img src="${esc(it.photo)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ph',textContent:this.dataset.n}))" data-n="${esc(saleLabel(it))}">` : imgTag("gifts", saleLabel(it)));
+const SALE_SORTS = [["price asc", "sale_sort_cheap"], ["price desc", "sale_sort_exp"], ["listed_at desc", "sale_sort_new"]];
+const saleInstOk = (price) => Boolean(S.cfg && S.cfg.saleInst && price > 0 && price <= Number(S.cfg.saleInst.max));
 async function loadSale(more) {
   const st = S.sale;
+  const req = ++st.req;
   st.loading = true;
   try {
-    const r = await call("portalsSale", { collection: st.collection || undefined, offset: more ? st.next : 0 });
+    const f = st.f;
+    const r = await call("portalsSale", { offset: more ? st.next : 0, sort: st.sort, collection: f.collection || undefined, model: f.model || undefined,
+      backdrop: f.backdrop || undefined, symbol: f.symbol || undefined, minPrice: f.min || undefined, maxPrice: f.max || undefined, num: st.num || undefined });
+    if (req !== st.req) return; // eskiroq so'rov javobi
     st.items = more ? st.items.concat(r.items) : r.items;
     st.next = r.next; st.loaded = true; st.error = null;
-  } catch (e) { st.error = errText(e); }
-  st.loading = false;
+  } catch (e) { if (req === st.req) { st.error = errText(e); st.loaded = true; if (!more) st.items = []; } }
+  if (req === st.req) st.loading = false;
+}
+/** Marketapp'dagi kolleksiya ro'yxatidan model, fon va belgilar (filtr uchun). */
+async function saleAttrs(name) {
+  if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } }
+  const norm = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+  const c = (S.giftCollections || []).find((x) => norm(x.name) === norm(name));
+  if (!c) return [];
+  try { return (await api("/api/nft/collections/" + encodeURIComponent(c.address) + "/attributes")).attributes || []; } catch { return []; }
 }
 async function viewSale(v, head, bindTabs) {
-  const st = S.sale ||= { items: [], next: null, loaded: false, collection: null, error: null, cols: null };
+  const st = S.sale ||= { items: [], next: null, loaded: false, error: null, cols: null, f: {}, sort: "price asc", num: "", attrs: null, req: 0 };
+  const chip = (k, label, val, disabled) => `<button type="button" class="fchip${val ? " on" : ""}" data-f="${k}" ${disabled ? "disabled" : ""}>${esc(val || label)}<span aria-hidden="true">⌄</span></button>`;
+  const priceLbl = () => (st.f.min || st.f.max ? `${st.f.min ? money(st.f.min) : "0"} – ${st.f.max ? money(st.f.max) : "∞"}` : "");
+  const any = () => Boolean(st.f.collection || st.f.model || st.f.backdrop || st.f.symbol || st.f.min || st.f.max || st.num);
+  const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); await loadSale(); draw(); };
   const draw = () => {
-    v.innerHTML = head + `<p class="hint" style="margin-top:10px">${esc(t("sale_note"))}</p>
-      <div class="filters"><button type="button" class="fchip${st.collection ? " on" : ""}" id="sCol">${esc(st.collection || t("f_gift"))}<span aria-hidden="true">⌄</span></button>
-        ${st.collection ? `<button type="button" class="fchip clr" id="sClr">✕ ${esc(t("f_clear"))}</button>` : ""}</div>
+    if (location.hash.slice(1) !== "rent" || S.rentTab !== "sale") return;
+    v.innerHTML = head + `
+      <a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>
+      <input class="input" id="sNum" placeholder="${esc(t("sale_num_ph"))}" value="${esc(st.num)}" inputmode="numeric" autocomplete="off" style="margin-top:12px">
+      <div class="filters">
+        <button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
+        ${chip("price", t("f_price"), priceLbl())}
+        ${chip("collection", t("f_gift"), st.f.collection)}
+        ${chip("model", t("f_model"), st.f.model, !st.f.collection)}
+        ${chip("backdrop", t("f_backdrop"), st.f.backdrop)}
+        ${chip("symbol", t("f_symbol"), st.f.symbol, !st.f.collection)}
+        ${any() ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
+      </div>
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
-      ${!st.loaded && !st.error ? `<div class="spin"></div>` : ""}
-      ${st.loaded && !st.items.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
+      ${!st.loaded ? `<div class="spin"></div>` : ""}
+      ${st.loaded && !st.error && !st.items.length ? `<p class="empty">${esc(t("sale_empty"))}</p>` : ""}
       <div class="grid3">${st.items.map((it, i) => `<button type="button" class="gcard" data-i="${i}">
         <span class="gimg">${saleImg(it)}</span>
         <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
@@ -965,39 +993,106 @@ async function viewSale(v, head, bindTabs) {
       ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
     bindTabs();
     v.querySelectorAll(".gcard[data-i]").forEach((c) => c.addEventListener("click", () => {
-      S.salePick = { item: st.items[Number(c.dataset.i)], key: key() };
+      S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: null, itype: null };
       location.hash = "sale-item";
     }));
     const more = $("#more", v); if (more) more.onclick = async () => { more.disabled = true; await loadSale(true); draw(); };
-    const retry = $("#retry", v); if (retry) retry.onclick = async () => { st.error = null; draw(); await loadSale(); draw(); };
-    const clr = $("#sClr", v); if (clr) clr.onclick = async () => { st.collection = null; st.loaded = false; draw(); await loadSale(); draw(); };
-    $("#sCol", v).onclick = async () => {
+    const retry = $("#retry", v); if (retry) retry.onclick = reload;
+    const num = $("#sNum", v);
+    let tm;
+    num.addEventListener("input", () => { clearTimeout(tm); tm = setTimeout(() => { st.num = num.value.replace(/\D/g, ""); reload().then(() => { const n = $("#sNum", v); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }); }, 600); });
+    v.querySelectorAll(".fchip[data-f]").forEach((b) => b.addEventListener("click", () => openF(b.dataset.f)));
+  };
+  const openF = async (k) => {
+    if (k === "clear") { st.f = {}; st.num = ""; st.attrs = null; return reload(); }
+    if (k === "sort") return pickSheet(t("sort_title"), SALE_SORTS.map(([x, l]) => ({ value: x, label: t(l) })), st.sort, (o) => { st.sort = o ? o.value : "price asc"; reload(); });
+    if (k === "price") {
+      sheet(`<h2>${esc(t("f_price"))}</h2>
+        <div class="row2"><input class="input" id="pMin" type="number" inputmode="numeric" placeholder="${esc(t("price_from"))}" value="${esc(st.f.min || "")}">
+          <input class="input" id="pMax" type="number" inputmode="numeric" placeholder="${esc(t("price_to"))}" value="${esc(st.f.max || "")}"></div>
+        <button class="btn btn-primary" id="pOk" type="button">${esc(t("apply"))}</button>`);
+      $("#pOk").onclick = () => { const a = Number($("#pMin").value) || null, b = Number($("#pMax").value) || null; st.f.min = a; st.f.max = b; closeSheet(); reload(); };
+      return;
+    }
+    if (k === "collection") {
       if (!st.cols) { try { st.cols = await call("portalsCollections"); } catch { st.cols = []; } }
-      pickSheet(t("f_gift"), st.cols.map((n) => ({ label: n, value: n })), st.collection, async (o) => {
-        st.collection = o ? o.value : null; st.loaded = false; draw(); await loadSale(); draw();
+      if (!st.cols.length) { if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } } st.cols = (S.giftCollections || []).map((c) => c.name); }
+      return pickSheet(t("f_gift"), st.cols.map((n) => ({ value: n, label: n })), st.f.collection, async (o) => {
+        st.f = { ...st.f, collection: o ? o.value : null, model: null, symbol: null };
+        st.attrs = null;
+        reload();
+        if (o) st.attrs = await saleAttrs(o.value);
       });
-    };
+    }
+    if (k === "backdrop" && !st.f.collection) {
+      if (!S.allBackdrops) {
+        if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } }
+        const c0 = (S.giftCollections || [])[0];
+        const at = c0 ? await saleAttrs(c0.name) : [];
+        const b = at.find((x) => String(x.trait_type).toLowerCase() === "backdrop");
+        if (b) S.allBackdrops = b.values.map((x) => x.value).sort();
+      }
+      return pickSheet(t("f_backdrop"), (S.allBackdrops || []).map((x) => ({ value: x, label: x })), st.f.backdrop, (o) => { st.f.backdrop = o ? o.value : null; reload(); });
+    }
+    if (!st.f.collection) return toast(t("f_pick_gift_first"));
+    if (!st.attrs) st.attrs = await saleAttrs(st.f.collection);
+    const a = (st.attrs || []).find((x) => String(x.trait_type).toLowerCase() === k);
+    const opts = a ? a.values.map((x) => ({ value: x.value, label: x.value, note: x.perc ? (Math.round(x.perc * 10) / 10) + "%" : "" })) : [];
+    pickSheet(t("f_" + k), opts, st.f[k], (o) => { st.f[k] = o ? o.value : null; reload(); });
   };
   draw();
-  if (!st.loaded && !st.loading) { await loadSale(); if (S.rentTab === "sale" && location.hash.slice(1) === "rent") draw(); }
+  if (!st.loaded && !st.loading) { await loadSale(); draw(); }
 }
 function viewSaleItem(v) {
   const p = S.salePick;
   if (!p) { location.hash = "rent"; return; }
   const it = p.item;
+  const canInst = saleInstOk(it.price);
+  if (!canInst) p.pay = "cash";
+  p._ctx = () => ({ base: it.price });
   const attrs = [["model", it.model], ["backdrop", it.backdrop], ["f_symbol", it.symbol]].filter(([, x]) => x);
+  const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));
   v.innerHTML = `<div class="hero-img">${saleImg(it)}</div>
     <h1 class="page-title" style="text-align:center">${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <span class="num">#${esc(it.num)}</span>` : ""}</h1>
     ${attrs.length ? `<div class="attrs" style="justify-content:center">${attrs.map(([k, x]) => `<span>${esc(t(k))}: ${esc(x)}</span>`).join("")}</div>` : ""}
-    <section class="step">${stepHead(1, t("step_pay"))}
-      <div class="opts" role="radiogroup">${opt("cash", t("pay_full"), t("pay_full_note"), som(it.price), true, "pay")}</div>
-      <p class="hint">${esc(t("sale_hint"))}</p>
-    </section>
+    ${canInst ? payStep(1, p, ["plan2", "uzum"]) : `<section class="step">${stepHead(1, t("step_pay"))}
+      <div class="opts" role="radiogroup">${opt("cash", t("pay_full"), t("pay_full_note"), som(it.price), true, "pay")}</div></section>`}
+    <p class="hint">${esc(t("sale_hint"))}</p>
     <div class="cta">
-      <div class="sum"><span>${esc(t("total"))}</span><b>${esc(som(it.price))}</b></div>
-      <button class="btn btn-primary" id="go" type="button">${esc(t("sale_buy"))}</button>
+      <div class="sum"><span>${esc(t("total"))}</span><b>${p.pay === "installment" ? esc(instCta(p)) : esc(som(it.price))}</b></div>
+      <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("sale_buy"))}</button>
     </div>`;
-  $("#go", v).addEventListener("click", () => placeOrder({ service: "portals", portalsId: it.id, expectedPrice: it.price, paymentMethod: "cash", idempotencyKey: p.key }, it.price));
+  if (canInst) {
+    bindOpts(v, (g, val) => { if (g === "pay" && val !== p.pay) p.itype = null; if (g === "itype" && val !== p.itype) resetInst(p, val); p[g] = val; render(); });
+    v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { p.months = Number(c.dataset.v); render(); }));
+    bindInst(v, p, () => ($("#go", v).disabled = !isReady()));
+  }
+  $("#go", v).addEventListener("click", () => placeOrder({ service: "portals", portalsId: it.id, expectedPrice: it.price, paymentMethod: p.pay, idempotencyKey: p.key,
+    ...(p.pay === "installment" ? { installmentType: p.itype, ...instBody(p) } : {}) }, it.price));
+}
+/** "Giftimni sotaman": havola va narx. Admin tasdiqlagach "Sotuvda" bo'limida chiqadi. */
+function viewSell(v) {
+  const d = S.drafts.sell ||= { link: "", price: "" };
+  const okLink = () => /t\.me\/nft\/[A-Za-z0-9]+-\d+/i.test(d.link);
+  const ready = () => okLink() && Number(d.price) >= 1000;
+  v.innerHTML = `<h1 class="page-title">${esc(t("sell_title"))}</h1>
+    <p class="hint">${esc(t("sell_intro"))}</p>
+    <section class="step">${stepHead(1, t("gift_link"))}
+      <input class="input" id="sLink" value="${esc(d.link)}" placeholder="t.me/nft/TrappedHeart-19604" inputmode="url" autocapitalize="off" autocomplete="off">
+      <p class="hint">${esc(t("sell_link_hint"))}</p></section>
+    <section class="step">${stepHead(2, t("sell_price"))}
+      <input class="input" id="sPrice" type="number" inputmode="numeric" min="1000" value="${esc(d.price)}" placeholder="${esc(t("down_ph"))}"></section>
+    <div class="cta"><button class="btn btn-primary" id="go" type="button" ${ready() ? "" : "disabled"}>${esc(t("sell_send"))}</button></div>`;
+  const upd = () => ($("#go", v).disabled = !ready());
+  $("#sLink", v).addEventListener("input", (e) => { d.link = e.target.value.trim(); upd(); });
+  $("#sPrice", v).addEventListener("input", (e) => { d.price = e.target.value; upd(); });
+  $("#go", v).addEventListener("click", async (e) => {
+    if (!(await needLogin())) return;
+    if (!(await ensurePhone())) return;
+    e.target.disabled = true;
+    try { await call("sellGift", { link: d.link, price: Number(d.price) }); S.drafts.sell = null; toast(t("sell_sent")); location.hash = "rent"; }
+    catch (er) { e.target.disabled = false; toast(errText(er)); }
+  });
 }
 
 function viewRentItem(v) {
@@ -1223,10 +1318,10 @@ const VIEWS = {
   home: viewHome, premium: viewPremium, stars: viewStars, nft: viewNft,
   rent: viewRent,
   "rent-gifts": (v) => { S.rentTab = "gifts"; location.replace("#rent"); }, "rent-usernames": (v) => { S.rentTab = "usernames"; location.replace("#rent"); }, "rent-numbers": (v) => { S.rentTab = "numbers"; location.replace("#rent"); },
-  "rent-item": viewRentItem, "sale-item": viewSaleItem, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
+  "rent-item": viewRentItem, "sale-item": viewSaleItem, sell: viewSell, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
 const TOP = new Set(["home", "rent", "orders", "balance", "login", "done"]);
-const PARENT = { "rent-item": () => "rent", "sale-item": () => "rent" };
+const PARENT = { "rent-item": () => "rent", "sale-item": () => "rent", sell: () => "rent" };
 
 function applyStatic() {
   document.documentElement.lang = S.lang === "zh" ? "zh-CN" : S.lang;
@@ -1238,7 +1333,7 @@ async function render() {
   const route = location.hash.slice(1) || "home";
   const fn = VIEWS[route] || viewHome;
   applyStatic();
-  const tab = ["orders", "balance", "rent"].includes(route) ? route : route === "rent-item" || route === "sale-item" ? "rent" : "home";
+  const tab = ["orders", "balance", "rent"].includes(route) ? route : ["rent-item", "sale-item", "sell"].includes(route) ? "rent" : "home";
   document.querySelectorAll(".tab").forEach((a) => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   $("#backBtn").hidden = TOP.has(route);
   $("#brand").hidden = !TOP.has(route);

@@ -114,6 +114,8 @@ export const DEFAULT_SETTINGS = {
   portals_base: 'https://portal-market.com/partners',
   // Portals'dagi sotuvdagi giftlar narxi mijozga: (Portals narxi + add) × rate so'm
   portals_sale: { add: 0.1, rate: 17000 },
+  // "Sotuvda" giftlarni bo'lib to'lash: yoqilgan bo'lsa, shu narxgacha (so'm) bo'lganlariga
+  sale_inst: { enabled: false, max: 3000000 },
   services_enabled: { nft_gift: true, gift_rent: true, username_rent: true, number_rent: true, premium: true, stars: true },
   mini_app_url: '',
 };
@@ -123,7 +125,7 @@ export async function getSettings() {
   let saved = {};
   try { saved = row ? JSON.parse(row.value) : {}; } catch (e) {}
   const s = { ...DEFAULT_SETTINGS, ...saved };
-  for (const k of ['payment_warning', 'premium_prices', 'rent_formula', 'services_enabled', 'down_formula', 'portals_sale']) s[k] = { ...DEFAULT_SETTINGS[k], ...(saved[k] || {}) };
+  for (const k of ['payment_warning', 'premium_prices', 'rent_formula', 'services_enabled', 'down_formula', 'portals_sale', 'sale_inst']) s[k] = { ...DEFAULT_SETTINGS[k], ...(saved[k] || {}) };
   return s;
 }
 export async function saveSettings(s) {
