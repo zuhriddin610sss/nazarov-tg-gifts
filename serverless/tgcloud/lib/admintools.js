@@ -16,6 +16,11 @@ export const ADMIN_HELP = [
 ].join('\n');
 
 const num = (s) => Number(String(s).replace(/[\s,_']/g, ''));
+/** Marketapp xatosini tushunarli qilish (402 = pullik tarif). */
+function errWhy(e) {
+  const st = e && e.parameters && e.parameters.status;
+  return st === 402 ? 'sotuv narxlari faqat pullik tarifda (402)' : st ? `xato (${st})` : 'javob bermadi';
+}
 const som = (x) => money(x) + " so'm";
 const ton = (x) => (Math.round(Number(x) * 100) / 100).toLocaleString('ru-RU') + ' TON';
 const attrOf = (it, t) => { const a = (it && it.attributes || []).find((x) => String(x.trait_type).toLowerCase() === t); return a ? String(a.value) : null; };
@@ -55,7 +60,9 @@ async function priceReport(name, attrs) {
   L.push(`Sotuvdagi eng arzon narx (× ${money(s.sale_rate)}):`);
   for (const [by, label] of [['model_backdrop', 'Model + fon'], ['model', 'Model'], ['backdrop', 'Fon'], ['collection', 'Kolleksiya']]) {
     if (by !== 'collection' && ((by !== 'backdrop' && !attrs.model) || (by !== 'model' && !attrs.backdrop))) continue;
-    const t = await floorPrice(col.address, attrs, by === 'collection' ? null : by);
+    let t = null;
+    try { t = await floorPrice(col.address, attrs, by === 'collection' ? null : by); }
+    catch (e) { L.push(`• Marketapp: ${errWhy(e)}`); break; }
     L.push(`• ${label}: ${t ? `${ton(t)} ≈ ${som(Math.ceil(t * Number(s.sale_rate)))}` : 'sotuvda yo\'q'}`);
   }
   if (await portalsConfigured()) {
@@ -99,7 +106,8 @@ export async function handleAdminText(text) {
       let attrs = await attrsFromTelegram(slug, n);
       if (!attrs && (await marketappConfigured())) {
         const col = await collectionByName(slug);
-        const it = col ? await giftOnSaleByNumber(col.address, n) : null;
+        let it = null;
+        try { it = col ? await giftOnSaleByNumber(col.address, n) : null; } catch (e) { it = null; }
         if (it) attrs = { model: attrOf(it, 'model'), backdrop: attrOf(it, 'backdrop'), symbol: attrOf(it, 'symbol') };
       }
       if (!attrs) return `Model va fonni aniqlab bo'lmadi. Shunday yozing:\n/narx ${name} | Model | Fon`;

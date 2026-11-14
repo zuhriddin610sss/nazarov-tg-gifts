@@ -552,7 +552,7 @@ async function logs(v) {
 const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqam" };
 const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni",
   portals_model_backdrop: "Portals: model + fon", portals_model: "Portals: model", portals_backdrop: "Portals: fon", portals_collection: "Portals: kolleksiya", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm" };
-const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)" };
+const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)", paid: "Marketapp sotuv narxlari faqat pullik tarifda, Portals yoki qo'lda narxni tanlang" };
 async function own(v) {
   const rows = await api("/api/admin/own");
   v.innerHTML = `<h1>Mening mahsulotlarim</h1>

@@ -102,7 +102,7 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
       } else {
         mkBy = 'no_collection';
       }
-    } catch (e) { mkBy = 'error'; await logError('narx', `${p.name}: ${e && (e.description || e.message)}`); }
+    } catch (e) { mkBy = e && e.parameters && e.parameters.status === 402 ? 'paid' : 'error'; await logError('narx', `${p.name}: ${e && (e.description || e.message)}`); }
   }
   // Portals (sinov): xuddi shunday zanjir, Portals narxlari bo'yicha
   if ((PT.includes(src) || src === 'best') && (stale || fresh) && p.kind === 'gifts' && (await portalsConfigured())) {

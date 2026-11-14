@@ -51,7 +51,7 @@ export async function portalsFloor(attrs) {
     offset: 0, limit: 5, sort_by: 'price asc', status: 'listed',
     filter_by_collections: attrs.collection, filter_by_models: attrs.model, filter_by_backdrops: attrs.backdrop, filter_by_symbols: attrs.symbol,
   });
-  if (!r.ok) { await logError('portals', `${r.status} ${r.url.replace(/\?.*$/, '')}`); return null; }
+  if (!r.ok) { await logError('portals', `${r.status} ${r.url.replace(/\?.*$/, '')}: ${String(r.text).slice(0, 300)}`); return null; }
   try { const p = pickPrices(JSON.parse(r.text)); return p.length ? Math.min(...p) : null; } catch (e) { return null; }
 }
 
