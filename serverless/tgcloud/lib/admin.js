@@ -286,8 +286,9 @@ export const actions = {
       price_source: ['model_backdrop', 'model', 'backdrop', 'portals_model_backdrop', 'portals_model', 'portals_backdrop', 'best', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
       price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
       price_manual: i.price_source === 'manual_som' && Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
-      down_mode: i.down_mode === 'manual' ? 'manual' : 'formula',
-      down_manual: i.down_mode === 'manual' ? toTiyin(num(i.down_manual, { min: 0, name: 'down_manual' })) : null,
+      // Boshlang'ich to'lov har doim avval formula bilan; bu summa faqat formula topilmasa ishlatiladi
+      down_mode: 'formula',
+      down_manual: Number(i.down_manual) > 0 ? toTiyin(num(i.down_manual, { min: 1, name: 'down_manual' })) : null,
     };
     if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });
     if (rentOn && p.rent_max < p.rent_min) throw fail('VALIDATION', { field: 'rent_max' });

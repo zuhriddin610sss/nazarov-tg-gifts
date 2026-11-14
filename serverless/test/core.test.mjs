@@ -356,4 +356,27 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #777');
   assert.equal(p.quote.price, Math.ceil(18.5 * 17000));
   assert.equal(p.quote.by, 'portals_model_backdrop');
+  assert.equal(p.quote.src, 'Portals: Trapped Heart');
+  assert.equal(p.quote.down1By, 'manual'); // ijarada yo'q -> qo'lda yozilgan summa
 });
+
+test("Marketapp sotuv narxi 402 bersa ham, boshlang'ich to'lov ijara narxidan formula bilan hisoblanadi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST' });
+  const rentItem = { nft_address: 'EQ_X', nft_name: 'Trapped Heart #6329', price_per_day: '20000000', max_duration: 2592000, min_duration: 86400, attributes: [] };
+  setFetch(async (url) => {
+    const u = String(url);
+    if (u.includes('/gifts/onsale/')) return { ok: false, status: 402, text: async () => JSON.stringify({ code: 'PAYMENT_REQUIRED' }) };
+    let body = {};
+    if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [rentItem] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #6329', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'model_backdrop', down_manual: 500000 });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #6329');
+  assert.equal(p.quote.by, 'paid');
+  assert.equal(p.quote.price, null);
+  // (0.02 × 45 + 0.1) × 17 000 × 3 = 51 000
+  assert.equal(p.quote.down1, 51000);
+  assert.equal(p.quote.down1By, 'formula');
+});
+

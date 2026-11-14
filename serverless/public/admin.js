@@ -562,7 +562,7 @@ async function own(v) {
     ${rows.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>
       <td>${p.rent_enabled ? `${esc(money(p.rent_price))}/kun<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
-      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))}</small>` : `<br><small class="hint">1-tur: admin</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": Marketapp'da sotuvda yo'q" : ""}</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": Marketapp'da sotuvda yo'q" : ""}</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}
@@ -596,10 +596,8 @@ function ownForm(p) {
           .map(([k, l]) => `<option value="${k}" ${(p.price_source || "manual_som") === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="field"><label>Narx, TON (qo'lda TON tanlansa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
       <div class="field"><label>Narx, so'm (qo'lda so'm tanlansa)</label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>
-      <div class="field"><label>1-tur boshlang'ich to'lovi</label>
-        <select class="input" name="down_mode"><option value="formula" ${p.down_mode !== "manual" ? "selected" : ""}>Formula bo'yicha (Marketapp ijara narxidan)</option><option value="manual" ${p.down_mode === "manual" ? "selected" : ""}>Qo'lda</option></select></div>
-      <div class="field"><label>Boshlang'ich to'lov, so'm (qo'lda tanlansa)</label><input class="input" name="down_manual" inputmode="decimal" value="${esc(p.down_manual != null ? Number(p.down_manual) : "")}"></div>
-      ${p.quote ? `<p class="hint full">Hozirgi hisob: narx ${p.quote.price ? esc(money(p.quote.price)) : "topilmadi"}${p.quote.marketPriceTon ? ` (Marketapp ${esc(p.quote.marketPriceTon)} TON)` : ""} · 1-tur boshlang'ich to'lovi ${p.quote.down1 != null ? esc(money(p.quote.down1)) : "topilmadi (ijarada yo'q)"}</p>` : ""}
+      <div class="field full"><label>1-tur boshlang'ich to'lovi, so'm (formula topilmasa). Formula: Marketapp'dagi 45 kunlik ijara narxidan hisoblanadi; sovg'a ijarada bo'lmasa, shu summa olinadi</label><input class="input" name="down_manual" inputmode="decimal" value="${esc(p.down_manual != null ? Number(p.down_manual) : "")}"></div>
+      ${p.quote ? `<p class="hint full">Hozirgi hisob: narx ${p.quote.price ? esc(money(p.quote.price)) : "topilmadi"}${p.quote.src ? ` (${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""})` : p.quote.marketPriceTon ? ` (${esc(p.quote.marketPriceTon)} TON)` : ""} · 1-tur boshlang'ich to'lovi ${p.quote.down1 != null ? esc(money(p.quote.down1)) + (p.quote.down1By === "formula" ? " (formula bo'yicha)" : " (qo'lda, ijarada yo'q)") : "topilmadi: pastga summani yozing"}</p>` : ""}
       <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
       <div class="field"><label>Holat</label><select class="input" name="visible"><option value="1" ${p.visible !== false ? "selected" : ""}>Ko'rinadi</option><option value="0" ${p.visible === false ? "selected" : ""}>Yashirin (sotilgan)</option></select></div>
       <p class="alert full" id="ofErr" hidden></p>
@@ -622,7 +620,7 @@ function ownForm(p) {
       inst_enabled: f.get("inst_enabled") === "on", cash_enabled: f.get("cash_enabled") === "on", cash_price: n("cash_price"),
       position: n("position"), visible: f.get("visible") === "1",
       price_source: f.get("price_source"), price_ton: Number(String(f.get("price_ton") || "").replace(",", ".")) || null, price_manual: n("price_manual") || null,
-      down_mode: f.get("down_mode"), down_manual: n("down_manual"),
+      down_manual: n("down_manual") || null,
     };
     if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) {
       const box = $("#ofErr"); const m = "Kamida bittasini belgilang: Ijaraga olish, Bo'lib to'lab sotib olish yoki Naqd sotib olish";

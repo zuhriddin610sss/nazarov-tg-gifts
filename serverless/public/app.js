@@ -331,7 +331,7 @@ function payStep(n, d, types) {
   return `<section class="step">${stepHead(n, t("step_pay"))}
     <div class="opts" role="radiogroup">
       ${opt("cash", t("pay_full"), t("pay_full_note"), "", d.pay === "cash", "pay")}
-      ${opt("installment", t("pay_inst"), t("pay_inst_note"), "", d.pay === "installment", "pay")}
+      ${opt("installment", t("pay_inst"), instNote(d), "", d.pay === "installment", "pay")}
     </div>
     ${d.pay === "installment" && types ? `<div class="field"><label>${esc(t("inst_type"))}</label><div class="opts" role="radiogroup">
       ${types.map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", d.itype === ty, "itype")).join("")}</div></div>` : ""}
@@ -374,8 +374,20 @@ function instCalc(d) {
   const yearPct = S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100;
   return { down, monthly: Math.ceil(Math.ceil((c.base - down) * (1 + (months * yearPct) / 12 / 100)) / months) };
 }
-/** Pastki "Jami" qatori: hisob bo'lsa "Oyiga ≈ …", bo'lmasa "Narxni admin aytadi". */
+/** "Bo'lib to'lash" tugmasi ostidagi izoh: narx ma'lum bo'lsa "oylik to'lov pastda ko'rsatiladi". */
+function instNote(d) {
+  const c = d._ctx ? d._ctx() : {};
+  return t(c.base > 0 ? "pay_inst_note_est" : "pay_inst_note");
+}
+/** Pastki "Jami" qatori: hammasi tanlansa "Oyiga ≈ …", bo'lmasa nimani tanlash kerakligi. */
 function instCta(d) {
+  if (!d.pay) return t("cta_pay");
+  if (!d.itype) return t("cta_itype");
+  if (!(Number(d.months) >= 1)) return t("cta_months");
+  if (needsDown(d.itype)) {
+    if (!d.dp) return t("cta_dp");
+    if (d.dp === "yes" && !(Number(d.dpAmt) > 0)) return t("cta_dp_amt");
+  }
   const r = instCalc(d);
   return r ? `${t("inst_monthly")} ≈ ${som(r.monthly)}` : t("price_by_admin");
 }
@@ -936,7 +948,7 @@ function viewRentItem(v) {
     p._ctx = () => ({ base: it.salePrice, down1: it.down1 });
     const opts = [];
     if (it.cashPrice) opts.push(opt("cash", t("pay_full"), t("pay_full_note"), som(it.cashPrice), p.pay === "cash", "pay"));
-    if (it.installment) opts.push(opt("installment", t("pay_inst"), t("pay_inst_note"), "", p.pay === "installment", "pay"));
+    if (it.installment) opts.push(opt("installment", t("pay_inst"), instNote(p), "", p.pay === "installment", "pay"));
     if (opts.length === 1 && !p.pay) p.pay = it.cashPrice ? "cash" : "installment";
     const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));
     v.innerHTML = title + `<section class="step">${stepHead(1, t("step_pay"))}<div class="opts" role="radiogroup">${opts.join("")}</div>
