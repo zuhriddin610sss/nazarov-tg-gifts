@@ -81,12 +81,16 @@ export async function marketappConfigured() {
 }
 
 /** Sotuvdagi eng arzon sovg'a narxi (TON) berilgan filtrlar bo'yicha. Topilmasa null. */
+/** Oxirgi topilgan eng arzon sovg'aning nomi (admin panelda ko'rsatish uchun). */
+export const floorInfo = { label: null };
 export async function giftsOnSaleFloor(filters) {
+  floorInfo.label = null;
   const q = { sort_by: 'min_bid_asc', limit: 1 };
   for (const k of ['collection_address', 'model', 'backdrop', 'symbol', 'item_num_from', 'item_num_to']) if (filters[k] != null && filters[k] !== '') q[k] = String(filters[k]).slice(0, 100);
   const data = await call('GET', '/v1/gifts/onsale/', { query: q });
   const it = Array.isArray(data.items) ? data.items[0] : null;
   if (!it || it.min_bid == null) return null;
+  floorInfo.label = it.name ? `Marketapp: ${it.name}` : 'Marketapp';
   return toTon(it.min_bid);
 }
 /** Sotuvdagi aniq bitta sovg'a (kolleksiya + raqam), bo'lsa atributlari bilan. */

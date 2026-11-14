@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -219,4 +219,5 @@ export const COLUMNS = [
   ['own_products', 'mk_ppd_nano', 'TEXT'],
   ['own_products', 'mk_checked_at', 'INTEGER'],
   ['own_products', 'mk_by', 'TEXT'],
+  ['own_products', 'mk_src', 'TEXT'],
 ];

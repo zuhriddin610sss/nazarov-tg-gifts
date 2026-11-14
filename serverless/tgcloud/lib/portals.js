@@ -37,7 +37,11 @@ async function request(path, query) {
 const low = (x) => String(x || '').trim().toLowerCase();
 const attrVal = (it, type) => { const a = (it.attributes || []).find((x) => low(x.type || x.trait_type) === type); return a ? low(a.value) : null; };
 /** Javobdan narxlar ro'yxatini ajratib olish. want berilsa, faqat nomi/modeli/foni mos keladiganlar olinadi. */
+let labels = new Map();
+/** Oxirgi topilgan eng arzon sovg'aning nomi (admin panelda ko'rsatish uchun). */
+export const portalsInfo = { label: null };
 function pickPrices(data, want) {
+  labels = new Map();
   const arr = Array.isArray(data) ? data : data && (data.results || data.items || data.nfts || data.data || data.listings);
   if (!Array.isArray(arr)) return [];
   const out = [];
@@ -49,7 +53,11 @@ function pickPrices(data, want) {
     }
     const v = it && (it.price ?? it.floor_price ?? it.min_price ?? it.ton_price ?? (it.listing && it.listing.price));
     const n = Number(v);
-    if (Number.isFinite(n) && n > 0) out.push(n > 1e6 ? n / 1e9 : n); // nanoTON bo'lsa TON ga
+    if (Number.isFinite(n) && n > 0) {
+      const ton = n > 1e6 ? n / 1e9 : n; // nanoTON bo'lsa TON ga
+      out.push(ton);
+      if (!labels.has(ton)) labels.set(ton, `${it.name || ''}${it.external_collection_number ? ' #' + it.external_collection_number : ''}`.trim());
+    }
   }
   return out;
 }
@@ -70,16 +78,23 @@ export async function portalsCollection(name) {
 
 /** Sotuvdagi eng arzon narx (TON). attrs: { collection, model, backdrop, symbol }. Topilmasa null. */
 export async function portalsFloor(attrs) {
+  portalsInfo.label = null;
   const col = await portalsCollection(attrs.collection);
   if (!col) return null;
   // Faqat kolleksiya bo'yicha: Portals'ning tayyor "floor" narxi
-  if (!attrs.model && !attrs.backdrop && !attrs.symbol) { const f = Number(col.floor_price); return f > 0 ? f : null; }
+  if (!attrs.model && !attrs.backdrop && !attrs.symbol) { const f = Number(col.floor_price); if (f > 0) portalsInfo.label = `Portals: ${col.name} (kolleksiya eng arzoni)`; return f > 0 ? f : null; }
   const r = await request('/nfts/search', {
     collection_id: col.id, filter_by_models: attrs.model, filter_by_backdrops: attrs.backdrop, filter_by_symbols: attrs.symbol,
     status: 'listed', sort_by: 'price asc', limit: 5, offset: 0,
   });
   if (!r.ok) { await logError('portals', `${r.status} /nfts/search: ${String(r.text).slice(0, 300)}`); return null; }
-  try { const p = pickPrices(JSON.parse(r.text), attrs); return p.length ? Math.min(...p) : null; } catch (e) { return null; }
+  try {
+    const p = pickPrices(JSON.parse(r.text), attrs);
+    if (!p.length) return null;
+    const m = Math.min(...p);
+    portalsInfo.label = 'Portals: ' + (labels.get(m) || col.name);
+    return m;
+  } catch (e) { return null; }
 }
 
 /** /portals buyrug'i uchun: so'rov va javobni ko'rsatish (kalitsiz). */
