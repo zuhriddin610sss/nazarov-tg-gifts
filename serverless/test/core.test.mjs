@@ -512,3 +512,32 @@ test("Sotuvda 1-tur: gift Marketapp ijarasida bo'lsa, boshlang'ich to'lov formul
   assert.equal(o.details.downPayment, 51000);
   assert.equal(o.details.estMonthly, Math.ceil(Math.ceil((171700 - 51000) * 1.5) / 6));
 });
+
+test("1-tur formulasi: admin tanlagan usul bo'yicha (model + fon eng arzon ijara), Sotuvda uchun sozlamadan", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST', portalsKey: 'portals_K', sale_inst: { enabled: true, max: 1000000 }, sale_down_by: 'model' });
+  const rentQ = [];
+  setFetch(async (url) => {
+    const u = String(url);
+    let body = {};
+    if (u.includes('portal-market.com')) body = { total_count: 1, results: [{ id: 'z9', name: 'Trapped Heart', external_collection_number: 1, price: '10', status: 'listed', attributes: [{ type: 'model', value: 'Crime Scene' }] }] };
+    else if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/rent/gifts/')) {
+      rentQ.push(decodeURIComponent(u));
+      body = { cursor: null, items: [{ nft_address: 'EQ_A', nft_name: 'Trapped Heart #5', price_per_day: '30000000', max_duration: 2592000, min_duration: 86400, attributes: [] },
+        { nft_address: 'EQ_B', nft_name: 'Trapped Heart #7', price_per_day: '20000000', max_duration: 2592000, min_duration: 86400, attributes: [] }] };
+    }
+    else if (u.includes('/gifts/onsale/')) return { ok: false, status: 402, text: async () => '{}' };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #6329', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'manual_som', price_manual: 1000000, down_by: 'model_backdrop' });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #6329');
+  assert.equal(p.down_mode, 'model_backdrop');
+  assert.equal(p.quote.down1, 51000); // eng arzoni 0.02 TON: (0.02 × 45 + 0.1) × 17 000 × 3
+  assert.deepEqual([p.quote.down1By, p.quote.down1Base], ['formula', 'model_backdrop']);
+  assert.ok(rentQ.some((q) => q.includes('model=Crime Scene') && q.includes('backdrop=Persimmon')));
+  // Sotuvda: sozlamada "model" tanlangan
+  rentQ.length = 0;
+  assert.deepEqual(await app({ action: 'saleDown1', name: 'Trapped Heart #1', model: 'Crime Scene' }), { down1: 51000 });
+  assert.ok(rentQ.some((q) => q.includes('model=Crime Scene') && !q.includes('backdrop=')));
+});

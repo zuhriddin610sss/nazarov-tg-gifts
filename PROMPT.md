@@ -62,7 +62,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
   - Muddat: 1–240 oy (barabanda), Uzum Nasiya'da 3 · 6 · 12 oy.
   - Ustama: oyiga 100% ÷ 12 (3 oy +25%, 6 oy +50%, 12 oy +100%). Boshlang'ich to'lov ayrilgandan keyin qolgan summaga qo'yiladi.
   - Mijozga faqat boshlang'ich to'lov va taxminiy oylik to'lov ko'rsatiladi.
-- 1-tur boshlang'ich to'lovi: (Marketapp'dagi 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Sovg'a Marketapp ijarasida bo'lmasa, admin yozgan summa olinadi.
+- 1-tur boshlang'ich to'lovi: (Marketapp'dagi 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Qaysi ijara narxidan olinishini admin tanlaydi: aynan shu gift, model + fon, model yoki fon (eng arzon ijara). "Mening mahsulotlarim"da har mahsulotda, "Sotuvda" uchun Sozlamalarda. Topilmasa, admin yozgan summa, u ham bo'lmasa "admin aytadi".
 - Marketapp'ning sotuv narxlari (onsale) pullik tarifda (402). Ijara ro'yxati bepul.
 - "Sotuvda" bo'limi: Portals'da sotuvdagi giftlar va mijozlarning "Giftimni sotaman" e'lonlari.
   - Mijozga "Portals" so'zi ko'rinmaydi (faqat admin ko'radi).
@@ -84,6 +84,9 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Admin bot buyruqlari:
   - sovg'a havolasi yuborilsa yoki `/narx Nomi | Model | Fon` yozilsa: bozor narxi, ijara narxi va 1-tur boshlang'ich to'lovi;
   - `/hisob narx oy boshlang'ich`: kalkulyator.
+
+## Texnik eslatma
+- `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.
 
 ## Dizayn va brend
 - Ranglar logotipdagidek: krem, adabiy yashil, kumush. Ilovada to'q fon.

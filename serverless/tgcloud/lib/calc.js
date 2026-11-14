@@ -69,17 +69,32 @@ export async function rentListingFor(collectionAddress, name, attrs) {
   return null;
 }
 
+/** 1-tur formulasi qaysi ijara narxidan: aynan shu gift, model + fon, model yoki fon (eng arzon ijara). */
+export const DOWN_BASES = ['exact', 'model_backdrop', 'model', 'backdrop'];
+export const downBase = (x) => (DOWN_BASES.includes(x) ? x : 'exact');
+/** Tanlangan usul bo'yicha Marketapp ijarasidagi kunlik narx (nanoTON, matn) yoki null. */
+export async function rentPpdFor(collectionAddress, name, attrs, base) {
+  base = downBase(base);
+  if (base === 'exact') { const r = await rentListingFor(collectionAddress, name, attrs || {}); return r ? String(r.price_per_day) : null; }
+  const q = { collection_address: collectionAddress, sort_by: 'price_per_day' };
+  if (base !== 'backdrop') { if (!attrs || !attrs.model) return null; q.model = attrs.model; }
+  if (base !== 'model') { if (!attrs || !attrs.backdrop) return null; q.backdrop = attrs.backdrop; }
+  const r = await listRent('gifts', q);
+  const best = (r.items || []).reduce((m, x) => (m == null || BigInt(String(x.price_per_day)) < BigInt(String(m.price_per_day)) ? x : m), null);
+  return best ? String(best.price_per_day) : null;
+}
+
 /**
  * Istalgan gift uchun 1-tur boshlang'ich to'lovi (so'm): Marketapp'dagi shu giftning ijara narxidan formula bilan.
  * Gift ijarada bo'lmasa yoki Marketapp ulanmagan bo'lsa null (admin o'zi yozadi).
  */
-export async function giftDown1(name, attrs, s) {
+export async function giftDown1(name, attrs, s, base = s.sale_down_by) {
   try {
     if (!(await marketappConfigured())) return null;
     const c = await collectionByName(splitGiftName(name).collection);
     if (!c) return null;
-    const r = await rentListingFor(c.address, name, attrs || {});
-    return r ? downByFormula(r.price_per_day, s) : null;
+    const ppd = await rentPpdFor(c.address, name, attrs || {}, base);
+    return ppd ? downByFormula(ppd, s) : null;
   } catch (e) { return null; }
 }
 
@@ -116,8 +131,7 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
         } catch (e) { mkBy = errBy(e); await logError('narx', `${p.name}: ${e && (e.description || e.message)}`); }
       }
       try {
-        const r = await rentListingFor(col, p.name, attrs);
-        mkPpd = r ? String(r.price_per_day) : null;
+        mkPpd = await rentPpdFor(col, p.name, attrs, p.down_mode);
       } catch (e) { mkPpd = null; await logError('ijara', `${p.name}: ${e && (e.description || e.message)}`); }
       await run(`UPDATE own_products SET collection_address = :c, mk_price_ton = :pt, mk_ppd_nano = :pp, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id`,
         { c: col, pt: mkPrice ?? null, pp: mkPpd ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
@@ -146,7 +160,8 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
   else if (usesMarketPrice) price = mkPrice ? Math.ceil(Number(mkPrice) * Number(s.sale_rate)) : null;
   // 1-tur boshlang'ich to'lovi: avval formula (Marketapp ijara narxi), topilmasa admin yozgan summa
   let down1 = null, down1By = null;
+  const down1Base = downBase(p.down_mode);
   if (mkPpd) { down1 = downByFormula(mkPpd, s); down1By = 'formula'; }
   else if (p.down_manual) { down1 = Math.ceil(Number(p.down_manual) / 100); down1By = 'manual'; }
-  return { price, down1, down1By, marketPriceTon: mkPrice ?? null, by: usesMarketPrice ? mkBy : src, src: usesMarketPrice ? mkSrc : null };
+  return { price, down1, down1By, down1Base, marketPriceTon: mkPrice ?? null, by: usesMarketPrice ? mkBy : src, src: usesMarketPrice ? mkSrc : null };
 }

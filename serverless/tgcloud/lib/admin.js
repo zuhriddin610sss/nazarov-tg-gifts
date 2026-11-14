@@ -211,6 +211,7 @@ export const actions = {
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
+      sale_down_by: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.sale_down_by) ? i.sale_down_by : 'exact',
       sale_inst: { enabled: Boolean(i.sale_inst && i.sale_inst.enabled), max: n(i.sale_inst && i.sale_inst.max != null ? i.sale_inst.max : DEFAULT_SETTINGS.sale_inst.max, 'si_max', 1) },
       portals_sale: { add: n(i.portals_sale && i.portals_sale.add != null ? i.portals_sale.add : DEFAULT_SETTINGS.portals_sale.add, 'ps_add'),
         rate: n(i.portals_sale && i.portals_sale.rate != null ? i.portals_sale.rate : DEFAULT_SETTINGS.portals_sale.rate, 'ps_rate', 0.0001) },
@@ -290,7 +291,7 @@ export const actions = {
       price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
       price_manual: i.price_source === 'manual_som' && Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
       // Boshlang'ich to'lov har doim avval formula bilan; bu summa faqat formula topilmasa ishlatiladi
-      down_mode: 'formula',
+      down_mode: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.down_by) ? i.down_by : 'exact',
       down_manual: Number(i.down_manual) > 0 ? toTiyin(num(i.down_manual, { min: 1, name: 'down_manual' })) : null,
     };
     if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });

@@ -116,6 +116,8 @@ export const DEFAULT_SETTINGS = {
   portals_sale: { add: 0.1, rate: 17000 },
   // "Sotuvda" giftlarni bo'lib to'lash: yoqilgan bo'lsa, shu narxgacha (so'm) bo'lganlariga
   sale_inst: { enabled: false, max: 3000000 },
+  // "Sotuvda" giftlar uchun 1-tur formulasi qaysi ijara narxidan: exact | model_backdrop | model | backdrop
+  sale_down_by: 'exact',
   services_enabled: { nft_gift: true, gift_rent: true, username_rent: true, number_rent: true, premium: true, stars: true },
   mini_app_url: '',
 };
