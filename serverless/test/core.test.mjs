@@ -337,7 +337,8 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   setFetch(async (url, opts) => {
     const u = String(url);
     let body = {};
-    if (u.includes('portal-market.com')) { auth = opts.headers.Authorization; body = { results: [{ name: 'Pool Float', price: '4.44', attributes: [] }, { name: 'Trapped Heart', price: '18.5', attributes: [{ type: 'model', value: 'Crime Scene' }, { type: 'backdrop', value: 'Persimmon' }] }, { name: 'Trapped Heart', price: '25', attributes: [{ type: 'model', value: 'Crime Scene' }, { type: 'backdrop', value: 'Persimmon' }] }] }; }
+    if (u.includes('portal-market.com/partners/collections/preview')) { auth = opts.headers.Authorization; body = { collections: [{ id: 'col-uuid-1', name: 'Trapped Heart', short_name: 'trappedheart', floor_price: '12' }] }; }
+    else if (u.includes('portal-market.com')) { assert.ok(u.includes('collection_id=col-uuid-1')); body = { results: [{ name: 'Pool Float', price: '4.44', attributes: [] }, { name: 'Trapped Heart', price: '18.5', attributes: [{ type: 'model', value: 'Crime Scene' }, { type: 'backdrop', value: 'Persimmon' }] }, { name: 'Trapped Heart', price: '25', attributes: [{ type: 'model', value: 'Crime Scene' }, { type: 'backdrop', value: 'Persimmon' }] }] }; }
     else if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
     else if (u.includes('/gifts/onsale/')) body = { cursor: null, items: [{ min_bid: '40000000000' }] };
     else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [] };
@@ -347,7 +348,8 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   await messageHandler({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Admin' }, text: '/portals Trapped Heart | Crime Scene | Persimmon' });
   const txt = sent.map((m) => m.params.text || '').join('\n');
   assert.match(txt, /Javob kodi: 200/);
-  assert.match(txt, /Mos keladigan narxlar \(TON\): 18\.5, 25/);
+  assert.match(txt, /Crime Scene \+ Persimmon: 18\.5, 25 TON/);
+  assert.match(txt, /eng arzoni 12 TON/);
   assert.ok(!txt.includes('SECRETKEY'), 'kalit ko\'rinmasligi kerak');
   assert.equal(auth, 'partners portals_SECRETKEY123');
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #777', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'best', down_mode: 'manual', down_manual: 1 });
