@@ -2,6 +2,7 @@
 import { get, run, nowMs, logError } from 'lib/core';
 import { giftsOnSaleFloor, listRent, giftCollections, marketappConfigured, floorInfo } from 'lib/marketapp';
 import { portalsFloor, portalsConfigured } from 'lib/portals';
+import { satFloor, satelliteConfigured } from 'lib/satellite';
 
 /** Ustama foizi: oy soni × (yillik ustama / 12). 3 oy -> 25, 6 oy -> 50, 12 oy -> 100. */
 export function markupPercent(months, s) {
@@ -106,10 +107,11 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
   const attrs = { model: p.model, backdrop: p.backdrop, symbol: p.symbol };
   const src = p.price_source || 'manual_som';
   const MK = ['model_backdrop', 'model', 'backdrop'], PT = ['portals_model_backdrop', 'portals_model', 'portals_backdrop'];
+  const SAT = ['sat_model_backdrop', 'sat_model', 'sat_backdrop'];
   // Zanjir: tanlangan usulda topilmasa kengroq usul. Butun kolleksiyaning eng arzoniga tushilmaydi
   // (u boshqa modeldagi gift bo'ladi): topilmasa admin qo'lda yozgan narx olinadi.
   const CHAIN = { model_backdrop: ['model_backdrop', 'model', 'backdrop'], model: ['model', 'backdrop'], backdrop: ['backdrop'] };
-  const usesMarketPrice = MK.includes(src) || PT.includes(src) || src === 'best';
+  const usesMarketPrice = MK.includes(src) || PT.includes(src) || SAT.includes(src) || src === 'best';
   let mkPrice = p.mk_price_ton, mkPpd = p.mk_ppd_nano, mkBy = p.mk_by || null, mkSrc = p.mk_src || null;
   const stale = !p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000;
   const errBy = (e) => (e && e.parameters && e.parameters.status === 402 ? 'paid' : 'error');
@@ -165,6 +167,26 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
       await run('UPDATE own_products SET mk_price_ton = :pt, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id', { pt: mkPrice ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
     } else {
       // Keyingi safar qayta tekshirish uchun: vaqt belgisini yangilamaymiz
+      await run('UPDATE own_products SET mk_checked_at = NULL WHERE id = :id', { id: p.id });
+    }
+  }
+  // Gift Satellite: hamma bozorlar (Telegram Market, Portals, Tonnel, MRKT, Getgems) bo'yicha eng arzoni
+  if ((SAT.includes(src) || src === 'best') && (stale || fresh) && p.kind === 'gifts' && (await satelliteConfigured())) {
+    const chain = CHAIN[src === 'best' ? 'model_backdrop' : src.replace('sat_', '')];
+    const collection = splitGiftName(p.name).collection;
+    let sPrice = null, sBy = null, sSrc = null, failed = false;
+    for (const by of chain) {
+      const a = { collection, model: ['model_backdrop', 'model'].includes(by) ? attrs.model : null, backdrop: ['model_backdrop', 'backdrop'].includes(by) ? attrs.backdrop : null };
+      if ((by === 'model_backdrop' && !(a.model && a.backdrop)) || (by === 'model' && !a.model) || (by === 'backdrop' && !a.backdrop)) continue;
+      const t = await satFloor(a);
+      if (t.status === 'error') { failed = true; break; }
+      if (t.status === 'ok') { sPrice = t.ton; sBy = by; sSrc = t.label; break; }
+    }
+    if (!failed) {
+      if (src === 'best') { if (sPrice && (!mkPrice || sPrice < mkPrice)) { mkPrice = sPrice; mkBy = 'sat_' + sBy; mkSrc = sSrc; } }
+      else { mkPrice = sPrice; mkBy = sBy ? 'sat_' + sBy : null; mkSrc = sSrc; }
+      await run('UPDATE own_products SET mk_price_ton = :pt, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id', { pt: mkPrice ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
+    } else {
       await run('UPDATE own_products SET mk_checked_at = NULL WHERE id = :id', { id: p.id });
     }
   }

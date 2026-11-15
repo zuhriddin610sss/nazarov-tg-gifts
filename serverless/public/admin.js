@@ -200,7 +200,7 @@ async function dashboard(v) {
   };
 }
 
-const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif", portals: "Portals ID", listing: "E'lon raqami", seller: "Sotuvchi", quotedPrice: "Narx (tiyin)", ton: "Portals narxi (TON)", symbol: "Belgi", sale: "Sotuv" };
+const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif", portals: "Portals ID", market: "Bozor", slug: "Gift", listing: "E'lon raqami", seller: "Sotuvchi", quotedPrice: "Narx (tiyin)", ton: "Portals narxi (TON)", symbol: "Belgi", sale: "Sotuv" };
 function orderSheet(o) {
   const d = o.details || {};
   const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
@@ -437,7 +437,11 @@ async function settings(v) {
     <div class="section"><h2>Marketapp</h2><div class="form">
       <div class="field full"><label>Marketapp API tokeni ${s.marketappTokenSet ? "(saqlangan ✓ — almashtirish uchun yangisini yozing)" : "(hali kiritilmagan)"}</label>
         <input class="input" name="marketapp_token" type="password" autocomplete="off" placeholder="${s.marketappTokenSet ? "••••••••" : "Tokenni shu yerga qo'ying"}"></div>
-      <div class="field full"><label>Portals API kaliti (sinov) ${s.portalsKeySet ? "(saqlangan ✓ — almashtirish uchun yangisini yozing)" : "(hali kiritilmagan)"}</label>
+      <div class="field full"><label>Gift Satellite API kaliti (5 ta bozor: Telegram Market, Portals, Tonnel, MRKT, Getgems) ${s.satelliteKeySet ? "(saqlangan ✓, almashtirish uchun yangisini yozing)" : "(hali kiritilmagan)"}</label>
+        <input class="input" name="satellite_key" type="password" autocomplete="off" placeholder="${s.satelliteKeySet ? "••••••••" : "Kalitni shu yerga qo'ying"}"></div>
+      <div class="field full"><label>Gift Satellite API manzili (o'zgartirmang)</label>
+        <input class="input" name="satellite_base" autocomplete="off" value="${esc(s.satellite_base || "")}"></div>
+      <div class="field full"><label>Portals API kaliti (Gift Satellite ishlamasa, zaxira) ${s.portalsKeySet ? "(saqlangan ✓ — almashtirish uchun yangisini yozing)" : "(hali kiritilmagan)"}</label>
         <input class="input" name="portals_key" type="password" autocomplete="off" placeholder="${s.portalsKeySet ? "••••••••" : "portals_... kalitni shu yerga qo'ying"}"></div>
       <div class="field full"><label>Portals API manzili (o'zgartirmang, kerak bo'lsa aytaman)</label>
         <input class="input" name="portals_base" autocomplete="off" value="${esc(s.portals_base || "")}"></div>
@@ -488,6 +492,8 @@ async function settings(v) {
       services_enabled: Object.fromEntries(Object.keys(svcL).map((k) => [k, f.get("se_" + k) === "on"])),
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,
       portalsKey: String(f.get("portals_key") || "").trim() || undefined,
+      satelliteKey: String(f.get("satellite_key") || "").trim() || undefined,
+      satellite_base: String(f.get("satellite_base") || "").trim(),
       portals_base: String(f.get("portals_base") || "").trim(),
       portals_sale: { add: n("ps_add"), rate: n("ps_rate") },
       sale_inst: { enabled: f.get("si_on") === "on", max: n("si_max") }, sale_down_by: f.get("sale_down_by"),
@@ -563,7 +569,7 @@ async function logs(v) {
 // ---------- O'z mahsulotlari ("Reklama") ----------
 const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqam" };
 const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni",
-  portals_model_backdrop: "Portals: model + fon", portals_model: "Portals: model", portals_backdrop: "Portals: fon", portals_collection: "Portals: kolleksiya", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm",
+  portals_model_backdrop: "Portals: model + fon", portals_model: "Portals: model", portals_backdrop: "Portals: fon", portals_collection: "Portals: kolleksiya", sat_model_backdrop: "barcha bozorlar: model + fon", sat_model: "barcha bozorlar: model", sat_backdrop: "barcha bozorlar: fon", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm",
   fallback_som: "qo'lda narx (bozorda model / fon bo'yicha topilmadi)", fallback_ton: "qo'lda TON narx (bozorda model / fon bo'yicha topilmadi)" };
 const DOWNB = { exact: "aynan shu gift", model_backdrop: "model + fon", model: "model", backdrop: "fon" };
 const downSel = (name, cur) => `<select class="input" name="${name}">${[["exact", "Aynan shu giftning ijarasi"], ["model_backdrop", "Model + fon: eng arzon ijara"], ["model", "Model: eng arzon ijara"], ["backdrop", "Fon: eng arzon ijara"]]
@@ -643,7 +649,7 @@ function ownForm(p) {
       <div class="field"><label>Ijara: eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 30)}"></div>
       <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
       <div class="field full"><label>Bo'lib to'lash uchun narx qayerdan olinsin?</label>
-        <select class="input" name="price_source">${[["model_backdrop", "Marketapp: model + fon eng arzoni × kurs"], ["model", "Marketapp: model eng arzoni × kurs"], ["backdrop", "Marketapp: fon eng arzoni × kurs"], ["portals_model_backdrop", "Portals (sinov): model + fon eng arzoni × kurs"], ["portals_model", "Portals (sinov): model eng arzoni × kurs"], ["portals_backdrop", "Portals (sinov): fon eng arzoni × kurs"], ["best", "Eng arzoni: Marketapp yoki Portals × kurs"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
+        <select class="input" name="price_source">${[["model_backdrop", "Marketapp: model + fon eng arzoni × kurs"], ["model", "Marketapp: model eng arzoni × kurs"], ["backdrop", "Marketapp: fon eng arzoni × kurs"], ["sat_model_backdrop", "Barcha bozorlar (Gift Satellite): model + fon eng arzoni × kurs"], ["sat_model", "Barcha bozorlar: model eng arzoni × kurs"], ["sat_backdrop", "Barcha bozorlar: fon eng arzoni × kurs"], ["portals_model_backdrop", "Portals (sinov): model + fon eng arzoni × kurs"], ["portals_model", "Portals (sinov): model eng arzoni × kurs"], ["portals_backdrop", "Portals (sinov): fon eng arzoni × kurs"], ["best", "Eng arzoni: Marketapp yoki Portals × kurs"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
           .map(([k, l]) => `<option value="${k}" ${(p.price_source || "manual_som") === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="field"><label>Narx, TON (qo'lda TON tanlansa yoki bozorda topilmasa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
       <div class="field"><label>Narx, so'm (qo'lda so'm tanlansa yoki bozorda topilmasa)</label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>

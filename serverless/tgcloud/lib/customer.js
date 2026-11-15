@@ -10,6 +10,7 @@ import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
 import { ownSaleQuote, monthlyPayment, giftDown1 } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames } from 'lib/portals';
+import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, MARKET_NAME } from 'lib/satellite';
 
 /** Portals narxidan mijoz narxi (so'm): (TON + add) × rate, yuqoriga yaxlitlanadi. */
 /** Mijoz e'lonini ilova ko'rinishiga keltiradi. */
@@ -140,7 +141,19 @@ export const actions = {
     // So'mdan TON'ga: narx = (TON + add) × rate  =>  TON = so'm / rate − add
     const toTon = (x) => (x != null ? Math.max(0.001, x / Number(s.portals_sale.rate) - Number(s.portals_sale.add)) : null);
     let items = [], total = 0, failed = false;
-    if (await portalsConfigured()) {
+    const instOnly = i.inst === true || i.inst === 'true' || i.inst === 1;
+    if (await satelliteConfigured()) {
+      // Gift Satellite: 5 ta bozor bitta ro'yxatda (bozor nomi mijozga berilmaydi)
+      const r = await satMarket({ ...f, num });
+      if (r) {
+        let all = r.items.map((x) => ({ id: x.id, name: x.name, num: x.num, photo: null, model: x.model, backdrop: x.backdrop, symbol: x.symbol, price: portalsSom(x.ton, s) }));
+        if (sort === 'price desc') all.reverse();
+        all = all.filter((x) => (minSom == null || x.price >= minSom) && (maxSom == null || x.price <= maxSom)
+          && (!instOnly || (s.sale_inst.enabled && x.price <= Number(s.sale_inst.max))));
+        total = all.length;
+        items = all.slice(offset, offset + 30);
+      } else failed = true;
+    } else if (await portalsConfigured()) {
       const r = await portalsMarket({ ...f, minTon: toTon(minSom), maxTon: toTon(maxSom), num, offset, sort });
       if (r) { items = r.items.map((x) => ({ ...x, price: portalsSom(x.ton, s), ton: undefined })); total = r.total; } else failed = true;
     }
@@ -154,7 +167,9 @@ export const actions = {
     }
     if (failed && !mine.length && offset === 0) throw fail('MARKET_UNAVAILABLE');
     // Narx so'mga aylantirilganda yaxlitlanadi: chegaradan chiqqanlarini olib tashlaymiz
-    items = items.filter((x) => (minSom == null || x.price >= minSom) && (maxSom == null || x.price <= maxSom));
+    const instOk = (x) => !instOnly || (s.sale_inst.enabled && x.price <= Number(s.sale_inst.max));
+    items = items.filter((x) => (minSom == null || x.price >= minSom) && (maxSom == null || x.price <= maxSom) && instOk(x));
+    mine = mine.filter(instOk);
     return { items: mine.concat(items), total, next: !failed && offset + 30 < total ? offset + 30 : null };
   },
   /** "Giftimni sotaman": e'lon admin tasdig'iga tushadi. */
@@ -181,6 +196,7 @@ export const actions = {
     return { down1: await giftDown1(name, { model: str(i.model, 80) || null, backdrop: str(i.backdrop, 80) || null, symbol: str(i.symbol, 80) || null }, s) };
   },
   async portalsCollections() {
+    if (await satelliteConfigured()) return satCollectionNames();
     if (!(await portalsConfigured())) return [];
     return portalsCollectionNames();
   },
@@ -257,6 +273,9 @@ export const actions = {
         listing = await get("SELECT * FROM sell_listings WHERE id = :id AND status = 'active'", { id: Number(id.slice(1)) });
         it = listing ? listingOut(listing) : null;
         if (it && listing.customer_id === c.id) throw fail('OWN_LISTING');
+      } else if (/^gs\d:/.test(id)) {
+        try { it = await satSaleItem(id); } catch (e) { throw fail('MARKET_UNAVAILABLE'); }
+        if (it) it.price = portalsSom(it.ton, s);
       } else {
         try { it = await portalsSaleItem(id); } catch (e) { throw fail('MARKET_UNAVAILABLE'); }
         if (it) it.price = portalsSom(it.ton, s);
@@ -273,6 +292,7 @@ export const actions = {
         price: method === 'cash' ? toTiyin(price) : null, estBase: toTiyin(price),
         down1: ty === 'plan1' ? await giftDown1(label, { model: it.model, backdrop: it.backdrop, symbol: it.symbol }, s) : null,
         details: { ...(listing ? { listing: listing.id, seller: seller && seller.username ? '@' + seller.username : (seller && seller.phone) || `mijoz #${listing.customer_id}`, link: listing.link }
+          : it.market ? { market: MARKET_NAME[it.market] || it.market, ton: it.ton, link: it.link || undefined, slug: String(id).split(':').slice(2).join(':') }
           : { portals: it.id, ton: it.ton }), name: label, model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined, sale: true,
           ...(method === 'installment' ? { quotedPrice: toTiyin(price) } : {}) } };
       if (listing) o.afterCreate = async () => run("UPDATE sell_listings SET status = 'sold', updated_at = :t WHERE id = :id AND status = 'active'", { t: nowMs(), id: listing.id });

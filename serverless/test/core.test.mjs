@@ -592,3 +592,40 @@ test("Sotuvda katalogi: natija bazada saqlanadi, Portals 429 bersa oxirgi ro'yxa
   const b = await app({ action: 'portalsSale', collection: 'Artisan Brick' });
   assert.deepEqual(b.items.map((x) => x.id), a.items.map((x) => x.id));
 });
+
+test("Gift Satellite: 5 bozor bitta ro'yxatda, mijozga bozor nomi berilmaydi, adminga beriladi; narx manbasi 'barcha bozorlar'", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), satelliteKey: 'Token SECRET_SAT', sale_inst: { enabled: true, max: 200000 } });
+  assert.equal((await admin({ action: 'settings' })).satelliteKeySet, true);
+  const seen = [];
+  const L = (market, slug, price, model = 'Lady Arcana', backdrop = 'Ranger Green') => ({ market, slug, giftId: 'g-' + slug, collectionName: 'MoodPack', modelName: model, backdropName: backdrop, symbolName: 'X', normalizedPrice: price, link: 'https://m.example/' + slug });
+  setFetch(async (url, opts) => {
+    const u = decodeURIComponent(String(url)); seen.push({ u, auth: opts.headers.Authorization, method: opts.method });
+    let body = [];
+    if (u.includes('/gift/collections')) body = [{ name: 'MoodPack' }, { name: 'PlushPepe' }];
+    else if (u.includes('/search/mrkt/')) body = [L('mrkt', 'MoodPack-76644', 10.2)];
+    else if (u.includes('/search/portals/')) body = [L('portals', 'MoodPack-76644', 10.5), L('portals', 'MoodPack-39538', 10.68)];
+    else if (u.includes('/search/tg/')) body = [L('telegram', 'MoodPack-5', 30)];
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  const r = await app({ action: 'portalsSale', collection: 'Mood Pack', model: 'Lady Arcana' });
+  assert.deepEqual(r.items.map((x) => [x.name, x.num, x.price]), [['Mood Pack', 76644, Math.ceil(10.3 * 17000)], ['Mood Pack', 39538, Math.ceil(10.78 * 17000)], ['Mood Pack', 5, Math.ceil(30.1 * 17000)]]);
+  assert.ok(!JSON.stringify(r).match(/mrkt|portals|tonnel|getgems|m\.example/i), 'mijozga bozor nomi ketmasligi kerak');
+  assert.ok(seen.every((x) => x.auth === 'Token SECRET_SAT' && x.method === 'GET'));
+  assert.ok(seen.some((x) => x.u.includes('/search/getgems/MoodPack?models=Lady Arcana')));
+  assert.ok(!seen.some((x) => /\/user\/buy/.test(x.u)));
+  // Faqat bo'lib to'lashga mumkinlari (200 000 gacha)
+  assert.equal((await app({ action: 'portalsSale', collection: 'Mood Pack', model: 'Lady Arcana', inst: true })).items.length, 2);
+  // Buyurtma: adminga bozor nomi va havola
+  await topup(200000);
+  sent.length = 0;
+  const o = await app({ action: 'createOrder', service: 'portals', portalsId: r.items[0].id, expectedPrice: r.items[0].price, paymentMethod: 'cash', idempotencyKey: key() });
+  const msg = sent.map((m) => m.params.text || '').join('\n');
+  assert.match(msg, /MRKT'dagi giftni sotib olish/);
+  assert.match(msg, /Havola: https:\/\/m\.example\/MoodPack-76644/);
+  assert.ok(!/MRKT/i.test((await app({ action: 'myOrders' })).orders.find((x) => x.publicId === o.publicId).title));
+  // O'z mahsuloti: "barcha bozorlar: model + fon"
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Mood Pack #59717', model: 'Lady Arcana', backdrop: 'Ranger Green', inst_enabled: true, price_source: 'sat_model_backdrop' });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
+  assert.deepEqual([p.quote.price, p.quote.by, p.quote.src], [Math.ceil(10.2 * 17000), 'sat_model_backdrop', 'MRKT: Mood Pack #76644']);
+});

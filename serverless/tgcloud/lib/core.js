@@ -112,6 +112,8 @@ export const DEFAULT_SETTINGS = {
   sale_rate: 17000,
   // Portals Partner API manzili (sinov)
   portals_base: 'https://portal-market.com/partners',
+  // Gift Satellite API manzili (5 ta bozor narxlari)
+  satellite_base: 'https://gift-satellite.dev/api',
   // Portals'dagi sotuvdagi giftlar narxi mijozga: (Portals narxi + add) × rate so'm
   portals_sale: { add: 0.1, rate: 17000 },
   // "Sotuvda" giftlarni bo'lib to'lash: yoqilgan bo'lsa, shu narxgacha (so'm) bo'lganlariga

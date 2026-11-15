@@ -5,6 +5,7 @@ import { money } from 'lib/texts';
 import { marketappConfigured, listRent, giftOnSaleByNumber, toTon } from 'lib/marketapp';
 import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
 import { portalsConfigured, portalsDebug, portalsFloor } from 'lib/portals';
+import { satelliteConfigured, satFloor } from 'lib/satellite';
 import { collectionByName, floorPrice, rentListingFor, downByFormula, monthlyPayment, markupPercent, splitGiftName } from 'lib/calc';
 
 export const ADMIN_HELP = [
@@ -64,6 +65,13 @@ async function priceReport(name, attrs) {
     try { t = await floorPrice(col.address, attrs, by === 'collection' ? null : by); }
     catch (e) { L.push(`• Marketapp: ${errWhy(e)}`); break; }
     L.push(`• ${label}: ${t ? `${ton(t)} ≈ ${som(Math.ceil(t * Number(s.sale_rate)))}` : 'sotuvda yo\'q'}`);
+  }
+  if (await satelliteConfigured()) {
+    for (const [lbl, a] of [['Model + fon', { model: attrs.model, backdrop: attrs.backdrop }], ['Model', { model: attrs.model }], ['Fon', { backdrop: attrs.backdrop }]]) {
+      if ((lbl === 'Model + fon' && !(attrs.model && attrs.backdrop)) || (lbl === 'Model' && !attrs.model) || (lbl === 'Fon' && !attrs.backdrop)) continue;
+      const g = await satFloor({ collection, ...a });
+      L.push(`• Barcha bozorlar, ${lbl}: ${g.status === 'ok' ? `${ton(g.ton)} ≈ ${som(Math.ceil(g.ton * Number(s.sale_rate)))} (${g.label})` : g.status === 'none' ? "sotuvda yo'q" : 'Gift Satellite javob bermadi'}`);
+    }
   }
   if (await portalsConfigured()) {
     const pt = await portalsFloor({ collection, model: attrs.model, backdrop: attrs.backdrop });

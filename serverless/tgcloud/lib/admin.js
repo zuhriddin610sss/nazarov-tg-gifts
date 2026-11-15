@@ -195,7 +195,7 @@ export const actions = {
 
   async settings() {
     const s = await getSettings();
-    return { ...s, marketappTokenSet: Boolean(await getSecret('marketapp_token')), portalsKeySet: Boolean(await getSecret('portals_key')) };
+    return { ...s, marketappTokenSet: Boolean(await getSecret('marketapp_token')), portalsKeySet: Boolean(await getSecret('portals_key')), satelliteKeySet: Boolean(await getSecret('satellite_key')) };
   },
   async saveSettings(i, admin) {
     const n = (v, name, min = 0) => num(v, { min, name });
@@ -215,10 +215,15 @@ export const actions = {
       sale_inst: { enabled: Boolean(i.sale_inst && i.sale_inst.enabled), max: n(i.sale_inst && i.sale_inst.max != null ? i.sale_inst.max : DEFAULT_SETTINGS.sale_inst.max, 'si_max', 1) },
       portals_sale: { add: n(i.portals_sale && i.portals_sale.add != null ? i.portals_sale.add : DEFAULT_SETTINGS.portals_sale.add, 'ps_add'),
         rate: n(i.portals_sale && i.portals_sale.rate != null ? i.portals_sale.rate : DEFAULT_SETTINGS.portals_sale.rate, 'ps_rate', 0.0001) },
+      satellite_base: /^https:\/\/[^\s]+$/.test(String(i.satellite_base || '')) ? String(i.satellite_base).trim().slice(0, 200) : DEFAULT_SETTINGS.satellite_base,
       portals_base: /^https:\/\/[^\s]+$/.test(String(i.portals_base || '')) ? String(i.portals_base).trim().slice(0, 200) : DEFAULT_SETTINGS.portals_base,
     };
     const before = await getSettings();
     await saveSettings(s);
+    if (typeof i.satelliteKey === 'string' && i.satelliteKey.trim()) {
+      await setSecret('satellite_key', i.satelliteKey.trim().replace(/^token\s+/i, '').slice(0, 500));
+      await audit(admin, 'settings.satellite_key', null, { set: true });
+    }
     if (typeof i.portalsKey === 'string' && i.portalsKey.trim()) {
       await setSecret('portals_key', i.portalsKey.trim().replace(/^bearer\s+/i, '').slice(0, 500));
       await audit(admin, 'settings.portals_key', null, { set: true });
@@ -287,7 +292,7 @@ export const actions = {
       inst_enabled: i.inst_enabled ? 1 : 0, cash_enabled: cashOn ? 1 : 0,
       cash_price: cashOn ? toTiyin(num(i.cash_price, { min: 1, name: 'cash_price' })) : null,
       visible: i.visible === false ? 0 : 1, position: i.position ? int(i.position, { min: -1000, max: 1000 }) : 0,
-      price_source: ['model_backdrop', 'model', 'backdrop', 'portals_model_backdrop', 'portals_model', 'portals_backdrop', 'best', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
+      price_source: ['model_backdrop', 'model', 'backdrop', 'portals_model_backdrop', 'portals_model', 'portals_backdrop', 'sat_model_backdrop', 'sat_model', 'sat_backdrop', 'best', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
       // Qo'lda narx: "qo'lda" usul tanlanganda asosiy narx, bozor usulida esa bozorda topilmasa ishlatiladi
       price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : Number(i.price_ton) > 0 ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
       price_manual: Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
