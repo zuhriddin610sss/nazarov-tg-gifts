@@ -3,7 +3,7 @@
 // navbat ham, natijalar ham bazada saqlanadi (xotirada emas): hamma nusxalar bitta navbatdan foydalanadi.
 // Kalit admin panel → Sozlamalarda saqlanadi va hech qachon mijozga yoki jurnalga chiqmaydi.
 import { fetch } from 'sdk';
-import { get, run, getSecret, getSettings, logError } from 'lib/core';
+import { get, run, getSecret, getSettings, logError, takeLock, lockTime } from 'lib/core';
 
 export async function portalsConfigured() {
   return Boolean(await getSecret('portals_key'));
@@ -17,13 +17,9 @@ const MAX_WAIT = 8000;   // navbatda ko'pi bilan shuncha kutiladi
 async function takeSlot() {
   const until = Date.now() + MAX_WAIT;
   for (;;) {
-    const now = Date.now();
-    const r = await run(`INSERT INTO meta (key, value) VALUES ('portals_slot', :now)
-      ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE CAST(meta.value AS INTEGER) <= :limit`, { now: String(now), limit: now - GAP });
-    if (r.rowsAffected === 1) return true;
+    if (await takeLock('portals_slot', GAP)) return true;
     if (Date.now() > until) return false;
-    const row = await get("SELECT value FROM meta WHERE key = 'portals_slot'");
-    const wait = row ? Number(row.value) + GAP - Date.now() : 100;
+    const wait = (await lockTime('portals_slot')) + GAP - Date.now();
     await sleep(Math.max(50, Math.min(GAP, wait)) + Math.floor(Math.random() * 120));
   }
 }

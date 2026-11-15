@@ -1,37 +1,23 @@
 // Gift Satellite API (hujjat: https://gift-satellite.dev/api/docs.md), sarlavha "Authorization: Token <kalit>".
 // Bitta kalit bilan 5 ta bozor: Telegram Market, Portals, Tonnel, MRKT, Getgems.
 // Bot bu kalitni FAQAT narxlarni o'qish uchun ishlatadi. /user/buy va boshqa yozuvchi so'rovlar kodda yo'q va bo'lmasligi kerak.
-// Navbat va natijalar bazada saqlanadi: bot bir nechta nusxada ishlasa ham chegaradan oshmaydi.
+// Natijalar bazada saqlanadi: bir xil so'rov 5 daqiqa ichida qayta yuborilmaydi.
 import { fetch } from 'sdk';
 import { get, all, run, getSecret, getSettings, logError } from 'lib/core';
 
 export const MARKETS = ['tg', 'portals', 'tonnel', 'mrkt', 'getgems'];
 export const MARKET_NAME = { tg: 'Telegram Market', telegram: 'Telegram Market', portals: 'Portals', tonnel: 'Tonnel', mrkt: 'MRKT', getgems: 'Getgems' };
-// So'rovlar orasidagi eng kam vaqt (ms): tg — 1 ta / 1.5 s, boshqa bozorlar — 2 ta / s, ma'lumotnoma — 4 ta / s
-const GAP = { tg: 1600, portals: 550, tonnel: 550, mrkt: 550, getgems: 550, gift: 300 };
-const MAX_WAIT = 8000;
-
 export async function satelliteConfigured() {
   return Boolean(await getSecret('satellite_key'));
 }
 
 const sleep = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(r, ms) : r()));
-async function takeSlot(lane) {
-  const gap = GAP[lane] || 1000, until = Date.now() + MAX_WAIT, key = 'gs_slot_' + lane;
-  for (;;) {
-    const now = Date.now();
-    const r = await run(`INSERT INTO meta (key, value) VALUES (:k, :now)
-      ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE CAST(meta.value AS INTEGER) <= :limit`, { k: key, now: String(now), limit: now - gap });
-    if (r.rowsAffected === 1) return true;
-    if (Date.now() > until) return false;
-    const row = await get('SELECT value FROM meta WHERE key = :k', { k: key });
-    const wait = row ? Number(row.value) + gap - Date.now() : 100;
-    await sleep(Math.max(30, Math.min(gap, wait)) + Math.floor(Math.random() * 80));
-  }
-}
 
-/** Faqat GET so'rov. 429 yoki vaqtinchalik xato bo'lsa, navbatdan yangi joy olib bir marta qayta urinadi. */
-async function request(lane, path, query) {
+/**
+ * Faqat GET so'rov. Navbat yo'q (Gift Satellite chegarasi keng: sekundiga 2–4 ta, natijalar esa 5 daqiqa saqlanadi).
+ * "Band" (429) yoki vaqtinchalik xato bo'lsa, yarim soniya kutib bir marta qayta urinadi.
+ */
+async function request(_lane, path, query) {
   const key = String((await getSecret('satellite_key')) || '').trim();
   if (!key) return { ok: false, status: 0, text: 'Gift Satellite kaliti kiritilmagan' };
   const s = await getSettings();
@@ -40,9 +26,9 @@ async function request(lane, path, query) {
   const qs = Object.entries(query || {}).filter(([, v]) => v != null && v !== '')
     .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v))).join('&');
   const url = base + path + (qs ? '?' + qs : '');
-  let last = { ok: false, status: 429, text: 'navbat band' };
+  let last = { ok: false, status: 0, text: '' };
   for (let attempt = 0; attempt < 2; attempt++) {
-    if (!(await takeSlot(lane))) return last;
+    if (attempt) await sleep(600 + Math.floor(Math.random() * 300));
     try {
       const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `Token ${key}` } });
       last = { ok: res.ok, status: res.status, text: await res.text() };
@@ -65,6 +51,7 @@ async function cachePut(k, v) {
 }
 
 const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const colSlug = (x) => (x === 'all-collections' ? x : String(x || '').replace(/[^A-Za-z0-9]/g, ''));
 /** "PlushPepe" -> "Plush Pepe" (ko'rsatish uchun). */
 export const spaced = (n) => String(n || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2');
 
@@ -118,7 +105,8 @@ async function searchMarket(market, colName, f, { fresh = false } = {}) {
   const k = 'gs:s:' + market + ':' + colName + ':' + JSON.stringify(q);
   const c = fresh ? null : await cacheGet(k, 300000);
   if (c && c.fresh) return { ok: true, items: c.v };
-  const r = await request(market, `/search/${market}/${encodeURIComponent(colName)}`, q);
+  // Gift Satellite kolleksiya nomini probelsiz kutadi: "Balls Ice Cream" -> "BallsIceCream", "Durov's Cap" -> "DurovsCap"
+  const r = await request(market, `/search/${market}/${encodeURIComponent(colSlug(colName))}`, q);
   if (!r.ok) {
     await logError('satellite', `${r.status} /search/${market}/${colName}: ${String(r.text).slice(0, 200)}`);
     return c ? { ok: true, items: c.v } : { ok: false };

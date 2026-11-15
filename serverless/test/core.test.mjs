@@ -628,3 +628,35 @@ test("Gift Satellite: 5 bozor bitta ro'yxatda, mijozga bozor nomi berilmaydi, ad
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
   assert.deepEqual([p.quote.price, p.quote.by, p.quote.src], [Math.ceil(10.5 * 17000), 'sat_model_backdrop', 'MRKT: Mood Pack #76644']);
 });
+
+test("Gift Satellite: kolleksiya nomi probelsiz yuboriladi; javob bo'lmasa Portals'dan; navbat (takeLock) qayta o'qib tekshiradi", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), satelliteKey: 'K', portalsKey: 'portals_K' });
+  const urls = [];
+  let satDown = false;
+  setFetch(async (url) => {
+    const u = decodeURIComponent(String(url)); urls.push(u);
+    let body = [];
+    if (u.includes('gift-satellite.dev')) {
+      if (satDown && u.includes('/search/')) return { ok: false, status: 503, text: async () => '{}' };
+      if (u.includes('/gift/collections')) body = [{ name: 'Balls Ice Cream' }];
+      else if (u.includes('/search/')) body = /\/search\/[a-z]+\/BallsIceCream/.test(u) ? [{ market: 'mrkt', slug: 'BallsIceCream-7', giftId: 'g7', collectionName: 'BallsIceCream', modelName: 'M', backdropName: 'B', normalizedPrice: 3 }] : null;
+    } else if (u.includes('/collections/preview')) body = { collections: [{ id: 'bic', name: 'Balls Ice Cream', short_name: 'x', floor_price: '2' }] };
+    else if (u.includes('/nfts/search')) body = { total_count: 1, results: [{ id: 'p9', name: 'Balls Ice Cream', external_collection_number: 9, price: '2.5', status: 'listed', attributes: [] }] };
+    if (body === null) return { ok: false, status: 400, text: async () => '{"message":"Неверный формат коллекции"}' };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  const a = await app({ action: 'portalsSale', collection: 'Balls Ice Cream' });
+  assert.deepEqual(a.items.map((x) => x.num), [7]);
+  assert.ok(urls.some((u) => u.includes('/search/getgems/BallsIceCream')));
+  // Gift Satellite ishlamasa — Portals
+  satDown = true;
+  await core.run("DELETE FROM portals_cache WHERE k LIKE 'gs:s:%'");
+  const b = await app({ action: 'portalsSale', collection: 'Balls Ice Cream' });
+  assert.deepEqual(b.items.map((x) => x.num), [9]);
+  // Navbat: birinchisi oladi, darhol ikkinchisi ololmaydi, vaqt o'tgach yana oladi
+  assert.equal(await core.takeLock('test_lock', 60000), true);
+  assert.equal(await core.takeLock('test_lock', 60000), false);
+  await core.run("UPDATE meta SET value = '1000.5' WHERE key = 'test_lock'");
+  assert.equal(await core.takeLock('test_lock', 60000), true);
+});

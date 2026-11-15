@@ -142,10 +142,12 @@ export const actions = {
     const toTon = (x) => (x != null ? Math.max(0.001, x / Number(s.portals_sale.rate) - Number(s.portals_sale.add)) : null);
     let items = [], total = 0, failed = false;
     const instOnly = i.inst === true || i.inst === 'true' || i.inst === 1;
+    let usedSat = false;
     if (await satelliteConfigured()) {
       // Gift Satellite: 5 ta bozor bitta ro'yxatda (bozor nomi mijozga berilmaydi)
       const r = await satMarket({ ...f, num });
       if (r) {
+        usedSat = true; failed = false;
         let all = r.items.map((x) => ({ id: x.id, name: x.name, num: x.num, photo: null, model: x.model, backdrop: x.backdrop, symbol: x.symbol, price: portalsSom(x.ton, s) }));
         if (sort === 'price desc') all.reverse();
         all = all.filter((x) => (minSom == null || x.price >= minSom) && (maxSom == null || x.price <= maxSom)
@@ -153,7 +155,10 @@ export const actions = {
         total = all.length;
         items = all.slice(offset, offset + 30);
       } else failed = true;
-    } else if (await portalsConfigured()) {
+    }
+    // Zaxira: Gift Satellite ulanmagan yoki javob bermagan bo'lsa — Portals
+    if (!usedSat && (await portalsConfigured())) {
+      failed = false;
       const r = await portalsMarket({ ...f, minTon: toTon(minSom), maxTon: toTon(maxSom), num, offset, sort });
       if (r) { items = r.items.map((x) => ({ ...x, price: portalsSom(x.ton, s), ton: undefined })); total = r.total; } else failed = true;
     }

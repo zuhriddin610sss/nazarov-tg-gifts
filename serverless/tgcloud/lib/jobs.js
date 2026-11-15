@@ -1,7 +1,7 @@
 // Eslatmalar. Serverless'da jadval (cron) yo'q: ular botga yoki Mini App'ga har qanday murojaatda
 // ko'pi bilan 30 daqiqada bir marta ishga tushadi (maybeRunJobs). Admin panelda qo'lda ishga tushirish tugmasi ham bor.
 import { api, InputFile } from 'sdk';
-import { all, get, run, claim, logError, adminIds, nowMs } from 'lib/core';
+import { all, get, run, claim, logError, adminIds, nowMs, takeLock } from 'lib/core';
 import { buildXlsx } from 'lib/xlsx';
 import { listAgreements } from 'lib/shop';
 import { t, money } from 'lib/texts';
@@ -108,10 +108,7 @@ export async function maybeRunJobs(force = false) {
   const now = nowMs();
   try {
     if (!force) {
-      const r = await run(`INSERT INTO meta (key, value) VALUES ('jobs', :now)
-                           ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE CAST(meta.value AS INTEGER) < :limit`,
-        { now: String(now), limit: now - 30 * 60000 });
-      if (r.rowsAffected !== 1) return null;
+      if (!(await takeLock('jobs', 30 * 60000))) return null;
     }
     const rent = await sendRentReminders(now);
     // Mijozni tunda bezovta qilmaslik uchun: Toshkent vaqti bilan 09:00–21:00

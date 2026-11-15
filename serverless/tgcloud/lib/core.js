@@ -69,6 +69,25 @@ export async function logError(source, message, data) {
 export async function audit(actor, action, target, data) {
   await run('INSERT INTO audit (actor, action, target, data) VALUES (:a, :b, :t, :d)', { a: actor, b: action, t: target ?? null, d: data ?? null });
 }
+/**
+ * Umumiy qulf/navbat: oxirgi egallanganidan beri gapMs o'tgan bo'lsa, joyni egallaydi va true qaytaradi.
+ * Natija rowsAffected'ga emas, bazadan qayta o'qilgan qiymatga qarab aniqlanadi (server javobi qanday bo'lmasin, to'g'ri ishlaydi).
+ */
+export async function takeLock(key, gapMs) {
+  const now = Date.now();
+  const tok = `${now}.${Math.floor(Math.random() * 1e9)}`;
+  try {
+    await run(`INSERT INTO meta (key, value) VALUES (:k, :v)
+      ON CONFLICT (key) DO UPDATE SET value = excluded.value WHERE CAST(meta.value AS INTEGER) <= :limit`, { k: key, v: tok, limit: now - gapMs });
+  } catch (e) { /* hech narsa o'zgarmagan bo'lishi mumkin — pastda tekshiriladi */ }
+  const row = await get('SELECT value FROM meta WHERE key = :k', { k: key });
+  return Boolean(row && String(row.value) === tok);
+}
+/** Qulf qachon bo'shashini bilish uchun: oxirgi egallangan vaqt (ms) yoki 0. */
+export async function lockTime(key) {
+  const row = await get('SELECT value FROM meta WHERE key = :k', { k: key });
+  return row ? parseInt(String(row.value), 10) || 0 : 0;
+}
 /** Xabar bir marta yuborilishi uchun: kalit birinchi marta yozilsa true. */
 export async function claim(key) {
   const r = await run('INSERT INTO notif (key) VALUES (:k) ON CONFLICT (key) DO NOTHING', { k: key });
