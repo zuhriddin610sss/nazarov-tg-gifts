@@ -84,7 +84,7 @@ export const actions = {
     return { ...orderOut(o), balance: som(o.balance), position: q ? Number(q.position) : null, agreementId: ag ? ag.id : null };
   },
 
-  /** Chek yoki sovg'a rasmi: Telegram'dan olib, ma'lumot sifatida qaytaradi. */
+  /** Chek yoki gift rasmi: Telegram'dan olib, ma'lumot sifatida qaytaradi. */
   async file(i) {
     const fileId = str(i.fileId, 300, { required: true });
     const bytes = await api.getFileContent(fileId);
@@ -279,7 +279,7 @@ export const actions = {
     const rentOn = Boolean(i.rent_enabled), cashOn = Boolean(i.cash_enabled);
     // Foiz yozilgan bo'lsa olib tashlanadi: "Crime Scene 2.6%" -> "Crime Scene"
     const attr = (v) => { const x = str(v, 80); return x ? x.replace(/\s*\(?[\d.,]+\s*%\)?\s*$/, '').trim() || null : null; };
-    // Sovg'a havolasi (t.me/nft/TrappedHeart-19604) rasm manziliga aylantiriladi
+    // Gift havolasi (t.me/nft/TrappedHeart-19604) rasm manziliga aylantiriladi
     let image = str(i.image, 500);
     const nft = image && /^(?:https?:\/\/)?t\.me\/nft\/([A-Za-z0-9]+)-(\d+)\/?$/i.exec(image);
     if (nft) image = `https://nft.fragment.com/gift/${nft[1].toLowerCase()}-${nft[2]}.webp`;

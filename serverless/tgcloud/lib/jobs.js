@@ -63,7 +63,7 @@ export async function sendInstallmentReminders(now = nowMs()) {
   return sent;
 }
 
-const SVC = { nft_gift: "NFT sovg'a", gift_rent: "NFT sovg'a ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
+const SVC = { nft_gift: "NFT gift", gift_rent: "NFT gift ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
 const STATUS = { pending: "To'lanmagan", queued: 'Navbatda', completed: 'Amalga oshirildi', cancelled: 'Bekor qilindi', failed: 'Xato' };
 const som = (tiyin) => (tiyin == null ? '' : Number(tiyin) / 100);
 

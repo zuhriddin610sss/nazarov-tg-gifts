@@ -73,6 +73,9 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
   - Buyurtmada narx qayta tekshiriladi, giftni admin qo'lda sotib oladi.
 - "Giftimni sotaman": egasi havola va narxni o'zi yozadi, admin "E'lonlar" bo'limida tasdiqlaydi. Sotilsa, adminga sotuvchining username'i keladi. Pulni admin o'zi hal qiladi.
 - Har dushanba 09:00 dan keyin o'tgan hafta Excel hisoboti botga keladi.
+- Gift Satellite API (gift-satellite.dev/api, sarlavha `Authorization: Token <kalit>`): 5 bozor (Telegram Market, Portals, Tonnel, MRKT, Getgems) narxlari. Faqat o'qish uchun; `/user/buy` hech qachon chaqirilmaydi. Mijozga bozor nomi ko'rinmaydi, adminga buyurtmada bozor va havola keladi.
+- Pastki menyu: Asosiy · Ijara · Sotib olish · Xaridlarim · Balans. "Sotib olish": avval "Nimani?" (NFT gift, Premium, Stars, o'z username/+888), NFT uchun "Bo'lib to'lab" yoki "Naqd", keyin giftlar ro'yxati.
+- Ilovada "sovg'a" o'rniga "gift" so'zi ishlatiladi.
 - Portals API: sekundiga 1 ta so'rov, kalit faqat o'qish uchun ishlatiladi.
 - O'z sovg'alarim ("Reklama" yorlig'i bilan har doim birinchi) narxi quyidagilardan biri:
   - Marketapp (model + fon, model yoki fon) × 17 000;

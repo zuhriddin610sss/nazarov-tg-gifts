@@ -5,7 +5,7 @@ import { queuePosition } from 'lib/shop';
 import { t, money } from 'lib/texts';
 import { MINI_APP_URL } from 'lib/config';
 
-const SERVICE = { nft_gift: "NFT sovg'a", gift_rent: "NFT sovg'a ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
+const SERVICE = { nft_gift: "NFT gift", gift_rent: "NFT gift ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
 const ITYPE = { plan1: '1-tur', plan2: "Boshlang'ich to'lovsiz", uzum: 'Uzum Nasiya' };
 
 async function send(chatId, text, extra = {}) {

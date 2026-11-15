@@ -11,7 +11,7 @@ const money = (x) => x == null ? "—" : new Intl.NumberFormat("ru-RU", { maximu
 const dt = (d) => d ? new Date(d).toLocaleString("ru-RU", { timeZone: "Asia/Tashkent", dateStyle: "short", timeStyle: "short" }) : "—";
 const day = (d) => d ? String(d).slice(0, 10) : "—";
 const key = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-zA-Z0-9]/g, "").slice(0, 40);
-const SVC = { nft_gift: "NFT sovg'a", gift_rent: "NFT ijara", username_rent: "Username ijara", number_rent: "Raqam ijara", premium: "Premium", stars: "Stars" };
+const SVC = { nft_gift: "NFT gift", gift_rent: "NFT ijara", username_rent: "Username ijara", number_rent: "Raqam ijara", premium: "Premium", stars: "Stars" };
 const ST = { queued: "Navbatda", completed: "Amalga oshirildi", cancelled: "Bekor qilindi" };
 const IT = { plan1: "1-tur", plan2: "Boshlang'ich to'lovsiz", uzum: "Uzum Nasiya" };
 let toastT;
@@ -216,7 +216,7 @@ function orderSheet(o) {
       ${o.recipient ? `<span>Qabul qiluvchi</span><b>@${esc(o.recipient)}</b>` : ""}
       <span>Sana</span><b>${esc(dt(o.created_at))}</b></div>
     ${lines ? `<div class="det">${esc(lines)}</div>` : ""}
-    ${d.image ? `<button class="btn btn-ghost btn-sm" id="img" type="button">Sovg'a rasmini ko'rish</button>` : ""}
+    ${d.image ? `<button class="btn btn-ghost btn-sm" id="img" type="button">Gift rasmini ko'rish</button>` : ""}
     ${o.customer_username ? `<a class="btn btn-ghost btn-sm" href="https://t.me/${esc(o.customer_username)}" target="_blank" rel="noopener">Mijozga yozish</a>` : ""}
     ${o.payment_method === "installment" && o.status === "queued" ? `<div class="row2" style="grid-template-columns:1fr auto"><input class="input" id="downIn" inputmode="numeric" placeholder="Boshlang'ich to'lov, so'm" value="${esc(d.downPayment != null ? d.downPayment : "")}"><button class="btn btn-ghost btn-sm" id="downSave" type="button">Saqlash</button></div>` : ""}
     ${o.customer_id ? `<button class="btn btn-primary btn-sm" id="topUp" type="button">Balansni to'ldirish${o.balance != null ? ` (hozir: ${esc(money(o.balance))})` : ""}</button>` : ""}
@@ -426,7 +426,7 @@ function agreementForm(a) {
 async function settings(v) {
   const s = await api("/api/admin/settings");
   const L = ["uz", "ru", "en", "zh"];
-  const svcL = { nft_gift: "NFT sovg'a sotib olish", gift_rent: "NFT sovg'a ijarasi", username_rent: "Username ijarasi", number_rent: "Anonim raqam ijarasi", premium: "Telegram Premium", stars: "Telegram Stars" };
+  const svcL = { nft_gift: "NFT gift sotib olish", gift_rent: "NFT gift ijarasi", username_rent: "Username ijarasi", number_rent: "Anonim raqam ijarasi", premium: "Telegram Premium", stars: "Telegram Stars" };
   v.innerHTML = `<h1>Sozlamalar</h1><form id="sf">
     <div class="section"><h2>To'lov</h2><div class="form">
       <div class="field"><label>Karta raqami</label><input class="input" name="card_number" value="${esc(s.card_number)}"></div>
@@ -465,7 +465,7 @@ async function settings(v) {
     </div><p class="hint">Misol: P = 1.5 → ${esc(money((1.5 + s.rent_formula.add) * s.rent_formula.mult * s.rent_formula.rate))}</p></div>
     <div class="section"><h2>Bo'lib to'lash</h2><div class="form">
       <div class="field"><label>12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
-      <div class="field"><label>O'z sovg'alari: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
+      <div class="field"><label>O'z giftlari: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
     </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%</p>
       <h2 style="margin-top:8px">1-tur boshlang'ich to'lovi: (kunlik ijara × kun + qo'shimcha) × kurs × koeffitsiyent</h2><div class="form">
       <div class="field"><label>Kun</label><input class="input" name="df_days" value="${esc(s.down_formula.days)}"></div>
@@ -567,7 +567,7 @@ async function logs(v) {
 }
 
 // ---------- O'z mahsulotlari ("Reklama") ----------
-const KIND = { gifts: "NFT sovg'a", usernames: "Username", numbers: "Anonim raqam" };
+const KIND = { gifts: "NFT gift", usernames: "Username", numbers: "Anonim raqam" };
 const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", backdrop: "fon bo'yicha", collection: "kolleksiyaning eng arzoni",
   portals_model_backdrop: "Portals: model + fon", portals_model: "Portals: model", portals_backdrop: "Portals: fon", portals_collection: "Portals: kolleksiya", sat_model_backdrop: "barcha bozorlar: model + fon", sat_model: "barcha bozorlar: model", sat_backdrop: "barcha bozorlar: fon", manual_ton: "qo'lda, TON", manual_som: "qo'lda, so'm",
   fallback_som: "qo'lda narx (bozorda model / fon bo'yicha topilmadi)", fallback_ton: "qo'lda TON narx (bozorda model / fon bo'yicha topilmadi)" };
@@ -638,7 +638,7 @@ function ownForm(p) {
     <form class="form" id="of">
       <div class="field"><label>Turi</label><select class="input" name="kind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="field"><label>Nomi</label><input class="input" name="name" id="ofName" required value="${esc(p.name || "")}" placeholder="Plush Pepe #123 yoki @nazarov yoki +888 0123 4567"></div>
-      <div class="field full"><label>Sovg'a havolasi yoki rasm havolasi (ixtiyoriy). Masalan: t.me/nft/TrappedHeart-19604. Bo'sh qolsa, rasm nomidan olinadi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url" placeholder="t.me/nft/TrappedHeart-19604"></div>
+      <div class="field full"><label>Gift havolasi yoki rasm havolasi (ixtiyoriy). Masalan: t.me/nft/TrappedHeart-19604. Bo'sh qolsa, rasm nomidan olinadi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url" placeholder="t.me/nft/TrappedHeart-19604"></div>
       <div class="field"><label>Model (ixtiyoriy)</label><input class="input" name="model" value="${esc(p.model || "")}"></div>
       <div class="field"><label>Fon (ixtiyoriy)</label><input class="input" name="backdrop" value="${esc(p.backdrop || "")}"></div>
       <div class="field"><label>Belgi (ixtiyoriy)</label><input class="input" name="symbol" value="${esc(p.symbol || "")}"></div>
@@ -661,7 +661,7 @@ function ownForm(p) {
       <p class="alert full" id="ofErr" hidden></p>
       <button class="btn btn-primary full" type="submit">Saqlash</button>
     </form>`);
-  // Sovg'a havolasi qo'yilsa, nomi o'zi to'ldiriladi: TrappedHeart-19604 -> "Trapped Heart #19604"
+  // Gift havolasi qo'yilsa, nomi o'zi to'ldiriladi: TrappedHeart-19604 -> "Trapped Heart #19604"
   $("#of [name=image]").addEventListener("input", (e) => {
     const m = /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(e.target.value);
     const nm = $("#ofName");

@@ -445,7 +445,8 @@ function refreshInst(v, d) {
 
 // ---------- sahifalar ----------
 const SVC_ICON = {
-  nft_gift: '<img src="/assets/logo-mark.png" alt="">',
+  nft_gift: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M2 9h20M12 9v12M12 9C10 4 6 4 6 7s6 2 6 2zm0 0c2-5 6-5 6-2s-6 2-6 2z"/></svg>',
+  buy: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linejoin="round"><path d="M5 8h14l-1.2 12.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
   gift_rent: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
   username_rent: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>',
   number_rent: '<svg viewBox="0 0 24 24" fill="none" stroke="url(#sv)" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/></svg>',
@@ -453,22 +454,26 @@ const SVC_ICON = {
   stars: '<svg viewBox="0 0 24 24" fill="url(#sv)"><path d="M12 2l3 6.2 6.8.9-5 4.7 1.3 6.7L12 17.3 5.9 20.5l1.3-6.7-5-4.7 6.8-.9z"/></svg>',
 };
 const SILVER_DEFS = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="sv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F3EF"/><stop offset=".5" stop-color="#A3A6A2"/><stop offset="1" stop-color="#E6E7E3"/></linearGradient></defs></svg>';
-const HOME_ROUTE = { nft_gift: "nft", gift_rent: "rent", username_rent: "rent", number_rent: "rent", premium: "premium", stars: "stars" };
+const HOME_ROUTE = { nft_gift: "buy-nft", buy: "buy", gift_rent: "rent", username_rent: "rent", number_rent: "rent", premium: "premium", stars: "stars" };
 const RENT_TAB = { gift_rent: "gifts", username_rent: "usernames", number_rent: "numbers" };
 
 async function viewHome(v) {
   const en = (S.cfg && S.cfg.services) || {};
-  const list = ["stars", "premium", "gift_rent", "nft_gift", "username_rent", "number_rent"].filter((s) => en[s] !== false);
+  const list = ["nft_gift", "gift_rent", "buy", "premium", "stars", "username_rent", "number_rent"].filter((s) => s === "buy" || en[s] !== false);
   v.innerHTML = `${SILVER_DEFS}
     ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
+    <section class="brandcard"><b>${esc(t("brand_title"))}</b><small>${esc(t("brand_sub"))}</small></section>
     <h1 class="page-title">${esc(t("tg_services"))}</h1>
     <nav class="svc-list">${list.map((s) => `<a class="svc" href="#${HOME_ROUTE[s]}" data-svc="${s}">
-        <span class="svc-ic${s === "nft_gift" ? " logo" : ""}">${SVC_ICON[s]}</span>
+        <span class="svc-ic">${SVC_ICON[s]}</span>
         <span class="svc-t"><b>${esc(t("svc_" + s))}</b><small>${esc(t("svcd_" + s))}</small></span>
         <span class="chev" aria-hidden="true">›</span></a>`).join("")}</nav>
     <div id="pop"></div>
     <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
-  v.querySelectorAll(".svc[data-svc]").forEach((a) => a.addEventListener("click", () => { if (RENT_TAB[a.dataset.svc]) S.rentTab = RENT_TAB[a.dataset.svc]; }));
+  v.querySelectorAll(".svc[data-svc]").forEach((a) => a.addEventListener("click", () => {
+    if (RENT_TAB[a.dataset.svc]) S.rentTab = RENT_TAB[a.dataset.svc];
+    if (a.dataset.svc === "nft_gift") S.buyMode = "inst";
+  }));
   if (en.gift_rent === false) return;
   try {
     const st = rentState("gifts");
@@ -584,7 +589,6 @@ async function viewNft(v) {
   const hasId = Boolean(d.name.trim() || d.link.trim() || d.image);
   d._ctx = () => ({ base: null, down1: null });
   v.innerHTML = `<h1 class="page-title">${esc(t("nft_title"))}</h1>
-    ${S.cfg && S.cfg.portalsSale ? `<a class="svc" href="#rent" id="toSale"><span class="svc-ic">💎</span><span class="svc-t"><b>${esc(t("sale_link"))}</b><small>${esc(t("sale_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : ""}
     <div id="ownSale"></div>
     <section class="step">${stepHead(1, t("gift_name"))}
       <p class="hint">${esc(t("nft_intro"))}</p>
@@ -610,7 +614,6 @@ async function viewNft(v) {
       <button class="btn btn-primary" id="go" type="button" ${hasId && instOk(d) ? "" : "disabled"}>${esc(t("send_request"))}</button>
     </div>`;
 
-  const toSale = $("#toSale", v); if (toSale) toSale.addEventListener("click", () => { S.rentTab = "sale"; });
   const upd = () => { $("#go", v).disabled = !((d.name.trim() || d.link.trim() || d.image) && instOk(d)); };
   bindInst(v, d, upd);
   v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { d.months = Number(c.dataset.v); render(); }));
@@ -766,13 +769,12 @@ function pickSheet(title, options, current, onPick) {
 async function viewRent(v) {
   const tab = S.rentTab || "gifts";
   const en = (S.cfg && S.cfg.services) || {};
-  const tabs = [["gifts", "tab_gifts", "gift_rent"], ["sale", "tab_sale", "nft_gift"], ["numbers", "tab_numbers", "number_rent"], ["usernames", "tab_usernames", "username_rent"], ["mine", "tab_mine", null]]
-    .filter(([k, , svc]) => (!svc || en[svc] !== false) && (k !== "sale" || (S.cfg && S.cfg.portalsSale)));
+  const tabs = [["gifts", "tab_gifts", "gift_rent"], ["numbers", "tab_numbers", "number_rent"], ["usernames", "tab_usernames", "username_rent"], ["mine", "tab_mine", null]]
+    .filter(([, , svc]) => !svc || en[svc] !== false);
   const head = `<h1 class="page-title">${esc(t("store_title"))}</h1>
     <div class="seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sg${tab === k ? " on" : ""}" data-tab="${k}">${esc(t(l))}</button>`).join("")}</div>`;
   const bindTabs = () => v.querySelectorAll(".sg").forEach((b) => (b.onclick = () => { S.rentTab = b.dataset.tab; render(); }));
 
-  if (tab === "sale") return viewSale(v, head, bindTabs);
   if (tab === "mine") {
     v.innerHTML = head + `<div class="spin"></div>`; bindTabs();
     if (!(await needLogin())) return;
@@ -942,14 +944,14 @@ const saleLabel = (it) => (it.num != null && !/#\d+$/.test(it.name) ? `${it.name
 const saleImg = (it) => (it.photo ? `<img src="${esc(it.photo)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ph',textContent:this.dataset.n}))" data-n="${esc(saleLabel(it))}">` : imgTag("gifts", saleLabel(it)));
 const SALE_SORTS = [["price asc", "sale_sort_cheap"], ["price desc", "sale_sort_exp"], ["listed_at desc", "sale_sort_new"]];
 const saleInstOk = (price) => Boolean(S.cfg && S.cfg.saleInst && price > 0 && price <= Number(S.cfg.saleInst.max));
-async function loadSale(more) {
-  const st = S.sale;
+async function loadSale(st, more) {
   const req = ++st.req;
   st.loading = true;
   try {
     const f = st.f;
     const r = await call("portalsSale", { offset: more ? st.next : 0, sort: st.sort, collection: f.collection || undefined, model: f.model || undefined,
-      backdrop: f.backdrop || undefined, symbol: f.symbol || undefined, minPrice: f.min || undefined, maxPrice: f.max || undefined, num: st.num || undefined });
+      backdrop: f.backdrop || undefined, symbol: f.symbol || undefined, minPrice: f.min || undefined, maxPrice: f.max || undefined, num: st.num || undefined,
+      inst: st.mode === "inst" || undefined });
     if (req !== st.req) return; // eskiroq so'rov javobi
     st.items = more ? st.items.concat(r.items) : r.items;
     st.next = r.next; st.loaded = true; st.error = null;
@@ -964,14 +966,17 @@ async function saleAttrs(name) {
   if (!c) return [];
   try { return (await api("/api/nft/collections/" + encodeURIComponent(c.address) + "/attributes")).attributes || []; } catch { return []; }
 }
-async function viewSale(v, head, bindTabs) {
-  const st = S.sale ||= { items: [], next: null, loaded: false, error: null, cols: null, f: {}, sort: "price asc", num: "", attrs: null, req: 0 };
+async function viewSale(v, head, bindTabs, mode) {
+  S.sales ||= {};
+  const st = S.sales[mode] ||= { mode, items: [], next: null, loaded: false, error: null, cols: null, f: {}, sort: "price asc", num: "", attrs: null, req: 0, own: null };
+  // O'z mahsulotlarim (Reklama): shu to'lov turida sotib olish mumkin bo'lganlari, ro'yxat boshida
+  if (!st.own) { try { st.own = (await api("/api/own/gifts")).map(normOwn).filter((it) => (mode === "inst" ? it.installment : it.cashPrice)); } catch { st.own = []; } }
   const chip = (k, label, val, disabled) => `<button type="button" class="fchip${val ? " on" : ""}" data-f="${k}" ${disabled ? "disabled" : ""}>${esc(val || label)}<span aria-hidden="true">⌄</span></button>`;
   const priceLbl = () => (st.f.min || st.f.max ? `${st.f.min ? money(st.f.min) : "0"} – ${st.f.max ? money(st.f.max) : "∞"}` : "");
   const any = () => Boolean(st.f.collection || st.f.model || st.f.backdrop || st.f.symbol || st.f.min || st.f.max || st.num);
-  const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); await loadSale(); draw(); };
+  const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); await loadSale(st); draw(); };
   const draw = () => {
-    if (location.hash.slice(1) !== "rent" || S.rentTab !== "sale") return;
+    if (location.hash.slice(1) !== "buy-nft" || S.buyMode !== mode) return;
     v.innerHTML = head + `
       <a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>
       <input class="input" id="sNum" placeholder="${esc(t("sale_num_ph"))}" value="${esc(st.num)}" inputmode="numeric" autocomplete="off" style="margin-top:12px">
@@ -986,7 +991,8 @@ async function viewSale(v, head, bindTabs) {
       </div>
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.loaded ? `<div class="spin"></div>` : ""}
-      ${st.loaded && !st.error && !st.items.length ? `<p class="empty">${esc(t("sale_empty"))}</p>` : ""}
+      ${st.loaded && !st.error && !st.items.length && !st.own.length ? `<p class="empty">${esc(t(mode === "inst" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
+      ${st.own.length ? `<div class="grid3">${st.own.map((it) => giftCard("gifts", mode === "inst" ? { ...it, rent: false, cashPrice: null } : { ...it, rent: false }, null)).join("")}</div>` : ""}
       <div class="grid3">${st.items.map((it, i) => `<button type="button" class="gcard" data-i="${i}">
         <span class="gimg">${saleImg(it)}</span>
         <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
@@ -995,10 +1001,17 @@ async function viewSale(v, head, bindTabs) {
       ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
     bindTabs();
     v.querySelectorAll(".gcard[data-i]").forEach((c) => c.addEventListener("click", () => {
-      S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: null, itype: null };
+      S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: mode === "inst" ? "installment" : "cash", itype: null, mode };
       location.hash = "sale-item";
     }));
-    const more = $("#more", v); if (more) more.onclick = async () => { more.disabled = true; await loadSale(true); draw(); };
+    v.querySelectorAll(".gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
+      const it = st.own.find((x) => x.address === c.dataset.a);
+      if (!it) return;
+      S.rentPick = { category: "gifts", service: RENT_SVC.gifts, route: "buy-nft", item: it, formula: rentState("gifts").formula || (S.cfg && S.cfg.rentFormula),
+        days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null };
+      location.hash = "rent-item";
+    }));
+    const more = $("#more", v); if (more) more.onclick = async () => { more.disabled = true; await loadSale(st, true); draw(); };
     const retry = $("#retry", v); if (retry) retry.onclick = reload;
     const num = $("#sNum", v);
     let tm;
@@ -1043,13 +1056,13 @@ async function viewSale(v, head, bindTabs) {
     pickSheet(t("f_" + k), opts, st.f[k], (o) => { st.f[k] = o ? o.value : null; reload(); });
   };
   draw();
-  if (!st.loaded && !st.loading) { await loadSale(); draw(); }
+  if (!st.loaded && !st.loading) { await loadSale(st); draw(); }
 }
 function viewSaleItem(v) {
   const p = S.salePick;
   if (!p) { location.hash = "rent"; return; }
   const it = p.item;
-  const canInst = saleInstOk(it.price);
+  const canInst = p.mode !== "cash" && saleInstOk(it.price);
   if (!canInst) p.pay = "cash";
   p._ctx = () => ({ base: it.price, down1: it.down1 ?? null });
   // 1-tur boshlang'ich to'lovi: Marketapp formulasi bo'yicha (bir marta so'raladi); topilmasa "admin aytadi"
@@ -1063,7 +1076,8 @@ function viewSaleItem(v) {
   v.innerHTML = `<div class="hero-img">${saleImg(it)}</div>
     <h1 class="page-title" style="text-align:center">${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <span class="num">#${esc(it.num)}</span>` : ""}</h1>
     ${attrs.length ? `<div class="attrs" style="justify-content:center">${attrs.map(([k, x]) => `<span>${esc(t(k))}: ${esc(x)}</span>`).join("")}</div>` : ""}
-    ${canInst ? payStep(1, p, ["plan1", "plan2", "uzum"]) : `<section class="step">${stepHead(1, t("step_pay"))}
+    ${canInst ? `<section class="step">${stepHead(1, t("inst_type"))}<div class="opts" role="radiogroup">
+        ${["plan1", "plan2", "uzum"].map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", p.itype === ty, "itype")).join("")}</div>${instExtra(p)}</section>` : `<section class="step">${stepHead(1, t("step_pay"))}
       <div class="opts" role="radiogroup">${opt("cash", t("pay_full"), t("pay_full_note"), som(it.price), true, "pay")}</div></section>`}
     <p class="hint">${esc(t("sale_hint"))}</p>
     <div class="cta">
@@ -1078,6 +1092,60 @@ function viewSaleItem(v) {
   $("#go", v).addEventListener("click", () => placeOrder({ service: "portals", portalsId: it.id, expectedPrice: it.price, paymentMethod: p.pay, idempotencyKey: p.key,
     ...(p.pay === "installment" ? { installmentType: p.itype, ...instBody(p) } : {}) }, it.price));
 }
+// ---------- "Sotib olish" bo'limi ----------
+/** Ega bo'lgan o'z mahsulotlarim (username / +888) bormi: shu bo'yicha "Sotib olish" ro'yxatiga qo'shiladi. */
+async function ownBuyable(kind) {
+  S.ownBuy ||= {};
+  if (!S.ownBuy[kind]) { try { S.ownBuy[kind] = (await api("/api/own/" + kind)).map(normOwn).filter((x) => x.installment || x.cashPrice); } catch { S.ownBuy[kind] = []; } }
+  return S.ownBuy[kind];
+}
+async function viewBuy(v) {
+  const en = (S.cfg && S.cfg.services) || {};
+  const card = (href, ic, title, desc, data = "") => `<a class="svc" href="${href}" ${data}><span class="svc-ic">${ic}</span><span class="svc-t"><b>${esc(title)}</b><small>${esc(desc)}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
+  const draw = (un, nu) => {
+    v.innerHTML = `${SILVER_DEFS}<h1 class="page-title">${esc(t("buy_title"))}</h1>
+      <nav class="svc-list">
+        ${en.nft_gift !== false ? card("#buy-pay", SVC_ICON.nft_gift, t("buy_nft"), t("buy_nft_d")) : ""}
+        ${en.premium !== false ? card("#premium", SVC_ICON.premium, t("svc_premium"), t("svcd_premium")) : ""}
+        ${en.stars !== false ? card("#stars", SVC_ICON.stars, t("svc_stars"), t("svcd_stars")) : ""}
+        ${un.length ? card("#buy-own", SVC_ICON.username_rent, t("buy_username"), t("buy_username_d"), 'data-k="usernames"') : ""}
+        ${nu.length ? card("#buy-own", SVC_ICON.number_rent, t("buy_number"), t("buy_number_d"), 'data-k="numbers"') : ""}
+      </nav>`;
+    v.querySelectorAll("[data-k]").forEach((a) => a.addEventListener("click", () => { S.buyOwnKind = a.dataset.k; }));
+  };
+  draw([], []);
+  const [un, nu] = await Promise.all([ownBuyable("usernames"), ownBuyable("numbers")]);
+  if (location.hash.slice(1) === "buy") draw(un, nu);
+}
+function viewBuyPay(v) {
+  v.innerHTML = `<h1 class="page-title">${esc(t("buy_nft"))}</h1>
+    <section class="step"><div class="step-h"><h2>${esc(t("buy_pay_q"))}</h2></div><div class="modes">
+      <button type="button" class="mcard" data-m="inst"><i>📅</i><b>${esc(t("buy_inst"))}</b><small>${esc(t("buy_inst_d"))}</small></button>
+      <button type="button" class="mcard" data-m="cash"><i>💳</i><b>${esc(t("buy_cash"))}</b><small>${esc(t("buy_cash_d"))}</small></button></div></section>`;
+  v.querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => { S.buyMode = b.dataset.m; location.hash = "buy-nft"; }));
+}
+async function viewBuyNft(v) {
+  const mode = S.buyMode === "cash" ? "cash" : "inst";
+  S.buyMode = mode;
+  const head = `<h1 class="page-title">${esc(t("buy_nft"))}</h1>
+    <div class="seg" role="tablist">${[["inst", "buy_inst"], ["cash", "buy_cash"]].map(([k, l]) => `<button type="button" role="tab" class="sg${mode === k ? " on" : ""}" data-mode="${k}">${esc(t(l))}</button>`).join("")}</div>
+    ${mode === "inst" ? `<a class="svc" href="#nft" style="margin-top:12px"><span class="svc-ic">✍️</span><span class="svc-t"><b>${esc(t("buy_custom"))}</b><small>${esc(t("buy_custom_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : ""}`;
+  const bindTabs = () => v.querySelectorAll(".sg[data-mode]").forEach((b) => (b.onclick = () => { S.buyMode = b.dataset.mode; render(); }));
+  return viewSale(v, head, bindTabs, mode);
+}
+function viewBuyOwn(v) {
+  const kind = S.buyOwnKind === "numbers" ? "numbers" : "usernames";
+  const list = (S.ownBuy && S.ownBuy[kind]) || [];
+  if (!list.length) { location.hash = "buy"; return; }
+  v.innerHTML = `<h1 class="page-title">${esc(t(kind === "numbers" ? "buy_number" : "buy_username"))}</h1>
+    <div class="grid3">${list.map((it) => giftCard(kind, it, null)).join("")}</div>`;
+  v.querySelectorAll(".gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
+    const it = list.find((x) => x.address === c.dataset.a);
+    S.rentPick = { category: kind, service: RENT_SVC[kind], route: "buy-own", item: it, formula: S.cfg && S.cfg.rentFormula, days: it.minDays, pay: null, key: key(), mode: "buy", itype: null };
+    location.hash = "rent-item";
+  }));
+}
+
 /** "Giftimni sotaman": havola va narx. Admin tasdiqlagach "Sotuvda" bo'limida chiqadi. */
 function viewSell(v) {
   const d = S.drafts.sell ||= { link: "", price: "" };
@@ -1326,10 +1394,10 @@ const VIEWS = {
   home: viewHome, premium: viewPremium, stars: viewStars, nft: viewNft,
   rent: viewRent,
   "rent-gifts": (v) => { S.rentTab = "gifts"; location.replace("#rent"); }, "rent-usernames": (v) => { S.rentTab = "usernames"; location.replace("#rent"); }, "rent-numbers": (v) => { S.rentTab = "numbers"; location.replace("#rent"); },
-  "rent-item": viewRentItem, "sale-item": viewSaleItem, sell: viewSell, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
+  "rent-item": viewRentItem, "sale-item": viewSaleItem, sell: viewSell, buy: viewBuy, "buy-pay": viewBuyPay, "buy-nft": viewBuyNft, "buy-own": viewBuyOwn, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
-const TOP = new Set(["home", "rent", "orders", "balance", "login", "done"]);
-const PARENT = { "rent-item": () => "rent", "sale-item": () => "rent", sell: () => "rent" };
+const TOP = new Set(["home", "rent", "buy", "orders", "balance", "login", "done"]);
+const PARENT = { "rent-item": () => (S.rentPick && S.rentPick.route) || "rent", "sale-item": () => "buy-nft", sell: () => "buy-nft", "buy-pay": () => "buy", "buy-nft": () => "buy", "buy-own": () => "buy" };
 
 function applyStatic() {
   document.documentElement.lang = S.lang === "zh" ? "zh-CN" : S.lang;
@@ -1341,7 +1409,9 @@ async function render() {
   const route = location.hash.slice(1) || "home";
   const fn = VIEWS[route] || viewHome;
   applyStatic();
-  const tab = ["orders", "balance", "rent"].includes(route) ? route : ["rent-item", "sale-item", "sell"].includes(route) ? "rent" : "home";
+  const BUY = ["buy", "buy-pay", "buy-nft", "buy-own", "sale-item", "sell"];
+  const tab = ["orders", "balance", "rent"].includes(route) ? route : BUY.includes(route) || (route === "rent-item" && S.rentPick && /^buy/.test(S.rentPick.route || "")) ? "buy"
+    : route === "rent-item" ? "rent" : "home";
   document.querySelectorAll(".tab").forEach((a) => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   $("#backBtn").hidden = TOP.has(route);
   $("#brand").hidden = !TOP.has(route);

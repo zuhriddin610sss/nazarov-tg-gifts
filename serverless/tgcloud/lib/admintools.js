@@ -87,7 +87,7 @@ async function priceReport(name, attrs) {
     return `${ton(toTon(it.price_per_day))}/kun → mijozga 1 kun ${som(d1)}, ${maxD} kunda kuniga ${som(best)}`;
   };
   L.push('Ijara (Marketapp):');
-  if (own) L.push(`• Shu sovg'a: ${rentLine(own)}`);
+  if (own) L.push(`• Shu gift: ${rentLine(own)}`);
   if (attrs.model && attrs.backdrop) {
     const r = await listRent('gifts', { collection_address: col.address, model: attrs.model, backdrop: attrs.backdrop, sort_by: 'price_per_day' });
     if (r.items[0]) L.push(`• Shu model + fonning eng arzoni: ${rentLine(r.items[0])}`);
@@ -97,7 +97,7 @@ async function priceReport(name, attrs) {
   if (L[L.length - 1] === 'Ijara (Marketapp):') L.push('• ijarada yo\'q');
   L.push('');
   const fd = s.down_formula;
-  L.push(own ? `1-tur boshlang'ich to'lovi (formula): ${som(downByFormula(own.price_per_day, s))}` : `1-tur boshlang'ich to'lovi: shu sovg'a ijarada yo'q, qo'lda belgilang`);
+  L.push(own ? `1-tur boshlang'ich to'lovi (formula): ${som(downByFormula(own.price_per_day, s))}` : `1-tur boshlang'ich to'lovi: shu gift ijarada yo'q, qo'lda belgilang`);
   L.push(`(formula: (kunlik × ${fd.days} + ${fd.add}) × ${money(fd.rate)} × ${fd.mult})`);
   return L.join('\n');
 }

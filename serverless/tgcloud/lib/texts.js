@@ -3,7 +3,7 @@ import { groupNum } from 'lib/core';
 // Bot xabarlari (4 til). money() so'mda qabul qiladi.
 const T = {
   uz: {
-    welcome: "Assalomu alaykum! NAZAROVtggifts — Telegram sovg'alari.\nXizmatni tanlash uchun quyidagi tugmani bosing.",
+    welcome: "Assalomu alaykum! NAZAROVtggifts — Telegram giftlari.\nXizmatni tanlash uchun quyidagi tugmani bosing.",
     open: "🎁 Xizmatlarni ochish",
     share_phone: "Buyurtma berish uchun telefon raqamingizni ulashing.",
     share_btn: "📱 Raqamni ulashish",
@@ -30,7 +30,7 @@ const T = {
     inst_today: "🔔 Bugun oylik to'lov kuni\n{title}\nOylik to'lov: {amount} so'm\n\nTo'lash uchun «Xaridlarim» bo'limiga kiring yoki admin bilan bog'laning.",
     inst_late: "⚠️ Oylik to'lov muddati o'tdi\n{title}\nTo'lov sanasi: {date}\nOylik to'lov: {amount} so'm\n\nIltimos, to'lovni amalga oshiring yoki admin bilan bog'laning.",
     open_orders: "Xaridlarimni ochish",
-    rent_what_gift: "sovg'a", rent_what_username: "username", rent_what_number: "raqam (va unga ulangan kirish)",
+    rent_what_gift: "gift", rent_what_username: "username", rent_what_number: "raqam (va unga ulangan kirish)",
   },
   ru: {
     welcome: "Здравствуйте! NAZAROVtggifts — подарки Telegram.\nНажмите кнопку ниже, чтобы выбрать услугу.",
