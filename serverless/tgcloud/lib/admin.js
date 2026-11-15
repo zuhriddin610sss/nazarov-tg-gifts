@@ -4,7 +4,7 @@ import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSe
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
-import { ownSaleQuote, monthlyPayment } from 'lib/calc';
+import { ownSaleQuote, monthlyPayment, priceSource } from 'lib/calc';
 import { send } from 'lib/notify';
 import { money, t } from 'lib/texts';
 import { encode, decode } from 'lib/b64';
@@ -211,6 +211,7 @@ export const actions = {
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
+      own_add: n(i.own_add ?? DEFAULT_SETTINGS.own_add, 'own_add'),
       sale_down_by: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.sale_down_by) ? i.sale_down_by : 'exact',
       sale_inst: { enabled: Boolean(i.sale_inst && i.sale_inst.enabled), max: n(i.sale_inst && i.sale_inst.max != null ? i.sale_inst.max : DEFAULT_SETTINGS.sale_inst.max, 'si_max', 1) },
       portals_sale: { add: n(i.portals_sale && i.portals_sale.add != null ? i.portals_sale.add : DEFAULT_SETTINGS.portals_sale.add, 'ps_add'),
@@ -292,7 +293,7 @@ export const actions = {
       inst_enabled: i.inst_enabled ? 1 : 0, cash_enabled: cashOn ? 1 : 0,
       cash_price: cashOn ? toTiyin(num(i.cash_price, { min: 1, name: 'cash_price' })) : null,
       visible: i.visible === false ? 0 : 1, position: i.position ? int(i.position, { min: -1000, max: 1000 }) : 0,
-      price_source: ['model_backdrop', 'model', 'backdrop', 'portals_model_backdrop', 'portals_model', 'portals_backdrop', 'sat_model_backdrop', 'sat_model', 'sat_backdrop', 'best', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
+      price_source: priceSource(i.price_source),
       // Qo'lda narx: "qo'lda" usul tanlanganda asosiy narx, bozor usulida esa bozorda topilmasa ishlatiladi
       price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : Number(i.price_ton) > 0 ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
       price_manual: Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,

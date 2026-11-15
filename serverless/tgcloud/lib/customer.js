@@ -10,7 +10,7 @@ import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
 import { ownSaleQuote, monthlyPayment, giftDown1 } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames, portalsCollectionFloors } from 'lib/portals';
-import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, MARKET_NAME } from 'lib/satellite';
+import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, satCachedFloors, normName, MARKET_NAME } from 'lib/satellite';
 
 /** Portals narxidan mijoz narxi (so'm): (TON + add) × rate, yuqoriga yaxlitlanadi. */
 /** Mijoz e'lonini ilova ko'rinishiga keltiradi. */
@@ -206,6 +206,11 @@ export const actions = {
     let list = [];
     if (await portalsConfigured()) list = (await portalsCollectionFloors()).map((c) => ({ name: c.name, from: c.floor ? portalsSom(c.floor, s) : null }));
     if (!list.length && (await satelliteConfigured())) list = (await satCollectionNames()).map((name) => ({ name, from: null }));
+    // Barcha bozorlar: kolleksiya ochilganda topilgan eng arzoni Portals'nikidan arzon bo'lsa, o'shani ko'rsatamiz
+    if (await satelliteConfigured()) {
+      const fl = await satCachedFloors();
+      list = list.map((c) => { const t = fl[normName(c.name)]; const som = t ? portalsSom(t, s) : null; return som && (c.from == null || som < c.from) ? { ...c, from: som } : c; });
+    }
     if (inst) list = list.filter((c) => s.sale_inst.enabled && c.from != null && c.from <= Number(s.sale_inst.max));
     return list.sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity) || a.name.localeCompare(b.name));
   },

@@ -3,7 +3,7 @@
 // Bot bu kalitni FAQAT narxlarni o'qish uchun ishlatadi. /user/buy va boshqa yozuvchi so'rovlar kodda yo'q va bo'lmasligi kerak.
 // Navbat va natijalar bazada saqlanadi: bot bir nechta nusxada ishlasa ham chegaradan oshmaydi.
 import { fetch } from 'sdk';
-import { get, run, getSecret, getSettings, logError } from 'lib/core';
+import { get, all, run, getSecret, getSettings, logError } from 'lib/core';
 
 export const MARKETS = ['tg', 'portals', 'tonnel', 'mrkt', 'getgems'];
 export const MARKET_NAME = { tg: 'Telegram Market', telegram: 'Telegram Market', portals: 'Portals', tonnel: 'Tonnel', mrkt: 'MRKT', getgems: 'Getgems' };
@@ -85,6 +85,12 @@ export async function satCollection(name) {
   const n = norm(name);
   return list.find((x) => norm(x) === n) || list.find((x) => norm(x).replace(/s$/, '') === n.replace(/s$/, '')) || null;
 }
+/** Ko'rilgan kolleksiyalarning barcha bozorlardagi eng arzoni (oxirgi 1 soat): { normNomi: TON }. */
+export async function satCachedFloors() {
+  const rows = await all("SELECT k, v FROM portals_cache WHERE k LIKE 'gs:floor:%' AND at > :t", { t: Date.now() - 3600000 });
+  return Object.fromEntries(rows.map((r) => [r.k.slice(9), Number(JSON.parse(r.v))]));
+}
+export const normName = norm;
 export async function satCollectionNames() {
   return ((await collections()) || []).map(spaced).sort((a, b) => a.localeCompare(b));
 }
@@ -142,6 +148,10 @@ export async function satMarket(f = {}) {
   let items = [], okAny = false;
   for (const r of res) if (r.ok) { okAny = true; items = items.concat(r.items); }
   if (!okAny) return null;
+  // Kolleksiya filtrsiz ochilganda: uning barcha bozorlardagi eng arzonini eslab qolamiz ("… so'mdan" uchun)
+  if (colName !== 'all-collections' && !f.model && !f.backdrop && !f.symbol && f.num == null && items.length) {
+    await cachePut('gs:floor:' + norm(colName), Math.min(...items.map((x) => x.ton)));
+  }
   // Bitta gift bir nechta bozorda bo'lsa — eng arzoni qoladi
   const best = new Map();
   for (const it of items) { const k = it.name + '#' + it.num; if (!best.has(k) || it.ton < best.get(k).ton) best.set(k, it); }

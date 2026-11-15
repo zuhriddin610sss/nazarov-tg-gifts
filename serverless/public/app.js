@@ -942,7 +942,7 @@ function cfLabel(c, val) {
 // ---------- "Sotuvda": sotuvdagi giftlar va mijozlar e'lonlari ----------
 const saleLabel = (it) => (it.num != null && !/#\d+$/.test(it.name) ? `${it.name} #${it.num}` : it.name);
 const saleImg = (it) => (it.photo ? `<img src="${esc(it.photo)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ph',textContent:this.dataset.n}))" data-n="${esc(saleLabel(it))}">` : imgTag("gifts", saleLabel(it)));
-const SALE_SORTS = [["price asc", "sale_sort_cheap"], ["price desc", "sale_sort_exp"], ["listed_at desc", "sale_sort_new"]];
+const SALE_SORTS = [["price asc", "sale_sort_cheap"], ["price desc", "sale_sort_exp"]];
 const saleInstOk = (price) => Boolean(S.cfg && S.cfg.saleInst && price > 0 && price <= Number(S.cfg.saleInst.max));
 async function loadSale(st, more) {
   const req = ++st.req;
@@ -973,26 +973,68 @@ async function viewSale(v, head, bindTabs, mode) {
   if (!st.own) { try { st.own = (await api("/api/own/gifts")).map(normOwn).filter((it) => (mode === "inst" ? it.installment : it.cashPrice)); } catch { st.own = []; } }
   const chip = (k, label, val, disabled) => `<button type="button" class="fchip${val ? " on" : ""}" data-f="${k}" ${disabled ? "disabled" : ""}>${esc(val || label)}<span aria-hidden="true">⌄</span></button>`;
   const priceLbl = () => (st.f.min || st.f.max ? `${st.f.min ? money(st.f.min) : "0"} – ${st.f.max ? money(st.f.max) : "∞"}` : "");
-  const any = () => Boolean(st.f.collection || st.f.model || st.f.backdrop || st.f.symbol || st.f.min || st.f.max || st.num);
-  const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); await loadSale(st); draw(); };
+  const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); if (st.f.collection) { await loadSale(st); draw(); } };
+  const searching = `<div class="spin"></div><p class="hint" style="text-align:center">${esc(t("sale_searching"))}</p>`;
+  const sellLink = `<a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
+  const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
+  const ownGrid = () => (st.own.length ? `<div class="grid3">${st.own.map((it) => giftCard("gifts", mode === "inst" ? { ...it, rent: false, cashPrice: null } : { ...it, rent: false }, null)).join("")}</div>` : "");
+  // 1-ekran: kolleksiyalar (rasm, nom, "… so'mdan")
+  const drawCols = () => {
+    const q = String(st.colQ || "").trim().toLowerCase();
+    let cols = (st.colList || []).filter((c) => !q || c.name.toLowerCase().includes(q));
+    if (st.sort === "price desc") cols = [...cols].reverse();
+    v.innerHTML = head + sellLink + `
+      <input class="input" id="cQ" placeholder="${esc(t("col_search_ph"))}" value="${esc(st.colQ || "")}" autocomplete="off" style="margin-top:12px">
+      <div class="filters">${sortChip}</div>
+      ${ownGrid()}
+      ${st.colErr ? `<p class="alert">${esc(st.colErr)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
+      ${!st.colList && !st.colErr ? searching : ""}
+      ${st.colList && !cols.length && !st.own.length ? `<p class="empty">${esc(t(mode === "inst" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
+      <div class="grid3">${cols.map((c) => `<button type="button" class="gcard" data-col="${esc(c.name)}">
+        <span class="gimg">${imgTag("gifts", c.name + " #1")}</span>
+        <span class="gb"><b>${esc(c.name)}</b><span class="gp">${c.from ? `<b>${esc(money(c.from))}</b> ${esc(t("som_from"))}` : ""}</span></span></button>`).join("")}</div>`;
+    bindTabs();
+    v.querySelectorAll(".gcard[data-col]").forEach((c) => c.addEventListener("click", async () => {
+      st.f = { collection: c.dataset.col }; st.num = ""; st.attrs = null; window.scrollTo(0, 0);
+      reload();
+      st.attrs = await saleAttrs(c.dataset.col);
+    }));
+    bindOwn();
+    const retry = $("#retry", v); if (retry) retry.onclick = () => { st.colErr = null; st.colList = null; loadCols(); };
+    const cq = $("#cQ", v);
+    cq.addEventListener("input", () => { st.colQ = cq.value; const pos = cq.selectionStart; drawCols(); const n = $("#cQ", v); n.focus(); n.setSelectionRange(pos, pos); });
+    v.querySelectorAll(".fchip[data-f]").forEach((b) => b.addEventListener("click", () => openF(b.dataset.f)));
+  };
+  const loadCols = async () => {
+    drawCols();
+    try { st.colList = await call("saleCollections", { inst: mode === "inst" }); } catch (e) { st.colErr = errText(e); }
+    if (location.hash.slice(1) === "buy-nft" && S.buyMode === mode && !st.f.collection) drawCols();
+  };
+  const bindOwn = () => v.querySelectorAll(".gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
+    const it = st.own.find((x) => x.address === c.dataset.a);
+    if (!it) return;
+    S.rentPick = { category: "gifts", service: RENT_SVC.gifts, route: "buy-nft", item: it, formula: rentState("gifts").formula || (S.cfg && S.cfg.rentFormula),
+      days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null };
+    location.hash = "rent-item";
+  }));
   const draw = () => {
     if (location.hash.slice(1) !== "buy-nft" || S.buyMode !== mode) return;
+    if (!st.f.collection) return drawCols();
     v.innerHTML = head + `
-      <a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>
+      <div class="filters" style="margin-top:12px"><button type="button" class="fchip on" data-f="allcols">‹ ${esc(t("all_gifts"))}</button></div>
+      <h2 style="margin:6px 0 0">${esc(st.f.collection)}</h2>
       <input class="input" id="sNum" placeholder="${esc(t("sale_num_ph"))}" value="${esc(st.num)}" inputmode="numeric" autocomplete="off" style="margin-top:12px">
       <div class="filters">
         <button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
         ${chip("price", t("f_price"), priceLbl())}
-        ${chip("collection", t("f_gift"), st.f.collection)}
         ${chip("model", t("f_model"), st.f.model, !st.f.collection)}
         ${chip("backdrop", t("f_backdrop"), st.f.backdrop)}
         ${chip("symbol", t("f_symbol"), st.f.symbol, !st.f.collection)}
-        ${any() ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
+        ${st.f.model || st.f.backdrop || st.f.symbol || st.f.min || st.f.max || st.num ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
       </div>
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
-      ${!st.loaded ? `<div class="spin"></div>` : ""}
-      ${st.loaded && !st.error && !st.items.length && !st.own.length ? `<p class="empty">${esc(t(mode === "inst" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
-      ${st.own.length ? `<div class="grid3">${st.own.map((it) => giftCard("gifts", mode === "inst" ? { ...it, rent: false, cashPrice: null } : { ...it, rent: false }, null)).join("")}</div>` : ""}
+      ${!st.loaded ? searching : ""}
+      ${st.loaded && !st.error && !st.items.length ? `<p class="empty">${esc(t("sale_empty"))}</p>` : ""}
       <div class="grid3">${st.items.map((it, i) => `<button type="button" class="gcard" data-i="${i}">
         <span class="gimg">${saleImg(it)}</span>
         <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
@@ -1004,13 +1046,6 @@ async function viewSale(v, head, bindTabs, mode) {
       S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: mode === "inst" ? "installment" : "cash", itype: null, mode };
       location.hash = "sale-item";
     }));
-    v.querySelectorAll(".gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
-      const it = st.own.find((x) => x.address === c.dataset.a);
-      if (!it) return;
-      S.rentPick = { category: "gifts", service: RENT_SVC.gifts, route: "buy-nft", item: it, formula: rentState("gifts").formula || (S.cfg && S.cfg.rentFormula),
-        days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null };
-      location.hash = "rent-item";
-    }));
     const more = $("#more", v); if (more) more.onclick = async () => { more.disabled = true; await loadSale(st, true); draw(); };
     const retry = $("#retry", v); if (retry) retry.onclick = reload;
     const num = $("#sNum", v);
@@ -1019,8 +1054,9 @@ async function viewSale(v, head, bindTabs, mode) {
     v.querySelectorAll(".fchip[data-f]").forEach((b) => b.addEventListener("click", () => openF(b.dataset.f)));
   };
   const openF = async (k) => {
-    if (k === "clear") { st.f = {}; st.num = ""; st.attrs = null; return reload(); }
-    if (k === "sort") return pickSheet(t("sort_title"), SALE_SORTS.map(([x, l]) => ({ value: x, label: t(l) })), st.sort, (o) => { st.sort = o ? o.value : "price asc"; reload(); });
+    if (k === "allcols") { st.f = {}; st.num = ""; st.attrs = null; st.items = []; st.loaded = false; return drawCols(); }
+    if (k === "clear") { st.f = { collection: st.f.collection }; st.num = ""; return reload(); }
+    if (k === "sort") return pickSheet(t("sort_title"), SALE_SORTS.map(([x, l]) => ({ value: x, label: t(l) })), st.sort, (o) => { st.sort = o ? o.value : "price asc"; if (st.f.collection) reload(); else drawCols(); });
     if (k === "price") {
       sheet(`<h2>${esc(t("f_price"))}</h2>
         <div class="row2"><input class="input" id="pMin" type="number" inputmode="numeric" placeholder="${esc(t("price_from"))}" value="${esc(st.f.min || "")}">
@@ -1055,6 +1091,7 @@ async function viewSale(v, head, bindTabs, mode) {
     const opts = a ? a.values.map((x) => ({ value: x.value, label: x.value, note: x.perc ? (Math.round(x.perc * 10) / 10) + "%" : "" })) : [];
     pickSheet(t("f_" + k), opts, st.f[k], (o) => { st.f[k] = o ? o.value : null; reload(); });
   };
+  if (!st.f.collection) { if (!st.colList) await loadCols(); else drawCols(); return; }
   draw();
   if (!st.loaded && !st.loading) { await loadSale(st); draw(); }
 }

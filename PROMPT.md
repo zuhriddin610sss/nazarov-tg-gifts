@@ -76,11 +76,9 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Gift Satellite API (gift-satellite.dev/api, sarlavha `Authorization: Token <kalit>`): 5 bozor (Telegram Market, Portals, Tonnel, MRKT, Getgems) narxlari. Faqat o'qish uchun; `/user/buy` hech qachon chaqirilmaydi. Mijozga bozor nomi ko'rinmaydi, adminga buyurtmada bozor va havola keladi.
 - Pastki menyu: Asosiy · Ijara · Sotib olish · Xaridlarim · Balans. "Sotib olish": avval "Nimani?" (NFT gift, Premium, Stars, o'z username/+888), NFT uchun "Bo'lib to'lab" yoki "Naqd", keyin giftlar ro'yxati.
 - Ilovada "sovg'a" o'rniga "gift" so'zi ishlatiladi.
+- "Sotib olish → NFT gift": avval kolleksiyalar (rasm, nom, "… so'mdan"), bosilganda giftlar. Bozorlardan bir vaqtda so'raladi.
 - Portals API: sekundiga 1 ta so'rov, kalit faqat o'qish uchun ishlatiladi.
-- O'z sovg'alarim ("Reklama" yorlig'i bilan har doim birinchi) narxi quyidagilardan biri:
-  - Marketapp (model + fon, model yoki fon) × 17 000;
-  - qo'lda TON;
-  - qo'lda so'm.
+- O'z giftlarim ("Reklama" yorlig'i bilan har doim birinchi) narxi: (barcha bozorlardagi model + fon / model / fon eng arzoni + 0,3) × 17 000; topilmasa qo'lda narx. Portals kaliti zaxira.
 - Hamma buyurtma navbatga tushadi, men ularni qo'lda bajaraman.
 - Balansni faqat admin to'ldiradi (karta yoki chek yuklash yo'q).
 - Referal va admin 2FA kerak emas.

@@ -451,7 +451,7 @@ async function settings(v) {
       <div class="field"><label>Eng kam star</label><input class="input" name="stars_min" value="${esc(s.stars_min)}"></div>
       ${[["m1", "Premium 1 oy"], ["m3", "Premium 3 oy"], ["m6", "Premium 6 oy"], ["m12_login", "Premium 12 oy (akkauntga kirib)"], ["m12", "Premium 12 oy (akkauntga kirmasdan)"]].map(([k, l]) => `<div class="field"><label>${l}</label><input class="input" name="pp_${k}" value="${esc(s.premium_prices[k])}"></div>`).join("")}
     </div></div>
-    <div class="section"><h2>Portals'dagi sotuvdagi giftlar: (Portals narxi + qo'shimcha) × kurs</h2><div class="form">
+    <div class="section"><h2>"Sotib olish"dagi gift narxi: (bozordagi narx + qo'shimcha) × kurs</h2><div class="form">
       <div class="field"><label>Qo'shimcha, TON</label><input class="input" name="ps_add" value="${esc(s.portals_sale ? s.portals_sale.add : 0.1)}"></div>
       <div class="field"><label>Kurs, so'm</label><input class="input" name="ps_rate" value="${esc(s.portals_sale ? s.portals_sale.rate : 17000)}"></div>
       <div class="field full"><label class="chip"><input type="checkbox" name="si_on" ${s.sale_inst && s.sale_inst.enabled ? "checked" : ""}> "Sotuvda" giftlarni bo'lib to'lashga ruxsat berish</label></div>
@@ -465,7 +465,8 @@ async function settings(v) {
     </div><p class="hint">Misol: P = 1.5 → ${esc(money((1.5 + s.rent_formula.add) * s.rent_formula.mult * s.rent_formula.rate))}</p></div>
     <div class="section"><h2>Bo'lib to'lash</h2><div class="form">
       <div class="field"><label>12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
-      <div class="field"><label>O'z giftlari: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
+      <div class="field"><label>O'z giftlarim: qo'shimcha, TON (narx = (bozordagi eng arzoni + shu) × kurs)</label><input class="input" name="own_add" value="${esc(s.own_add ?? 0.3)}"></div>
+      <div class="field"><label>O'z giftlarim: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
     </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%</p>
       <h2 style="margin-top:8px">1-tur boshlang'ich to'lovi: (kunlik ijara × kun + qo'shimcha) × kurs × koeffitsiyent</h2><div class="form">
       <div class="field"><label>Kun</label><input class="input" name="df_days" value="${esc(s.down_formula.days)}"></div>
@@ -487,7 +488,7 @@ async function settings(v) {
       stars_price: n("stars_price"), stars_min: n("stars_min"),
       premium_prices: Object.fromEntries(["m1", "m3", "m6", "m12_login", "m12"].map((k) => [k, n("pp_" + k)])),
       rent_formula: { add: n("rf_add"), mult: n("rf_mult"), rate: n("rf_rate") },
-      inst_markup_year: n("inst_markup_year"), sale_rate: n("sale_rate"),
+      inst_markup_year: n("inst_markup_year"), sale_rate: n("sale_rate"), own_add: n("own_add"),
       down_formula: { days: n("df_days"), add: n("df_add"), rate: n("df_rate"), mult: n("df_mult") },
       services_enabled: Object.fromEntries(Object.keys(svcL).map((k) => [k, f.get("se_" + k) === "on"])),
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,
@@ -574,6 +575,7 @@ const BYL = { model_backdrop: "model + fon bo'yicha", model: "model bo'yicha", b
 const DOWNB = { exact: "aynan shu gift", model_backdrop: "model + fon", model: "model", backdrop: "fon" };
 const downSel = (name, cur) => `<select class="input" name="${name}">${[["exact", "Aynan shu giftning ijarasi"], ["model_backdrop", "Model + fon: eng arzon ijara"], ["model", "Model: eng arzon ijara"], ["backdrop", "Fon: eng arzon ijara"]]
   .map(([k, l]) => `<option value="${k}" ${(DOWNB[cur] ? cur : "exact") === k ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+const OLDSRC = (v) => { v = String(v || "manual_som"); if (v === "manual_som" || v === "manual_ton") return v; if (v === "best") return "sat_model_backdrop"; const b = v.replace(/^(portals_|sat_)/, ""); return ["model_backdrop", "model", "backdrop"].includes(b) ? "sat_" + b : "manual_som"; };
 const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)", paid: "Marketapp sotuv narxlari faqat pullik tarifda, Portals yoki qo'lda narxni tanlang" };
 // ---------- Mijozlar e'lonlari ("Giftimni sotaman") ----------
 const LST = { pending: "Tasdiq kutmoqda", active: "Sotuvda", sold: "Sotildi", hidden: "Yashirilgan / rad etilgan" };
@@ -649,8 +651,8 @@ function ownForm(p) {
       <div class="field"><label>Ijara: eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 30)}"></div>
       <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
       <div class="field full"><label>Bo'lib to'lash uchun narx qayerdan olinsin?</label>
-        <select class="input" name="price_source">${[["model_backdrop", "Marketapp: model + fon eng arzoni × kurs"], ["model", "Marketapp: model eng arzoni × kurs"], ["backdrop", "Marketapp: fon eng arzoni × kurs"], ["sat_model_backdrop", "Barcha bozorlar (Gift Satellite): model + fon eng arzoni × kurs"], ["sat_model", "Barcha bozorlar: model eng arzoni × kurs"], ["sat_backdrop", "Barcha bozorlar: fon eng arzoni × kurs"], ["portals_model_backdrop", "Portals (sinov): model + fon eng arzoni × kurs"], ["portals_model", "Portals (sinov): model eng arzoni × kurs"], ["portals_backdrop", "Portals (sinov): fon eng arzoni × kurs"], ["best", "Eng arzoni: Marketapp yoki Portals × kurs"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
-          .map(([k, l]) => `<option value="${k}" ${(p.price_source || "manual_som") === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <select class="input" name="price_source">${[["sat_model_backdrop", "Barcha bozorlar: model + fon eng arzoni"], ["sat_model", "Barcha bozorlar: model eng arzoni"], ["sat_backdrop", "Barcha bozorlar: fon eng arzoni"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
+          .map(([k, l]) => `<option value="${k}" ${OLDSRC(p.price_source) === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="field"><label>Narx, TON (qo'lda TON tanlansa yoki bozorda topilmasa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
       <div class="field"><label>Narx, so'm (qo'lda so'm tanlansa yoki bozorda topilmasa)</label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>
       <div class="field full"><label>1-tur formulasi qaysi ijara narxidan olinsin? (Marketapp, 45 kunlik)</label>${downSel("down_by", p.down_mode)}</div>

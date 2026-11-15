@@ -314,20 +314,20 @@ test("admin bot: sovg'a havolasi bo'yicha bozor narxi, ijara va 1-tur boshlang'i
   assert.ok(!sent.some((m) => /oyiga/.test(m.params.text || '')), 'mijozga kalkulyator ishlamaydi');
 });
 
-test("o'z sovg'asi narxi: model + fon topilmasa, model bo'yicha olinadi (zanjirli qidiruv)", async () => {
-  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST' });
+test("o'z gifti narxi: eski 'Marketapp' manbasi 'barcha bozorlar'ga o'tadi; model + fon topilmasa model bo'yicha; + 0.3", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_K' });
   setFetch(async (url) => {
-    const u = String(url);
+    const u = decodeURIComponent(String(url));
     let body = {};
-    if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
-    else if (u.includes('/gifts/onsale/')) body = { cursor: null, items: u.includes('backdrop=') && u.includes('model=') ? [] : u.includes('model=') ? [{ min_bid: '40000000000' }] : [] };
-    else if (u.includes('/rent/gifts/')) body = { cursor: null, items: [] };
+    if (u.includes('/collections/preview')) body = { collections: [{ id: 'th', name: 'Trapped Heart', short_name: 'x', floor_price: '9' }] };
+    else if (u.includes('/nfts/search')) body = { results: u.includes('filter_by_backdrops') ? [] : [{ name: 'Trapped Heart', external_collection_number: 3, price: '40', status: 'listed', attributes: [{ type: 'model', value: 'Crime Scene' }] }] };
     return { ok: true, status: 200, text: async () => JSON.stringify(body) };
   });
-  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #19604', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'model_backdrop', down_mode: 'manual', down_manual: 100000 });
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #19604', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'model_backdrop' });
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #19604');
-  assert.equal(p.quote.price, 680000); // 40 TON × 17 000
-  assert.equal(p.quote.by, 'model');
+  assert.equal(p.price_source, 'sat_model_backdrop');
+  assert.equal(p.quote.price, Math.ceil(40.3 * 17000)); // (40 + 0.3) × 17 000
+  assert.equal(p.quote.by, 'sat_model');
 });
 
 test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 'eng arzoni' Marketapp va Portals'ni solishtiradi", async () => {
@@ -353,8 +353,8 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   assert.equal(auth, 'partners portals_SECRETKEY123');
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #777', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'best', down_mode: 'manual', down_manual: 1 });
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #777');
-  assert.equal(p.quote.price, Math.ceil(18.5 * 17000));
-  assert.equal(p.quote.by, 'portals_model_backdrop');
+  assert.equal(p.quote.price, Math.ceil(18.8 * 17000));
+  assert.equal(p.quote.by, 'sat_model_backdrop');
   assert.equal(p.quote.src, 'Portals: Trapped Heart');
   assert.equal(p.quote.down1By, 'manual'); // ijarada yo'q -> qo'lda yozilgan summa
 });
@@ -372,8 +372,7 @@ test("Marketapp sotuv narxi 402 bersa ham, boshlang'ich to'lov ijara narxidan fo
   });
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #6329', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'model_backdrop', down_manual: 500000 });
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #6329');
-  assert.equal(p.quote.by, 'paid');
-  assert.equal(p.quote.price, null);
+  assert.equal(p.quote.price, null); // bozor kaliti yo'q, qo'lda narx ham yo'q
   // (0.02 × 45 + 0.1) × 17 000 × 3 = 51 000
   assert.equal(p.quote.down1, 51000);
   assert.equal(p.quote.down1By, 'formula');
@@ -557,7 +556,7 @@ test("Portals: 429 bo'lsa narx kolleksiyaga tushmaydi va avvalgisi qoladi; sotuv
   });
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Mood Pack #59717', model: 'Lady Arcana', backdrop: 'Ranger Green', inst_enabled: true, price_source: 'portals_model_backdrop', price_manual: 150000 });
   let p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
-  assert.equal(p.quote.price, 178500); // 10.5 × 17 000
+  assert.equal(p.quote.price, 183600); // (10.5 + 0.3) × 17 000
   assert.equal(p.quote.src, 'Portals: Mood Pack #76644');
   for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= 1000, 'so\'rovlar juda tez: ' + (times[i] - times[i - 1]));
   // 429: narx o'zgarmaydi, kolleksiyaning 5.25 TON iga tushmaydi
@@ -565,7 +564,7 @@ test("Portals: 429 bo'lsa narx kolleksiyaga tushmaydi va avvalgisi qoladi; sotuv
   await core.run('UPDATE own_products SET mk_checked_at = NULL');
   await core.run("DELETE FROM portals_cache WHERE k LIKE 's:%'");
   p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
-  assert.equal(p.quote.price, 178500);
+  assert.equal(p.quote.price, 183600);
   // Sotuvda yo'q: qo'lda yozilgan narx
   mode = 'none';
   await core.run('UPDATE own_products SET mk_checked_at = NULL');
@@ -627,5 +626,5 @@ test("Gift Satellite: 5 bozor bitta ro'yxatda, mijozga bozor nomi berilmaydi, ad
   // O'z mahsuloti: "barcha bozorlar: model + fon"
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Mood Pack #59717', model: 'Lady Arcana', backdrop: 'Ranger Green', inst_enabled: true, price_source: 'sat_model_backdrop' });
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
-  assert.deepEqual([p.quote.price, p.quote.by, p.quote.src], [Math.ceil(10.2 * 17000), 'sat_model_backdrop', 'MRKT: Mood Pack #76644']);
+  assert.deepEqual([p.quote.price, p.quote.by, p.quote.src], [Math.ceil(10.5 * 17000), 'sat_model_backdrop', 'MRKT: Mood Pack #76644']);
 });

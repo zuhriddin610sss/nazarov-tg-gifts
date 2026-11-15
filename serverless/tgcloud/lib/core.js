@@ -108,8 +108,9 @@ export const DEFAULT_SETTINGS = {
   inst_markup_year: 100,
   // 1-tur boshlang'ich to'lovi: (Marketapp kunlik ijara × days + add) × rate × mult
   down_formula: { days: 45, add: 0.1, rate: 17000, mult: 3 },
-  // O'z sovg'alarining sotuv narxi: Marketapp TON narxi × sale_rate so'm
+  // O'z giftlarining sotuv narxi: (bozordagi eng arzoni + own_add) × sale_rate so'm
   sale_rate: 17000,
+  own_add: 0.3,
   // Portals Partner API manzili (sinov)
   portals_base: 'https://portal-market.com/partners',
   // Gift Satellite API manzili (5 ta bozor narxlari)
