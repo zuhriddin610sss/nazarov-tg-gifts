@@ -73,7 +73,8 @@ const normName = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /** Kolleksiyalar ro'yxati (ID, nom, eng arzon narx). Bazada 1 kun saqlanadi; Portals javob bermasa eskisi ishlatiladi. */
 async function collections() {
-  const c = await cacheGet('collections', 86400000);
+  // Ro'yxat va eng arzon narxlar 15 daqiqa saqlanadi (bitta so'rov)
+  const c = await cacheGet('collections', 900000);
   if (c && c.fresh) return c.v;
   const r = await request('/collections/preview', {});
   if (r.ok) {
@@ -92,6 +93,10 @@ export async function portalsCollection(name) {
   const n = normName(name);
   return list.find((c) => normName(c.name) === n || normName(c.short_name) === n)
     || list.find((c) => normName(c.name).replace(/s$/, '') === n.replace(/s$/, '')) || null;
+}
+/** Kolleksiyalar va ularning eng arzon narxi (TON). */
+export async function portalsCollectionFloors() {
+  return ((await collections()) || []).map((c) => ({ name: String(c.name), floor: Number(c.floor_price) > 0 ? Number(c.floor_price) : null })).filter((x) => x.name);
 }
 /** Kolleksiyalar nomi (filtr uchun). */
 export async function portalsCollectionNames() {

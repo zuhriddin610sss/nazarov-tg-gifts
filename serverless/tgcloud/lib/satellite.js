@@ -136,11 +136,11 @@ export async function satMarket(f = {}) {
     colName = c;
   }
   const markets = colName === 'all-collections' ? MARKETS.filter((m) => m !== 'tg') : MARKETS;
+  // Hamma bozorlardan bir vaqtda (har birining o'z navbati bor). 6 soniyada javob bermagani kutilmaydi.
+  const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false }), ms) : r({ ok: false })));
+  const res = await Promise.all(markets.map((m) => Promise.race([searchMarket(m, colName, f).catch(() => ({ ok: false })), timeout(6000)])));
   let items = [], okAny = false;
-  for (const m of markets) {
-    const r = await searchMarket(m, colName, f);
-    if (r.ok) { okAny = true; items = items.concat(r.items); }
-  }
+  for (const r of res) if (r.ok) { okAny = true; items = items.concat(r.items); }
   if (!okAny) return null;
   // Bitta gift bir nechta bozorda bo'lsa — eng arzoni qoladi
   const best = new Map();

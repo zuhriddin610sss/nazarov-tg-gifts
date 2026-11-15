@@ -9,7 +9,7 @@ import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
 import { ownSaleQuote, monthlyPayment, giftDown1 } from 'lib/calc';
-import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames } from 'lib/portals';
+import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames, portalsCollectionFloors } from 'lib/portals';
 import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, MARKET_NAME } from 'lib/satellite';
 
 /** Portals narxidan mijoz narxi (so'm): (TON + add) × rate, yuqoriga yaxlitlanadi. */
@@ -194,6 +194,20 @@ export const actions = {
     const s = await getSettings();
     const name = str(i.name, 120, { required: true });
     return { down1: await giftDown1(name, { model: str(i.model, 80) || null, backdrop: str(i.backdrop, 80) || null, symbol: str(i.symbol, 80) || null }, s) };
+  },
+  /**
+   * "Sotib olish → NFT gift" bosh ekrani: kolleksiyalar va "… so'mdan" narxi (Portals'dagi eng arzoni asosida).
+   * inst: faqat bo'lib to'lashga mumkin bo'lganlari (eng arzoni chegaradan oshmasa).
+   */
+  async saleCollections(i) {
+    const s = await getSettings();
+    if (!s.services_enabled.nft_gift) throw fail('SERVICE_DISABLED');
+    const inst = i.inst === true || i.inst === 'true';
+    let list = [];
+    if (await portalsConfigured()) list = (await portalsCollectionFloors()).map((c) => ({ name: c.name, from: c.floor ? portalsSom(c.floor, s) : null }));
+    if (!list.length && (await satelliteConfigured())) list = (await satCollectionNames()).map((name) => ({ name, from: null }));
+    if (inst) list = list.filter((c) => s.sale_inst.enabled && c.from != null && c.from <= Number(s.sale_inst.max));
+    return list.sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity) || a.name.localeCompare(b.name));
   },
   async portalsCollections() {
     if (await satelliteConfigured()) return satCollectionNames();
