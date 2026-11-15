@@ -67,7 +67,7 @@ async function priceReport(name, attrs) {
   }
   if (await portalsConfigured()) {
     const pt = await portalsFloor({ collection, model: attrs.model, backdrop: attrs.backdrop });
-    L.push(`• Portals (model + fon, sinov): ${pt ? `${ton(pt)} ≈ ${som(Math.ceil(pt * Number(s.sale_rate)))}` : 'topilmadi'}`);
+    L.push(`• Portals (model + fon): ${pt.status === 'ok' ? `${ton(pt.ton)} ≈ ${som(Math.ceil(pt.ton * Number(s.sale_rate)))} (${pt.label})` : pt.status === 'none' ? "sotuvda yo'q" : 'Portals javob bermadi, birozdan keyin urinib ko\'ring'}`);
   }
   L.push('');
   const own = await rentListingFor(col.address, name, attrs);

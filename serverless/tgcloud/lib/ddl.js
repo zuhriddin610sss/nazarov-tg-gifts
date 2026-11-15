@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -216,6 +216,11 @@ export const DDL = [
     price INTEGER NOT NULL CHECK (price > 0),
     status TEXT NOT NULL DEFAULT 'pending',
     created_at INTEGER NOT NULL, updated_at INTEGER
+  )`,
+
+  // Portals javoblari keshi (kolleksiyalar ro'yxati, qidiruv natijalari): so'rovlar sonini kamaytirish uchun
+  `CREATE TABLE IF NOT EXISTS portals_cache (
+    k TEXT PRIMARY KEY, v TEXT NOT NULL, at INTEGER NOT NULL
   )`,
 ];
 

@@ -288,8 +288,9 @@ export const actions = {
       cash_price: cashOn ? toTiyin(num(i.cash_price, { min: 1, name: 'cash_price' })) : null,
       visible: i.visible === false ? 0 : 1, position: i.position ? int(i.position, { min: -1000, max: 1000 }) : 0,
       price_source: ['model_backdrop', 'model', 'backdrop', 'portals_model_backdrop', 'portals_model', 'portals_backdrop', 'best', 'manual_ton', 'manual_som'].includes(i.price_source) ? i.price_source : 'manual_som',
-      price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
-      price_manual: i.price_source === 'manual_som' && Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
+      // Qo'lda narx: "qo'lda" usul tanlanganda asosiy narx, bozor usulida esa bozorda topilmasa ishlatiladi
+      price_ton: i.price_source === 'manual_ton' ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : Number(i.price_ton) > 0 ? num(i.price_ton, { min: 0.01, name: 'price_ton' }) : null,
+      price_manual: Number(i.price_manual) > 0 ? toTiyin(num(i.price_manual, { min: 1, name: 'price_manual' })) : null,
       // Boshlang'ich to'lov har doim avval formula bilan; bu summa faqat formula topilmasa ishlatiladi
       down_mode: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.down_by) ? i.down_by : 'exact',
       down_manual: Number(i.down_manual) > 0 ? toTiyin(num(i.down_manual, { min: 1, name: 'down_manual' })) : null,

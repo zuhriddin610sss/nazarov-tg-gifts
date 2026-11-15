@@ -1,7 +1,7 @@
 // Bo'lib to'lash hisobi va narx manbalari. Barcha summalar so'mda (butun son, yuqoriga yaxlitlangan).
 import { get, run, nowMs, logError } from 'lib/core';
 import { giftsOnSaleFloor, listRent, giftCollections, marketappConfigured, floorInfo } from 'lib/marketapp';
-import { portalsFloor, portalsConfigured, portalsInfo } from 'lib/portals';
+import { portalsFloor, portalsConfigured } from 'lib/portals';
 
 /** Ustama foizi: oy soni × (yillik ustama / 12). 3 oy -> 25, 6 oy -> 50, 12 oy -> 100. */
 export function markupPercent(months, s) {
@@ -106,7 +106,9 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
   const attrs = { model: p.model, backdrop: p.backdrop, symbol: p.symbol };
   const src = p.price_source || 'manual_som';
   const MK = ['model_backdrop', 'model', 'backdrop'], PT = ['portals_model_backdrop', 'portals_model', 'portals_backdrop'];
-  const CHAIN = { model_backdrop: ['model_backdrop', 'model', 'backdrop', 'collection'], model: ['model', 'backdrop', 'collection'], backdrop: ['backdrop', 'collection'] };
+  // Zanjir: tanlangan usulda topilmasa kengroq usul. Butun kolleksiyaning eng arzoniga tushilmaydi
+  // (u boshqa modeldagi gift bo'ladi): topilmasa admin qo'lda yozgan narx olinadi.
+  const CHAIN = { model_backdrop: ['model_backdrop', 'model', 'backdrop'], model: ['model', 'backdrop'], backdrop: ['backdrop'] };
   const usesMarketPrice = MK.includes(src) || PT.includes(src) || src === 'best';
   let mkPrice = p.mk_price_ton, mkPpd = p.mk_ppd_nano, mkBy = p.mk_by || null, mkSrc = p.mk_src || null;
   const stale = !p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000;
@@ -122,17 +124,22 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
       if (MK.includes(src) || src === 'best') {
         // Zanjirli qidiruv: tanlangan usulda topilmasa, kengroq usulga o'tadi
         const chain = CHAIN[src === 'best' ? 'model_backdrop' : src];
-        mkPrice = null; mkBy = null; mkSrc = null;
+        let nPrice = null, nBy = null, nSrc = null;
         try {
           for (const by of chain) {
-            const t = await floorPrice(col, attrs, by === 'collection' ? null : by);
-            if (t) { mkPrice = t; mkBy = by; mkSrc = floorInfo.label; break; }
+            const t = await floorPrice(col, attrs, by);
+            if (t) { nPrice = t; nBy = by; nSrc = floorInfo.label; break; }
           }
-        } catch (e) { mkBy = errBy(e); await logError('narx', `${p.name}: ${e && (e.description || e.message)}`); }
+          mkPrice = nPrice; mkBy = nBy; mkSrc = nSrc;
+        } catch (e) {
+          // 402 — pullik tarif (narx yo'q); boshqa xato — avvalgi narx qoladi
+          if (errBy(e) === 'paid') { mkPrice = null; mkBy = 'paid'; mkSrc = null; }
+          await logError('narx', `${p.name}: ${e && (e.description || e.message)}`);
+        }
       }
       try {
         mkPpd = await rentPpdFor(col, p.name, attrs, p.down_mode);
-      } catch (e) { mkPpd = null; await logError('ijara', `${p.name}: ${e && (e.description || e.message)}`); }
+      } catch (e) { /* xato bo'lsa avvalgi ijara narxi qoladi */ await logError('ijara', `${p.name}: ${e && (e.description || e.message)}`); }
       await run(`UPDATE own_products SET collection_address = :c, mk_price_ton = :pt, mk_ppd_nano = :pp, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id`,
         { c: col, pt: mkPrice ?? null, pp: mkPpd ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
     } else if (MK.includes(src)) {
@@ -143,25 +150,39 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
   if ((PT.includes(src) || src === 'best') && (stale || fresh) && p.kind === 'gifts' && (await portalsConfigured())) {
     const chain = CHAIN[src === 'best' ? 'model_backdrop' : src.replace('portals_', '')];
     const collection = splitGiftName(p.name).collection;
-    let ptPrice = null, ptBy = null, ptSrc = null;
+    let ptPrice = null, ptBy = null, ptSrc = null, failed = false;
     for (const by of chain) {
       const a = { collection, model: ['model_backdrop', 'model'].includes(by) ? attrs.model : null, backdrop: ['model_backdrop', 'backdrop'].includes(by) ? attrs.backdrop : null };
       if ((by === 'model_backdrop' && !(a.model && a.backdrop)) || (by === 'model' && !a.model) || (by === 'backdrop' && !a.backdrop)) continue;
       const t = await portalsFloor(a);
-      if (t) { ptPrice = t; ptBy = by; ptSrc = portalsInfo.label; break; }
+      // Portals javob bermasa — keyingi usulga o'tilmaydi va avvalgi narx o'zgarmaydi
+      if (t.status === 'error') { failed = true; break; }
+      if (t.status === 'ok') { ptPrice = t.ton; ptBy = by; ptSrc = t.label; break; }
     }
-    if (src === 'best') { if (ptPrice && (!mkPrice || ptPrice < mkPrice)) { mkPrice = ptPrice; mkBy = 'portals_' + ptBy; mkSrc = ptSrc; } }
-    else { mkPrice = ptPrice; mkBy = ptBy ? 'portals_' + ptBy : null; mkSrc = ptSrc; }
-    await run('UPDATE own_products SET mk_price_ton = :pt, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id', { pt: mkPrice ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
+    if (!failed) {
+      if (src === 'best') { if (ptPrice && (!mkPrice || ptPrice < mkPrice)) { mkPrice = ptPrice; mkBy = 'portals_' + ptBy; mkSrc = ptSrc; } }
+      else { mkPrice = ptPrice; mkBy = ptBy ? 'portals_' + ptBy : null; mkSrc = ptSrc; }
+      await run('UPDATE own_products SET mk_price_ton = :pt, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id', { pt: mkPrice ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
+    } else {
+      // Keyingi safar qayta tekshirish uchun: vaqt belgisini yangilamaymiz
+      await run('UPDATE own_products SET mk_checked_at = NULL WHERE id = :id', { id: p.id });
+    }
   }
   let price = null;
   if (src === 'manual_som') price = p.price_manual ? Math.ceil(Number(p.price_manual) / 100) : (p.cash_price ? Math.ceil(Number(p.cash_price) / 100) : null);
   else if (src === 'manual_ton') price = p.price_ton ? Math.ceil(Number(p.price_ton) * Number(s.sale_rate)) : null;
   else if (usesMarketPrice) price = mkPrice ? Math.ceil(Number(mkPrice) * Number(s.sale_rate)) : null;
+  // Bozorda (model / fon bo'yicha) topilmasa: admin qo'lda yozgan narx
+  let by = usesMarketPrice ? mkBy : src;
+  if (usesMarketPrice && !price) {
+    if (p.price_manual) { price = Math.ceil(Number(p.price_manual) / 100); by = 'fallback_som'; }
+    else if (p.price_ton) { price = Math.ceil(Number(p.price_ton) * Number(s.sale_rate)); by = 'fallback_ton'; }
+  }
   // 1-tur boshlang'ich to'lovi: avval formula (Marketapp ijara narxi), topilmasa admin yozgan summa
   let down1 = null, down1By = null;
   const down1Base = downBase(p.down_mode);
   if (mkPpd) { down1 = downByFormula(mkPpd, s); down1By = 'formula'; }
   else if (p.down_manual) { down1 = Math.ceil(Number(p.down_manual) / 100); down1By = 'manual'; }
-  return { price, down1, down1By, down1Base, marketPriceTon: mkPrice ?? null, by: usesMarketPrice ? mkBy : src, src: usesMarketPrice ? mkSrc : null };
+  const tonR = mkPrice != null ? Math.round(Number(mkPrice) * 100) / 100 : null;
+  return { price, down1, down1By, down1Base, marketPriceTon: tonR, by, src: usesMarketPrice && !String(by).startsWith('fallback') ? mkSrc : null };
 }

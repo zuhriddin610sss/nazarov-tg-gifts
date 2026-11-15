@@ -347,8 +347,7 @@ test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 
   sent.length = 0;
   await messageHandler({ chat: { id: 777, type: 'private' }, from: { id: 777, first_name: 'Admin' }, text: '/portals Trapped Heart | Crime Scene | Persimmon' });
   const txt = sent.map((m) => m.params.text || '').join('\n');
-  assert.match(txt, /Javob kodi: 200/);
-  assert.match(txt, /Crime Scene \+ Persimmon: 18\.5, 25 TON/);
+  assert.match(txt, /Crime Scene \+ Persimmon: 18\.5 TON/);
   assert.match(txt, /eng arzoni 12 TON/);
   assert.ok(!txt.includes('SECRETKEY'), 'kalit ko\'rinmasligi kerak');
   assert.equal(auth, 'partners portals_SECRETKEY123');
@@ -540,4 +539,56 @@ test("1-tur formulasi: admin tanlagan usul bo'yicha (model + fon eng arzon ijara
   rentQ.length = 0;
   assert.deepEqual(await app({ action: 'saleDown1', name: 'Trapped Heart #1', model: 'Crime Scene' }), { down1: 51000 });
   assert.ok(rentQ.some((q) => q.includes('model=Crime Scene') && !q.includes('backdrop=')));
+});
+
+test("Portals: 429 bo'lsa narx kolleksiyaga tushmaydi va avvalgisi qoladi; sotuvda yo'q bo'lsa qo'lda narx; so'rovlar orasida 1 soniya", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_K' });
+  let mode = 'ok';
+  const times = [];
+  setFetch(async (url) => {
+    const u = String(url);
+    times.push(Date.now());
+    if (mode === '429' && u.includes('/nfts/search')) return { ok: false, status: 429, text: async () => '{"code":"RATE_LIMITED"}' };
+    let body = {};
+    if (u.includes('/collections/preview')) body = { collections: [{ id: 'mp', name: 'Mood Pack', short_name: 'moodpack', floor_price: '5.25' }] };
+    else if (u.includes('/nfts/search')) body = { results: mode === 'none' ? [] : [{ name: 'Mood Pack', external_collection_number: 76644, price: '10.5', status: 'listed',
+      attributes: [{ type: 'model', value: 'Lady Arcana' }, { type: 'backdrop', value: 'Ranger Green' }] }] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Mood Pack #59717', model: 'Lady Arcana', backdrop: 'Ranger Green', inst_enabled: true, price_source: 'portals_model_backdrop', price_manual: 150000 });
+  let p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
+  assert.equal(p.quote.price, 178500); // 10.5 × 17 000
+  assert.equal(p.quote.src, 'Portals: Mood Pack #76644');
+  for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= 1000, 'so\'rovlar juda tez: ' + (times[i] - times[i - 1]));
+  // 429: narx o'zgarmaydi, kolleksiyaning 5.25 TON iga tushmaydi
+  mode = '429';
+  await core.run('UPDATE own_products SET mk_checked_at = NULL');
+  await core.run("DELETE FROM portals_cache WHERE k LIKE 's:%'");
+  p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
+  assert.equal(p.quote.price, 178500);
+  // Sotuvda yo'q: qo'lda yozilgan narx
+  mode = 'none';
+  await core.run('UPDATE own_products SET mk_checked_at = NULL');
+  await core.run("DELETE FROM portals_cache WHERE k LIKE 's:%'");
+  p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Mood Pack #59717');
+  assert.deepEqual([p.quote.price, p.quote.by], [150000, 'fallback_som']);
+});
+
+test("Sotuvda katalogi: natija bazada saqlanadi, Portals 429 bersa oxirgi ro'yxat ko'rsatiladi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_K' });
+  let n = 0, fail = false;
+  setFetch(async (url) => {
+    const u = String(url);
+    if (u.includes('/nfts/search')) { n++; if (fail) return { ok: false, status: 429, text: async () => '{}' }; }
+    const body = u.includes('/collections/preview') ? { collections: [{ id: 'c1', name: 'Artisan Brick', short_name: 'x', floor_price: '3' }] }
+      : { total_count: 1, results: [{ id: 'q', name: 'Artisan Brick', external_collection_number: 5, price: '3', status: 'listed', attributes: [] }] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  const a = await app({ action: 'portalsSale', collection: 'Artisan Brick' });
+  await app({ action: 'portalsSale', collection: 'Artisan Brick' });
+  assert.equal(n, 1, 'ikkinchi marta bazadan olinishi kerak');
+  fail = true;
+  await core.run("UPDATE portals_cache SET at = 0 WHERE k LIKE 's:list:%'");
+  const b = await app({ action: 'portalsSale', collection: 'Artisan Brick' });
+  assert.deepEqual(b.items.map((x) => x.id), a.items.map((x) => x.id));
 });
