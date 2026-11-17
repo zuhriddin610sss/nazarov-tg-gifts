@@ -41,55 +41,48 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Admin panelda xato xabari oyna ustida ko'rinishi kerak.
 
 ## Biznes qoidalari (kodda bor, o'zgartirma)
-- Xizmatlar:
-  - NFT sovg'ani bo'lib to'lashga olish;
-  - NFT sovg'a ijarasi (Marketapp + o'z sovg'alarim, istalgan giftni rent (ijara)ga chiqarib beraman);
-  - noyob username ijarasi;
-  - anonim raqam (+888) ijarasi;
-  - Telegram Premium;
-  - Telegram Stars.
+**Ilova tuzilishi**
+- Pastki menyu: Asosiy · Ijara · Sotib olish · Xaridlarim · Balans.
+- Bosh sahifa: brend kartochkasi ("NFT giftlar bo'lib to'lashga va rent (ijara)ga"), keyin xizmatlar: NFT bo'lib to'lash, ijara, NFT gift sotib olish, Premium, Stars, username va +888 ijarasi.
+- Ilovada "sovg'a" o'rniga "gift" so'zi. Mijozga bozor nomlari (Portals, MRKT va h.k.) hech qayerda ko'rinmaydi, faqat adminga.
+- Kartochkalarda narx turi yoziladi: "💎 Sotib olish" yoki "⏳ Ijara".
+- O'z giftlarim "⭐ Bizning giftlarimiz · ijaraga / bo'lib to'lashga / naqd sotuvda" blokida, oltin "Reklama" yorlig'i bilan, gorizontal qatorda.
+
+**Ijara**
+- Bozor giftlari (Marketapp): (Marketapp narxi + 0,15) × 2 × 19 000 so'm, yuqoriga yaxlitlanadi. Kartochkada "… so'm / kun dan" (eng uzoq muddat bo'yicha).
+- O'z giftlarim (avto tanlansa): Marketapp ijarasidagi model + fon / model / fon eng arzoni bo'yicha (P + 0,15) × 3 × 19 000; topilmasa qo'lda kunlik narx.
+- Ijara bo'limida faqat ijaraga beriladigan o'z giftlarim chiqadi.
+
+**Sotib olish**
+- Avval "Nimani?": NFT gift, Premium, Stars (o'z username/+888 bo'lsa ular ham).
+- NFT gift → "Bo'lib to'lab" yoki "Naqd":
+  - Bo'lib to'lab: avval kolleksiyalar (rasm, nom, "oyiga ≈ … so'mdan"), bosilganda giftlar (narx, model, fon, belgi filtrlari, raqam qidiruvi). Faqat admin chegarasidan ("… so'mgacha") arzon giftlar. To'liq narx ko'rsatilmaydi, faqat "Oyiga ≈ …" (240 oyga hisob).
+  - Naqd: katalog yo'q. Mijoz talab kiritadi (gift turi, model, fon, belgi, byudjet), "Topish" → eng arzon 5 ta mos gift.
+- Bozor giftlari narxi: (bozordagi narx + qo'shimcha) × 17 000; qo'shimcha sozlamalarda (hozir 0,6).
+- O'z giftlarim narxi: (barcha bozorlardagi model + fon / model / fon eng arzoni + 0,3) × 17 000; topilmasa qo'lda narx. Butun kolleksiyaning eng arzoniga tushilmaydi.
+- Buyurtmada narx qayta tekshiriladi; gift sotilgan bo'lsa yoki narx o'zgarsa, mijozga aytiladi. Giftni admin qo'lda sotib oladi.
+- "Giftimni sotaman": egasi havola va narxni yozadi, admin "E'lonlar"da tasdiqlaydi. Sotilsa, adminga sotuvchining username'i keladi. Pulni admin o'zi hal qiladi.
+
+**Bo'lib to'lash**
+- Turlari: 1-tur, Boshlang'ich to'lovsiz, Uzum Nasiya. Muddat 1–240 oy (barabanda), Uzum'da 3 · 6 · 12 oy.
+- Ustama: oyiga 100% ÷ 12, boshlang'ich to'lov ayrilgan qolgan summaga.
+- Mijozga faqat boshlang'ich to'lov va taxminiy oylik to'lov ko'rsatiladi. Pastki yozuv nimani tanlash kerakligini aytadi.
+- 1-tur boshlang'ich to'lovi: (Marketapp 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Qaysi ijaradan (aynan gift / model + fon / model / fon) admin tanlaydi. Topilmasa admin yozgan summa, u ham bo'lmasa "admin aytadi".
+- Oylik to'lov eslatmalari bor.
+
+**Boshqa xizmatlar**
 - Stars: 240 so'm, kamida 50 ta.
-- Premium narxlari:
-  - 1 oy: 42 000;
-  - 3 oy: 171 600;
-  - 6 oy: 231 000;
-  - 12 oy, akkauntga kirib: 297 000;
-  - 12 oy, kirmasdan: 418 000.
-  - 1 oy va "12 oy akkauntga kirib" tariflarida "Kimga?" so'ralmaydi.
-- Ijara narxi: (Marketapp narxi + 0,15) × 2 × 19 000 so'm.
-- O'z giftlarim ijarasi (avto tanlansa): Marketapp ijarasidagi model + fon / model / fon eng arzoni bo'yicha (P + 0,15) × 3 × 19 000; topilmasa qo'lda kunlik narx.
-  - Tiyinsiz, yuqoriga yaxlitlanadi.
-  - Kartochkada eng uzoq muddat bo'yicha "… so'm / kun dan" ko'rinadi.
-- Bo'lib to'lash turlari: 1-tur, Boshlang'ich to'lovsiz, Uzum Nasiya.
-  - Muddat: 1–240 oy (barabanda), Uzum Nasiya'da 3 · 6 · 12 oy.
-  - Ustama: oyiga 100% ÷ 12 (3 oy +25%, 6 oy +50%, 12 oy +100%). Boshlang'ich to'lov ayrilgandan keyin qolgan summaga qo'yiladi.
-  - Mijozga faqat boshlang'ich to'lov va taxminiy oylik to'lov ko'rsatiladi.
-- 1-tur boshlang'ich to'lovi: (Marketapp'dagi 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Qaysi ijara narxidan olinishini admin tanlaydi: aynan shu gift, model + fon, model yoki fon (eng arzon ijara). "Mening mahsulotlarim"da har mahsulotda, "Sotuvda" uchun Sozlamalarda. Topilmasa, admin yozgan summa, u ham bo'lmasa "admin aytadi".
-- Marketapp'ning sotuv narxlari (onsale) pullik tarifda (402). Ijara ro'yxati bepul.
-- "Sotuvda" bo'limi: Portals'da sotuvdagi giftlar va mijozlarning "Giftimni sotaman" e'lonlari.
-  - Mijozga "Portals" so'zi ko'rinmaydi (faqat admin ko'radi).
-  - Narx (Portals narxi + qo'shimcha) × 17 000 so'm; qo'shimcha sozlamalarda (0,1 yoki 0,6).
-  - Filtrlar: tartiblash, narx (so'mdan so'mgacha), sovg'a, model, fon, belgi, gift raqami.
-  - Bo'lib to'lash sozlamalarda yoqiladi/o'chiriladi, faqat "… so'mgacha" bo'lgan giftlarga.
-  - Buyurtmada narx qayta tekshiriladi, giftni admin qo'lda sotib oladi.
-- "Giftimni sotaman": egasi havola va narxni o'zi yozadi, admin "E'lonlar" bo'limida tasdiqlaydi. Sotilsa, adminga sotuvchining username'i keladi. Pulni admin o'zi hal qiladi.
+- Premium: 1 oy 42 000; 3 oy 171 600; 6 oy 231 000; 12 oy akkauntga kirib 297 000; 12 oy kirmasdan 418 000. 1 oy va "12 oy kirib"da "Kimga?" so'ralmaydi.
+
+**Admin**
+- Hamma buyurtma navbatga tushadi, qo'lda bajariladi. Balansni faqat admin to'ldiradi. Referal va 2FA yo'q.
 - Har dushanba 09:00 dan keyin o'tgan hafta Excel hisoboti botga keladi.
-- Gift Satellite API (gift-satellite.dev/api, sarlavha `Authorization: Token <kalit>`): 5 bozor (Telegram Market, Portals, Tonnel, MRKT, Getgems) narxlari. Faqat o'qish uchun; `/user/buy` hech qachon chaqirilmaydi. Mijozga bozor nomi ko'rinmaydi, adminga buyurtmada bozor va havola keladi.
-- Pastki menyu: Asosiy · Ijara · Sotib olish · Xaridlarim · Balans. "Sotib olish": avval "Nimani?" (NFT gift, Premium, Stars, o'z username/+888), NFT uchun "Bo'lib to'lab" yoki "Naqd", keyin giftlar ro'yxati.
-- Ilovada "sovg'a" o'rniga "gift" so'zi ishlatiladi.
-- "Sotib olish → NFT gift": avval kolleksiyalar (rasm, nom, "… so'mdan"), bosilganda giftlar. Bozorlardan bir vaqtda so'raladi.
-- Portals API: sekundiga 1 ta so'rov, kalit faqat o'qish uchun ishlatiladi.
-- O'z giftlarim ("Reklama" yorlig'i bilan har doim birinchi) narxi: (barcha bozorlardagi model + fon / model / fon eng arzoni + 0,3) × 17 000; topilmasa qo'lda narx. Portals kaliti zaxira.
-- Hamma buyurtma navbatga tushadi, men ularni qo'lda bajaraman.
-- Balansni faqat admin to'ldiradi (karta yoki chek yuklash yo'q).
-- Referal va admin 2FA kerak emas.
-- Bo'lib to'lashda oylik to'lov eslatmalari bor.
-- Kalitlar (admin panel → Sozlamalarda, chatga hech qachon yozilmaydi): Marketapp API tokeni, Portals Partner API kaliti.
-  - Marketapp: ijara bepul ishlaydi, sotuv narxlari (onsale) pullik (402).
-  - Portals (portal-market.com/partners, sarlavha `Authorization: partners <kalit>`): sekundiga 1 ta so'rov, faqat o'qish uchun.
-- Admin bot buyruqlari:
-  - sovg'a havolasi yuborilsa yoki `/narx Nomi | Model | Fon` yozilsa: bozor narxi, ijara narxi va 1-tur boshlang'ich to'lovi;
-  - `/hisob narx oy boshlang'ich`: kalkulyator.
+- Bot buyruqlari: gift havolasi yoki `/narx Nomi | Model | Fon` → narxlar va 1-tur to'lovi; `/hisob narx oy boshlang'ich` → kalkulyator.
+
+**Tashqi API'lar** (kalitlar faqat admin panel → Sozlamalarda, chatga hech qachon yozilmaydi)
+- Gift Satellite (gift-satellite.dev/api, `Authorization: Token <kalit>`): 5 bozor (Telegram Market, Portals, Tonnel, MRKT, Getgems) narxlari. Faqat o'qish; `/user/buy` hech qachon chaqirilmaydi. Kolleksiya nomi probelsiz (`BallsIceCream`).
+- Portals Partner API (portal-market.com/partners, `Authorization: partners <kalit>`): zaxira, sekundiga 1 ta so'rov.
+- Marketapp: faqat ijara (bepul). Sotuv narxlari (onsale) pullik — 402.
 
 ## Texnik eslatma
 - `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.
