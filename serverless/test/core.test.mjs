@@ -660,3 +660,29 @@ test("Gift Satellite: kolleksiya nomi probelsiz yuboriladi; javob bo'lmasa Porta
   await core.run("UPDATE meta SET value = '1000.5' WHERE key = 'test_lock'");
   assert.equal(await core.takeLock('test_lock', 60000), true);
 });
+
+test("O'z giftining ijarasi avtomatik: Marketapp'dagi model + fon eng arzon ijarasidan, (P + 0.15) × 3 × 19 000", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), marketappToken: 'TEST' });
+  const rq = [];
+  setFetch(async (url) => {
+    const u = decodeURIComponent(String(url));
+    let body = {};
+    if (u.includes('/collections/gifts/')) body = [{ name: 'Trapped Heart', address: 'EQ_COLLECTION_TRAPPED_HEART_01', extra_data: {} }];
+    else if (u.includes('/rent/gifts/')) { rq.push(u); body = { cursor: null, items: [
+      { nft_address: 'EQ_R1', nft_name: 'Trapped Heart #11', price_per_day: '30000000', max_duration: 2592000, min_duration: 86400, attributes: [] },
+      { nft_address: 'EQ_R2', nft_name: 'Trapped Heart #12', price_per_day: '20000000', max_duration: 2592000, min_duration: 86400, attributes: [] }] }; }
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #19604', model: 'Crime Scene', backdrop: 'Persimmon', rent_enabled: true, rent_by: 'model_backdrop', rent_min: 1, rent_max: 30, price_source: 'manual_som' });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #19604');
+  assert.ok(rq.some((q) => q.includes('model=Crime Scene') && q.includes('backdrop=Persimmon')));
+  assert.equal(p.rentAuto.day1, 9690);           // (0.02 + 0.15) × 3 × 19 000
+  assert.equal(p.rentAuto.perDay, Math.ceil(42750 / 30)); // 30 kun: (0.6 + 0.15) × 3 × 19 000 = 42 750
+  const own = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.id === p.id);
+  assert.deepEqual([own.rent.pricePerDayNano, own.rent.formula.mult], ['20000000', 3]);
+  await topup(50000);
+  const r = await app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'rent', days: 30, paymentMethod: 'cash', idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(Number(o.price), 42750);
+});

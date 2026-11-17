@@ -4,7 +4,8 @@ import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSe
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
-import { ownSaleQuote, monthlyPayment, priceSource } from 'lib/calc';
+import { ownSaleQuote, monthlyPayment, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
+import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
 import { send } from 'lib/notify';
 import { money, t } from 'lib/texts';
 import { encode, decode } from 'lib/b64';
@@ -212,6 +213,7 @@ export const actions = {
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
       own_add: n(i.own_add ?? DEFAULT_SETTINGS.own_add, 'own_add'),
+      own_rent_mult: n(i.own_rent_mult ?? DEFAULT_SETTINGS.own_rent_mult, 'own_rent_mult', 0.0001),
       sale_down_by: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.sale_down_by) ? i.sale_down_by : 'exact',
       sale_inst: { enabled: Boolean(i.sale_inst && i.sale_inst.enabled), max: n(i.sale_inst && i.sale_inst.max != null ? i.sale_inst.max : DEFAULT_SETTINGS.sale_inst.max, 'si_max', 1) },
       portals_sale: { add: n(i.portals_sale && i.portals_sale.add != null ? i.portals_sale.add : DEFAULT_SETTINGS.portals_sale.add, 'ps_add'),
@@ -268,9 +270,13 @@ export const actions = {
     const out = [];
     for (const p of rows) {
       const q = p.inst_enabled ? await ownSaleQuote(p, s) : { price: null, down1: null, marketPriceTon: null };
+      // Avtomatik ijara: eng uzoq muddatda kuniga tushadigan narx (so'm)
+      const ppd = p.rent_enabled ? await ownRentPpd(p) : null;
+      const rentAuto = ppd ? { perDay: Math.ceil(rentPriceTiyin(rentTotalTon(ppd, p.rent_max), ownRentFormula(s)) / 100 / p.rent_max),
+        day1: Math.ceil(rentPriceTiyin(rentTotalTon(ppd, 1), ownRentFormula(s)) / 100), ppdTon: Number(ppd) / 1e9 } : null;
       out.push({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price), price_manual: som(p.price_manual), down_manual: som(p.down_manual),
         rent_enabled: Boolean(p.rent_enabled), inst_enabled: Boolean(p.inst_enabled), cash_enabled: Boolean(p.cash_enabled), visible: Boolean(p.visible),
-        quote: q });
+        quote: q, rentAuto });
     }
     return out;
   },
@@ -287,7 +293,10 @@ export const actions = {
     const p = {
       kind, name: str(i.name, 120, { required: true, name: 'name' }), image,
       model: attr(i.model), backdrop: attr(i.backdrop), symbol: attr(i.symbol),
-      rent_enabled: rentOn ? 1 : 0, rent_price: rentOn ? toTiyin(num(i.rent_price, { min: 1, name: 'rent_price' })) : null,
+      rent_enabled: rentOn ? 1 : 0,
+      rent_by: RENT_BASES.includes(i.rent_by) ? i.rent_by : 'manual',
+      // Avtomatik usulda kunlik narx ixtiyoriy (Marketapp'da topilmasa ishlatiladi)
+      rent_price: rentOn && (!RENT_BASES.includes(i.rent_by) || Number(i.rent_price) > 0) ? toTiyin(num(i.rent_price, { min: 1, name: 'rent_price' })) : null,
       rent_min: rentOn ? int(i.rent_min, { min: 1, max: 3650, name: 'rent_min' }) : null,
       rent_max: rentOn ? int(i.rent_max, { min: 1, max: 3650, name: 'rent_max' }) : null,
       inst_enabled: i.inst_enabled ? 1 : 0, cash_enabled: cashOn ? 1 : 0,
@@ -310,13 +319,13 @@ export const actions = {
           rent_enabled=:rent_enabled, rent_price=:rent_price, rent_min=:rent_min, rent_max=:rent_max, inst_enabled=:inst_enabled,
           cash_enabled=:cash_enabled, cash_price=:cash_price, visible=:visible, position=:position,
           price_source=:price_source, price_ton=:price_ton, price_manual=:price_manual, down_mode=:down_mode, down_manual=:down_manual,
-          collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
+          rent_by=:rent_by, rent_checked_at=NULL, collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
       if (r.rowsAffected !== 1) throw fail('NOT_FOUND');
     } else {
       await run(`INSERT INTO own_products (kind, name, image, model, backdrop, symbol, rent_enabled, rent_price, rent_min, rent_max,
-          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual)
+          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual, rent_by)
           VALUES (:kind, :name, :image, :model, :backdrop, :symbol, :rent_enabled, :rent_price, :rent_min, :rent_max,
-          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual)`, { ...p, now: Date.now() });
+          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual, :rent_by)`, { ...p, now: Date.now() });
     }
     await audit(admin, 'own.save', id ? String(id) : p.name);
     return { ok: true };

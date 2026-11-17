@@ -130,6 +130,8 @@ export const DEFAULT_SETTINGS = {
   // O'z giftlarining sotuv narxi: (bozordagi eng arzoni + own_add) × sale_rate so'm
   sale_rate: 17000,
   own_add: 0.3,
+  // O'z giftlari ijarasi (avtomatik): (Marketapp ijara narxi + rent_formula.add) × own_rent_mult × rent_formula.rate
+  own_rent_mult: 3,
   // Portals Partner API manzili (sinov)
   portals_base: 'https://portal-market.com/partners',
   // Gift Satellite API manzili (5 ta bozor narxlari)

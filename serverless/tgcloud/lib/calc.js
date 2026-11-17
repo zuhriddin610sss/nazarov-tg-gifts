@@ -179,3 +179,25 @@ export async function ownSaleQuote(p, s, { fresh = false } = {}) {
   const tonR = mkPrice != null ? Math.round(Number(mkPrice) * 100) / 100 : null;
   return { price, down1, down1By, down1Base, marketPriceTon: usesMarketPrice ? tonR : null, by, src: usesMarketPrice && !String(by).startsWith('fallback') ? mkSrc : null };
 }
+
+/** O'z giftlari ijarasi formulasi: bozor ijarasi formulasi, faqat koeffitsienti boshqa (odatda 3). */
+export const ownRentFormula = (s) => ({ add: Number(s.rent_formula.add), mult: Number(s.own_rent_mult), rate: Number(s.rent_formula.rate) });
+export const RENT_BASES = ['model_backdrop', 'model', 'backdrop'];
+
+/**
+ * O'z giftining ijara narxi uchun Marketapp'dagi kunlik narx (nanoTON, matn) — admin tanlagan usulda
+ * (model + fon / model / fon bo'yicha eng arzon ijara). 30 daqiqa saqlanadi. Topilmasa null (qo'lda narx olinadi).
+ */
+export async function ownRentPpd(p, { fresh = false } = {}) {
+  if (!RENT_BASES.includes(p.rent_by) || !p.rent_enabled || p.kind !== 'gifts') return null;
+  const stale = !p.rent_checked_at || nowMs() - Number(p.rent_checked_at) > 30 * 60000;
+  if (!stale && !fresh) return p.rent_ppd_nano || null;
+  if (!(await marketappConfigured())) return p.rent_ppd_nano || null;
+  let ppd = p.rent_ppd_nano || null;
+  try {
+    const c = await collectionByName(splitGiftName(p.name).collection);
+    ppd = c ? await rentPpdFor(c.address, p.name, { model: p.model, backdrop: p.backdrop }, p.rent_by) : null;
+    await run('UPDATE own_products SET rent_ppd_nano = :pp, rent_checked_at = :t WHERE id = :id', { pp: ppd, t: nowMs(), id: p.id });
+  } catch (e) { await logError('ijara', `${p.name}: ${e && (e.description || e.message)}`); }
+  return ppd;
+}

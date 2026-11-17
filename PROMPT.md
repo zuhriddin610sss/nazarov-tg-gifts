@@ -57,6 +57,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
   - 12 oy, kirmasdan: 418 000.
   - 1 oy va "12 oy akkauntga kirib" tariflarida "Kimga?" so'ralmaydi.
 - Ijara narxi: (Marketapp narxi + 0,15) × 2 × 19 000 so'm.
+- O'z giftlarim ijarasi (avto tanlansa): Marketapp ijarasidagi model + fon / model / fon eng arzoni bo'yicha (P + 0,15) × 3 × 19 000; topilmasa qo'lda kunlik narx.
   - Tiyinsiz, yuqoriga yaxlitlanadi.
   - Kartochkada eng uzoq muddat bo'yicha "… so'm / kun dan" ko'rinadi.
 - Bo'lib to'lash turlari: 1-tur, Boshlang'ich to'lovsiz, Uzum Nasiya.

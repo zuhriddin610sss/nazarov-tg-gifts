@@ -54,7 +54,10 @@ function rentPrice(ppdNano, days, f) {
   return Math.ceil(round2((P + f.add) * f.mult * f.rate));
 }
 /** Har qanday ijara mahsuloti (Marketapp yoki o'zimizniki) uchun d kunlik narx, butun so'm. */
-function itemPrice(it, f, d) { return it.own ? Math.ceil(it.ppd * d) : rentPrice(it.pricePerDayNano, d, f); }
+function itemPrice(it, f, d) {
+  if (it.own) return it.ownPpdNano ? rentPrice(it.ownPpdNano, d, it.ownF) : Math.ceil(it.ppd * d);
+  return rentPrice(it.pricePerDayNano, d, f);
+}
 /** Eng uzoq muddatga olinganda kuniga tushadigan eng arzon narx. */
 function bestPerDay(it, f) { return Math.ceil(itemPrice(it, f, it.maxDays) / it.maxDays); }
 
@@ -701,7 +704,8 @@ function rentState(cat) {
 function normOwn(o) {
   return { own: true, id: o.id, address: "own" + o.id, name: o.name, image: o.image, kind: o.kind,
     attributes: [["Model", o.model], ["Backdrop", o.backdrop], ["Symbol", o.symbol]].filter((a) => a[1]).map(([trait_type, value]) => ({ trait_type, value })),
-    rent: Boolean(o.rent), ppd: o.rent ? Number(o.rent.pricePerDay) : 0, minDays: o.rent ? o.rent.minDays : 1, maxDays: o.rent ? o.rent.maxDays : 1,
+    rent: Boolean(o.rent), ppd: o.rent && o.rent.pricePerDay != null ? Number(o.rent.pricePerDay) : 0, minDays: o.rent ? o.rent.minDays : 1, maxDays: o.rent ? o.rent.maxDays : 1,
+    ownPpdNano: o.rent && o.rent.pricePerDayNano ? o.rent.pricePerDayNano : null, ownF: o.rent && o.rent.formula ? o.rent.formula : null,
     installment: o.installment, cashPrice: o.cashPrice, salePrice: o.salePrice ?? null, down1: o.down1 ?? null };
 }
 async function loadOwn(cat) {
@@ -727,9 +731,9 @@ async function loadRent(cat, more) {
 }
 const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
 /** "Bizning giftlarimiz" bloki: sarlavha + gorizontal suriladigan qator. */
-function ownSection(cat, list, f) {
+function ownSection(cat, list, f, sub) {
   if (!list.length) return "";
-  return `<section class="ownsec"><div class="ownsec-h"><h2>⭐ ${esc(t("our_gifts"))}</h2></div>
+  return `<section class="ownsec"><div class="ownsec-h"><h2>⭐ ${esc(t("our_gifts"))}${sub ? ` <span>· ${esc(t(sub))}</span>` : ""}</h2></div>
     <div class="strip own-strip">${list.map((it) => giftCard(cat, it, f)).join("")}</div></section>
     <div class="sect-h"><h2>${esc(t("all_gifts"))}</h2></div>`;
 }
@@ -827,7 +831,7 @@ async function viewRent(v) {
         ${cfs.map((c) => chip("cf:" + c.k, t(c.label), st.cf[c.k] != null ? cfLabel(c, st.cf[c.k]) : "")).join("")}
         ${anyFilter() ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
       </div>
-      ${ownSection(cat, (st.own || []).filter((it) => it.rent), st.formula)}
+      ${ownSection(cat, (st.own || []).filter((it) => it.rent), st.formula, "our_rent")}
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.loaded && !st.error ? `<div class="spin"></div>` : ""}
       ${st.loaded && !shown.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
@@ -999,7 +1003,7 @@ async function viewSale(v, head, bindTabs, mode) {
   const sellLink = `<a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
   const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
   const ownLine = (it) => buyPriceHtml(mode === "inst" ? it.salePrice : it.cashPrice, mode);
-  const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null);
+  const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null, mode === "inst" ? "our_inst" : "our_cash");
   // 1-ekran: kolleksiyalar (rasm, nom, "… so'mdan")
   const drawCols = () => {
     const q = String(st.colQ || "").trim().toLowerCase();

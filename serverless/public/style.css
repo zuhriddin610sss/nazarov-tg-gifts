@@ -253,6 +253,7 @@ select.input option{background:var(--bg)}
 .ownsec{margin-top:16px;padding:14px 0 14px 14px;border-radius:var(--r);border:1px solid rgba(201,164,78,.35);
   background:radial-gradient(120% 120% at 0% 0%,rgba(201,164,78,.14),transparent 60%),var(--card)}
 .ownsec-h h2{font:800 1.02rem var(--f-display);color:var(--cream);margin:0 0 10px}
+.ownsec-h h2 span{font-weight:600;color:#D9BE76;font-size:.9rem}
 .own-strip{padding-right:14px}
 .own-strip .gcard{flex:0 0 40%;min-width:140px;border-color:rgba(201,164,78,.4)}
 

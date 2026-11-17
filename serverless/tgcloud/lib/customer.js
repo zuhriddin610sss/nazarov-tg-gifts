@@ -8,7 +8,7 @@ import { notifyNewOrder, receiptButtons, notifyNewListing } from 'lib/notify';
 import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
-import { ownSaleQuote, monthlyPayment, giftDown1 } from 'lib/calc';
+import { ownSaleQuote, monthlyPayment, giftDown1, ownRentPpd, ownRentFormula } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames, portalsCollectionFloors } from 'lib/portals';
 import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, satCachedFloors, normName, MARKET_NAME } from 'lib/satellite';
 
@@ -24,10 +24,14 @@ export const portalsSom = (ton, s) => Math.ceil((Number(ton) + Number(s.portals_
 const LANGS = ['uz', 'ru', 'en', 'zh'];
 const RENT = { gift_rent: 'gifts', username_rent: 'usernames', number_rent: 'numbers' };
 const OWN_RENT = { gifts: 'gift_rent', usernames: 'username_rent', numbers: 'number_rent' };
-export function ownOut(p) {
+/** ppd — avtomatik ijara uchun Marketapp kunlik narxi (nanoTON) yoki null; s — sozlamalar (formula uchun). */
+export function ownOut(p, ppd = null, s = null) {
+  const rent = !p.rent_enabled ? null
+    : ppd && s ? { pricePerDayNano: String(ppd), formula: ownRentFormula(s), minDays: p.rent_min, maxDays: p.rent_max }
+    : p.rent_price ? { pricePerDay: toSom(p.rent_price), minDays: p.rent_min, maxDays: p.rent_max } : null;
   return {
     id: p.id, kind: p.kind, name: p.name, image: p.image || null, model: p.model || null, backdrop: p.backdrop || null, symbol: p.symbol || null,
-    rent: p.rent_enabled && p.rent_price ? { pricePerDay: toSom(p.rent_price), minDays: p.rent_min, maxDays: p.rent_max } : null,
+    rent,
     installment: Boolean(p.inst_enabled), cashPrice: p.cash_enabled && p.cash_price ? toSom(p.cash_price) : null,
   };
 }
@@ -118,7 +122,7 @@ export const actions = {
     const s = await getSettings();
     const out = [];
     for (const p of rows) {
-      const o = ownOut(p);
+      const o = ownOut(p, await ownRentPpd(p), s);
       if (p.inst_enabled) { const q = await ownSaleQuote(p, s); o.salePrice = q.price; o.down1 = q.down1; }
       out.push(o);
     }
@@ -273,10 +277,12 @@ export const actions = {
       const p = await get('SELECT * FROM own_products WHERE id = :id AND visible = 1', { id: int(i.ownId, { min: 1, name: 'ownId' }) });
       if (!p) throw fail('NOT_FOUND');
       if (i.ownMode === 'rent') {
-        if (!p.rent_enabled || !p.rent_price) throw fail('VALIDATION', { field: 'ownMode' });
+        const ppd = await ownRentPpd(p);
+        if (!p.rent_enabled || !(ppd || p.rent_price)) throw fail('VALIDATION', { field: 'ownMode' });
         const days = int(i.days, { min: 1, max: 3650, name: 'days' });
         if (days < p.rent_min || days > p.rent_max) throw fail('BAD_DURATION', { minDays: p.rent_min, maxDays: p.rent_max });
-        const price = Number(p.rent_price) * days;
+        // Avtomatik: (Marketapp ijara narxi × kun + add) × 3 × kurs; aks holda qo'lda kunlik narx × kun
+        const price = ppd ? rentPriceTiyin(rentTotalTon(ppd, days), ownRentFormula(s)) : Number(p.rent_price) * days;
         o = { service: OWN_RENT[p.kind], title: `${p.name} — ${days} kun`, installmentType: itype(['plan2', 'uzum']), price: method === 'cash' ? price : null, estBase: price,
           details: { own: p.id, name: p.name, days, ...(method === 'installment' ? { quotedPrice: price } : {}) } };
       } else if (i.ownMode === 'buy') {
