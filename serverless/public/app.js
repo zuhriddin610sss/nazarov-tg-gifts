@@ -735,9 +735,22 @@ function ownSection(cat, list, f) {
 }
 function priceLine(it, f) {
   if (it.buyLine) return it.buyLine;
-  if (it.own && !it.rent) return it.cashPrice ? `<b>${esc(money(it.cashPrice))}</b> ${esc(t("som"))}` : esc(t("own_inst_only"));
+  if (it.own && !it.rent) return it.cashPrice ? buyPriceHtml(it.cashPrice, "cash") : buyPriceHtml(it.salePrice, "inst");
   const pre = t("from_pre");
-  return `${pre ? esc(pre) + " " : ""}<b>${esc(money(bestPerDay(it, f)))}</b> ${esc(t("per_day_from"))}`;
+  return `<span class="gk">⏳ ${esc(t("kind_rent"))}</span>${pre ? esc(pre) + " " : ""}<b>${esc(money(bestPerDay(it, f)))}</b> ${esc(t("per_day_from"))}`;
+}
+/** Bo'lib to'lashda eng kichik oylik to'lov (240 oy, boshlang'ich to'lovsiz, admin ustamasi bilan). */
+function minMonthly(price) {
+  const m = WHEEL_MAX;
+  const yearPct = S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100;
+  return Math.ceil(Math.ceil(Number(price) * (1 + (m * yearPct) / 12 / 100)) / m);
+}
+/** Kartochkadagi narx: turi (💎 Sotib olish / ⏳ Ijara) va summa. mode: "inst" — faqat oylik, to'liq narx ko'rsatilmaydi. */
+function buyPriceHtml(price, mode, from) {
+  const kind = `<span class="gk">💎 ${esc(t("kind_buy"))}</span>`;
+  if (!(price > 0)) return kind + esc(t(mode === "inst" ? "own_inst_only" : "price_by_admin"));
+  if (mode === "inst") return kind + `${esc(t("inst_monthly"))} ≈ <b>${esc(money(minMonthly(price)))}</b> ${esc(t("som_from"))}`;
+  return kind + `<b>${esc(money(price))}</b> ${esc(t(from ? "som_from" : "som"))}`;
 }
 function giftCard(cat, it, f) {
   const model = (it.attributes || []).find((a) => /model/i.test(a.trait_type));
@@ -985,10 +998,7 @@ async function viewSale(v, head, bindTabs, mode) {
   const searching = `<div class="spin"></div><p class="hint" style="text-align:center">${esc(t("sale_searching"))}</p>`;
   const sellLink = `<a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
   const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
-  const ownLine = (it) => {
-    const p = mode === "inst" ? it.salePrice : it.cashPrice;
-    return p ? `<b>${esc(money(p))}</b> ${esc(t("som"))}` : esc(t(mode === "inst" ? "own_inst_only" : "price_by_admin"));
-  };
+  const ownLine = (it) => buyPriceHtml(mode === "inst" ? it.salePrice : it.cashPrice, mode);
   const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null);
   // 1-ekran: kolleksiyalar (rasm, nom, "… so'mdan")
   const drawCols = () => {
@@ -1003,7 +1013,7 @@ async function viewSale(v, head, bindTabs, mode) {
       ${st.colList && !cols.length && !st.own.length ? `<p class="empty">${esc(t(mode === "inst" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
       <div class="grid3">${cols.map((c) => `<button type="button" class="gcard" data-col="${esc(c.name)}">
         <span class="gimg">${imgTag("gifts", c.name + " #1")}</span>
-        <span class="gb"><b>${esc(c.name)}</b><span class="gp">${c.from ? `<b>${esc(money(c.from))}</b> ${esc(t("som_from"))}` : ""}</span></span></button>`).join("")}</div>`;
+        <span class="gb"><b>${esc(c.name)}</b><span class="gp">${c.from ? buyPriceHtml(c.from, mode, true) : ""}</span></span></button>`).join("")}</div>`;
     bindTabs();
     v.querySelectorAll(".gcard[data-col]").forEach((c) => c.addEventListener("click", async () => {
       st.f = { collection: c.dataset.col }; st.num = ""; st.attrs = null; window.scrollTo(0, 0);
@@ -1025,7 +1035,7 @@ async function viewSale(v, head, bindTabs, mode) {
     const it = st.own.find((x) => x.address === c.dataset.a);
     if (!it) return;
     S.rentPick = { category: "gifts", service: RENT_SVC.gifts, route: "buy-nft", item: it, formula: rentState("gifts").formula || (S.cfg && S.cfg.rentFormula),
-      days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null };
+      days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null, buyMode: mode };
     location.hash = "rent-item";
   }));
   const draw = () => {
@@ -1050,7 +1060,7 @@ async function viewSale(v, head, bindTabs, mode) {
         <span class="gimg">${saleImg(it)}</span>
         <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
           ${it.model ? `<small>${esc(it.model)}</small>` : ""}
-          <span class="gp"><b>${esc(money(it.price))}</b> ${esc(t("som"))}</span></span></button>`).join("")}</div>
+          <span class="gp">${buyPriceHtml(it.price, mode)}</span></span></button>`).join("")}</div>
       ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
     bindTabs();
     v.querySelectorAll(".gcard[data-i]").forEach((c) => c.addEventListener("click", () => {
@@ -1233,13 +1243,13 @@ function viewRentItem(v) {
       <button type="button" class="mcard${p.mode === "rent" ? " on" : ""}" data-mode="rent"><i>⏳</i><b>${esc(t("mode_rent"))}</b><small>${esc(t("mode_rent_note"))}</small>
         <em>${esc(money(bestPerDay(it, p.formula)))} ${esc(t("per_day_from"))}</em></button>
       <button type="button" class="mcard${p.mode === "buy" ? " on" : ""}" data-mode="buy"><i>💎</i><b>${esc(t("mode_buy"))}</b><small>${esc(t("mode_buy_note"))}</small>
-        <em>${it.cashPrice ? esc(som(it.cashPrice)) : esc(t("pay_inst"))}</em></button></div></section>` : ""}`;
+        <em>${it.cashPrice && p.buyMode !== "inst" ? esc(som(it.cashPrice)) : esc(t("pay_inst"))}</em></button></div></section>` : ""}`;
   const bindMode = () => v.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { p.mode = b.dataset.mode; p.pay = null; p.itype = null; render(); }));
 
   if (p.mode === "buy") {
     p._ctx = () => ({ base: it.salePrice, down1: it.down1 });
     const opts = [];
-    if (it.cashPrice) opts.push(opt("cash", t("pay_full"), t("pay_full_note"), som(it.cashPrice), p.pay === "cash", "pay"));
+    if (it.cashPrice && p.buyMode !== "inst") opts.push(opt("cash", t("pay_full"), t("pay_full_note"), som(it.cashPrice), p.pay === "cash", "pay"));
     if (it.installment) opts.push(opt("installment", t("pay_inst"), instNote(p), "", p.pay === "installment", "pay"));
     if (opts.length === 1 && !p.pay) p.pay = it.cashPrice ? "cash" : "installment";
     const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));

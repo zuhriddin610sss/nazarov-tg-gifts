@@ -255,3 +255,6 @@ select.input option{background:var(--bg)}
 .ownsec-h h2{font:800 1.02rem var(--f-display);color:var(--cream);margin:0 0 10px}
 .own-strip{padding-right:14px}
 .own-strip .gcard{flex:0 0 40%;min-width:140px;border-color:rgba(201,164,78,.4)}
+
+/* Kartochkadagi narx turi: 💎 Sotib olish / ⏳ Ijara */
+.gk{display:block;font:700 .62rem var(--f-display);letter-spacing:.04em;text-transform:uppercase;color:var(--sage-2);margin-bottom:2px}
