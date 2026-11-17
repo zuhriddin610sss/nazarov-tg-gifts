@@ -1042,6 +1042,60 @@ async function viewSale(v, head, bindTabs, mode) {
       days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null, buyMode: mode };
     location.hash = "rent-item";
   }));
+  function drawFind() {
+    if (location.hash.slice(1) !== "buy-nft" || S.buyMode !== mode) return;
+    const q = st.q ||= {};
+    const fld = (k, label, val, disabled) => `<div class="field"><label>${esc(label)}</label>
+      <button type="button" class="input pickbtn" data-q="${k}" ${disabled ? "disabled" : ""}>${esc(val || t(k === "collection" ? "find_pick" : "find_any"))}<span aria-hidden="true">⌄</span></button></div>`;
+    v.innerHTML = head + sellLink + ownGrid() + `
+      <section class="step findbox"><div class="step-h"><h2>${esc(t("find_title"))}</h2></div>
+        ${fld("collection", t("find_gift"), q.collection)}
+        <div class="row2">${fld("model", t("f_model"), q.model, !q.collection)}${fld("backdrop", t("f_backdrop"), q.backdrop, !q.collection)}</div>
+        ${fld("symbol", t("f_symbol"), q.symbol, !q.collection)}
+        <div class="field"><label>${esc(t("find_budget"))}</label><input class="input" id="qMax" type="number" inputmode="numeric" min="1" value="${esc(q.max || "")}" placeholder="${esc(t("price_to"))}"></div>
+        <button class="btn btn-primary" id="qGo" type="button" ${q.collection && !st.finding ? "" : "disabled"}>${esc(t("find_btn"))}</button>
+      </section>
+      ${st.finding ? searching : ""}
+      ${st.findErr ? `<p class="alert">${esc(st.findErr)}</p>` : ""}
+      ${st.found && !st.finding ? (st.found.length ? `<div class="sect-h findres"><h2>${esc(t("find_results"))}</h2></div>
+        <div class="grid3">${st.found.map((it, i) => `<button type="button" class="gcard" data-fi="${i}">
+          <span class="gimg">${saleImg(it)}</span>
+          <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
+            ${it.model ? `<small>${esc(it.model)}</small>` : ""}
+            <span class="gp">${buyPriceHtml(it.price, "cash")}</span></span></button>`).join("")}</div>`
+        : `<p class="empty">${esc(t("find_none"))}</p>`) : ""}`;
+    bindTabs(); bindOwn();
+    const mx = $("#qMax", v); mx.addEventListener("input", () => { q.max = Number(mx.value) || null; });
+    v.querySelectorAll(".pickbtn[data-q]").forEach((b) => b.addEventListener("click", async () => {
+      const k = b.dataset.q;
+      if (k === "collection") {
+        if (!st.cols) { try { st.cols = await call("portalsCollections"); } catch { st.cols = []; } }
+        if (!st.cols.length) { if (!Array.isArray(S.giftCollections)) { try { S.giftCollections = await api("/api/nft/collections"); } catch { S.giftCollections = []; } } st.cols = (S.giftCollections || []).map((c) => c.name); }
+        return pickSheet(t("find_gift"), st.cols.map((n) => ({ value: n, label: n })), q.collection, async (o) => {
+          st.q = { collection: o ? o.value : null, max: q.max }; st.found = null; st.qAttrs = null; drawFind();
+          if (o) st.qAttrs = await saleAttrs(o.value);
+        });
+      }
+      if (!st.qAttrs) st.qAttrs = await saleAttrs(q.collection);
+      const a = (st.qAttrs || []).find((x) => String(x.trait_type).toLowerCase() === k);
+      const opts = a ? a.values.map((x) => ({ value: x.value, label: x.value, note: x.perc ? (Math.round(x.perc * 10) / 10) + "%" : "" })) : [];
+      pickSheet(t("f_" + k), opts, q[k] || null, (o) => { q[k] = o ? o.value : null; st.found = null; drawFind(); });
+    }));
+    $("#qGo", v).addEventListener("click", async () => {
+      st.finding = true; st.findErr = null; st.found = null; drawFind();
+      try {
+        const r = await call("portalsSale", { collection: q.collection, model: q.model || undefined, backdrop: q.backdrop || undefined, symbol: q.symbol || undefined,
+          maxPrice: q.max || undefined, sort: "price asc" });
+        st.found = r.items.slice().sort((x, y) => x.price - y.price).slice(0, 5);
+      } catch (e) { st.findErr = errText(e); }
+      st.finding = false; drawFind();
+      const res = v.querySelector(".findres, .empty"); if (res) res.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    v.querySelectorAll(".gcard[data-fi]").forEach((c) => c.addEventListener("click", () => {
+      S.salePick = { item: st.found[Number(c.dataset.fi)], key: key(), pay: "cash", itype: null, mode: "cash" };
+      location.hash = "sale-item";
+    }));
+  }
   const draw = () => {
     if (location.hash.slice(1) !== "buy-nft" || S.buyMode !== mode) return;
     if (!st.f.collection) return drawCols();
@@ -1116,6 +1170,8 @@ async function viewSale(v, head, bindTabs, mode) {
     const opts = a ? a.values.map((x) => ({ value: x.value, label: x.value, note: x.perc ? (Math.round(x.perc * 10) / 10) + "%" : "" })) : [];
     pickSheet(t("f_" + k), opts, st.f[k], (o) => { st.f[k] = o ? o.value : null; reload(); });
   };
+  // "Naqd": katalog emas — mijoz talablarini kiritadi, bot eng arzon 5 ta mos giftni topadi
+  if (mode === "cash") return drawFind();
   if (!st.f.collection) { if (!st.colList) await loadCols(); else drawCols(); return; }
   draw();
   if (!st.loaded && !st.loading) { await loadSale(st); draw(); }

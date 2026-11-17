@@ -259,3 +259,9 @@ select.input option{background:var(--bg)}
 
 /* Kartochkadagi narx turi: 💎 Sotib olish / ⏳ Ijara */
 .gk{display:block;font:700 .62rem var(--f-display);letter-spacing:.04em;text-transform:uppercase;color:var(--sage-2);margin-bottom:2px}
+
+/* "Naqd": talab formasi */
+.findbox{margin-top:14px}
+.pickbtn{display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer;color:var(--ink)}
+.pickbtn:disabled{opacity:.45;cursor:not-allowed}
+.pickbtn span{color:var(--muted)}
