@@ -726,7 +726,15 @@ async function loadRent(cat, more) {
   st.cursor = r.cursor; st.loaded = true; st.error = null;
 }
 const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
+/** "Bizning giftlarimiz" bloki: sarlavha + gorizontal suriladigan qator. */
+function ownSection(cat, list, f) {
+  if (!list.length) return "";
+  return `<section class="ownsec"><div class="ownsec-h"><h2>⭐ ${esc(t("our_gifts"))}</h2></div>
+    <div class="strip own-strip">${list.map((it) => giftCard(cat, it, f)).join("")}</div></section>
+    <div class="sect-h"><h2>${esc(t("all_gifts"))}</h2></div>`;
+}
 function priceLine(it, f) {
+  if (it.buyLine) return it.buyLine;
   if (it.own && !it.rent) return it.cashPrice ? `<b>${esc(money(it.cashPrice))}</b> ${esc(t("som"))}` : esc(t("own_inst_only"));
   const pre = t("from_pre");
   return `${pre ? esc(pre) + " " : ""}<b>${esc(money(bestPerDay(it, f)))}</b> ${esc(t("per_day_from"))}`;
@@ -806,10 +814,10 @@ async function viewRent(v) {
         ${cfs.map((c) => chip("cf:" + c.k, t(c.label), st.cf[c.k] != null ? cfLabel(c, st.cf[c.k]) : "")).join("")}
         ${anyFilter() ? `<button type="button" class="fchip clr" data-f="clear">✕ ${esc(t("f_clear"))}</button>` : ""}
       </div>
-      ${(st.own || []).length ? `<div class="grid3">${st.own.map((it) => giftCard(cat, it, st.formula)).join("")}</div>` : ""}
+      ${ownSection(cat, (st.own || []).filter((it) => it.rent), st.formula)}
       ${st.error ? `<p class="alert">${esc(st.error)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.loaded && !st.error ? `<div class="spin"></div>` : ""}
-      ${st.loaded && !shown.length && !(st.own || []).length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
+      ${st.loaded && !shown.length ? `<p class="empty">${esc(t("empty_catalog"))}</p>` : ""}
       <div class="grid3">${shown.map((it) => giftCard(cat, it, st.formula)).join("")}</div>
       ${st.cursor && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
     bindTabs();
@@ -977,16 +985,19 @@ async function viewSale(v, head, bindTabs, mode) {
   const searching = `<div class="spin"></div><p class="hint" style="text-align:center">${esc(t("sale_searching"))}</p>`;
   const sellLink = `<a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
   const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
-  const ownGrid = () => (st.own.length ? `<div class="grid3">${st.own.map((it) => giftCard("gifts", mode === "inst" ? { ...it, rent: false, cashPrice: null } : { ...it, rent: false }, null)).join("")}</div>` : "");
+  const ownLine = (it) => {
+    const p = mode === "inst" ? it.salePrice : it.cashPrice;
+    return p ? `<b>${esc(money(p))}</b> ${esc(t("som"))}` : esc(t(mode === "inst" ? "own_inst_only" : "price_by_admin"));
+  };
+  const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null);
   // 1-ekran: kolleksiyalar (rasm, nom, "… so'mdan")
   const drawCols = () => {
     const q = String(st.colQ || "").trim().toLowerCase();
     let cols = (st.colList || []).filter((c) => !q || c.name.toLowerCase().includes(q));
     if (st.sort === "price desc") cols = [...cols].reverse();
-    v.innerHTML = head + sellLink + `
+    v.innerHTML = head + sellLink + ownGrid() + `
       <input class="input" id="cQ" placeholder="${esc(t("col_search_ph"))}" value="${esc(st.colQ || "")}" autocomplete="off" style="margin-top:12px">
       <div class="filters">${sortChip}</div>
-      ${ownGrid()}
       ${st.colErr ? `<p class="alert">${esc(st.colErr)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.colList && !st.colErr ? searching : ""}
       ${st.colList && !cols.length && !st.own.length ? `<p class="empty">${esc(t(mode === "inst" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}

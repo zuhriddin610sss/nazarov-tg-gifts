@@ -220,7 +220,7 @@ select.input option{background:var(--bg)}
 
 /* O'z mahsulotlari ("Reklama") */
 .gimg{position:relative}
-.adtag{position:absolute;top:8px;left:8px;background:linear-gradient(135deg,#F2F3EF,#A3A6A2);color:#141A16;font:800 .66rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.adtag{position:absolute;top:6px;left:6px;background:linear-gradient(135deg,#F6E7B8,#C9A44E);color:#1E1A0E;font:800 .56rem var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .adtag.inline{position:static;display:inline-block}
 .gcard.own{border-color:var(--sage)}
 .fchip.clr{color:var(--muted)}
@@ -248,3 +248,10 @@ select.input option{background:var(--bg)}
   background:radial-gradient(120% 140% at 0% 0%,rgba(127,168,137,.22),transparent 60%),var(--card)}
 .brandcard b{display:block;font:800 1.12rem/1.3 var(--f-display);color:var(--cream)}
 .brandcard small{display:block;margin-top:8px;color:var(--muted);font-size:.8rem;opacity:.85}
+
+/* "Bizning giftlarimiz" bloki */
+.ownsec{margin-top:16px;padding:14px 0 14px 14px;border-radius:var(--r);border:1px solid rgba(201,164,78,.35);
+  background:radial-gradient(120% 120% at 0% 0%,rgba(201,164,78,.14),transparent 60%),var(--card)}
+.ownsec-h h2{font:800 1.02rem var(--f-display);color:var(--cream);margin:0 0 10px}
+.own-strip{padding-right:14px}
+.own-strip .gcard{flex:0 0 40%;min-width:140px;border-color:rgba(201,164,78,.4)}
