@@ -84,11 +84,20 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Portals Partner API (portal-market.com/partners, `Authorization: partners <kalit>`): zaxira, sekundiga 1 ta so'rov.
 - Marketapp: faqat ijara (bepul). Sotuv narxlari (onsale) pullik — 402.
 
+**Lizing**
+- 0% ustama, 1–240 oy, 2 turi: boshlang'ich to'lovsiz va boshlang'ich to'lovli (mijoz summani o'zi yozadi). Muddat barabanda tanlanadi.
+- Gift darhol mijozga beriladi. To'lov to'xtasa gift qaytarib olinadi, to'langan pul qaytarilmaydi (bo'lib to'lashda ham). Zalog haqida botda yozilmaydi.
+- To'lov kuni = xarid kuni, mijoz tanlay olmaydi. Mijozga umumiy/qolgan qarz ko'rsatilmaydi — faqat keyingi to'lov, progress va oxirgi sana.
+- Bo'lib to'lashda "0% boshlang'ich" deb halol yoziladi.
+
 ## Texnik eslatma
 - `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.
 
 ## Dizayn va brend
-- Ranglar logotipdagidek: krem, adabiy yashil, kumush. Ilovada to'q fon.
+- Mini App: och "elegant" uslub — krem fon #F6F2EA, oq kartalar, to'q yashil #1E3D2F, oltin #B48A3E aksent, Inter shrift. Emoji/multik uslub yo'q. Admin panel to'q fonda qoladi.
+- Pastki menyu: Asosiy | Giftlar | Xaridlarim | Balans. Giftlar bo'limlari: Lizing | Bo'lib to'lash | Ijara | Naqd ("Oyma-oy" demang).
+- "Bizning giftlarimiz" — bitta-bitta aylanib turadigan karusel (4 soniya), tartibi admin "Tartib" bo'yicha. Gift sahifasida rasm to'liq (kvadrat) ko'rinadi.
+- "Boshqa xizmatlar" (Premium, Stars) da narx yozilmaydi.
 - Uslub: jiddiy, hashamatli, lekin do'stona (Mercedes, Rolex, Patek Philippe kabi). Bachkana bo'lmasin.
 - Reklamada asosiy xizmatlar: NFT sovg'alar bo'lib to'lashga va rent (ijara)ga.
 - Murojaat uchun: @NAZAROVtggiftsAPP.

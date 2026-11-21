@@ -460,36 +460,72 @@ const SILVER_DEFS = '<svg width="0" height="0" style="position:absolute" aria-hi
 const HOME_ROUTE = { nft_gift: "buy-nft", buy: "buy", gift_rent: "rent", username_rent: "rent", number_rent: "rent", premium: "premium", stars: "stars" };
 const RENT_TAB = { gift_rent: "gifts", username_rent: "usernames", number_rent: "numbers" };
 
+/** Lizing (0%): eng kichik oylik to'lov (240 oy, boshlang'ich to'lovsiz). */
+const leaseMin = (price) => (price > 0 ? Math.ceil(Number(price) / WHEEL_MAX) : null);
+const HIC = {
+  lease: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  inst: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="3"/><path d="M2 11h20M6 15h4"/></svg>',
+  rent: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
+  cash: '<svg viewBox="0 0 24 24"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18"/></svg>',
+};
+async function ownGifts() {
+  if (!S.ownGifts) { try { S.ownGifts = (await api("/api/own/gifts")).map(normOwn); } catch { S.ownGifts = []; } }
+  return S.ownGifts;
+}
 async function viewHome(v) {
   const en = (S.cfg && S.cfg.services) || {};
-  const list = ["nft_gift", "gift_rent", "buy", "premium", "stars", "username_rent", "number_rent"].filter((s) => s === "buy" || en[s] !== false);
-  v.innerHTML = `${SILVER_DEFS}
-    ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
-    <section class="brandcard"><b>${esc(t("brand_title"))}</b><small>${esc(t("brand_sub"))}</small></section>
-    <h1 class="page-title">${esc(t("tg_services"))}</h1>
-    <nav class="svc-list">${list.map((s) => `<a class="svc" href="#${HOME_ROUTE[s]}" data-svc="${s}">
-        <span class="svc-ic">${SVC_ICON[s]}</span>
-        <span class="svc-t"><b>${esc(t("svc_" + s))}</b><small>${esc(t("svcd_" + s))}</small></span>
-        <span class="chev" aria-hidden="true">›</span></a>`).join("")}</nav>
-    <div id="pop"></div>
-    <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
-  v.querySelectorAll(".svc[data-svc]").forEach((a) => a.addEventListener("click", () => {
-    if (RENT_TAB[a.dataset.svc]) S.rentTab = RENT_TAB[a.dataset.svc];
-    if (a.dataset.svc === "nft_gift") S.buyMode = "inst";
-  }));
-  if (en.gift_rent === false) return;
-  try {
-    const st = rentState("gifts");
-    if (!st.loaded) {
-      if (S.cfg && S.cfg.marketapp) { try { await loadRent("gifts"); } catch { await loadOwn("gifts"); } }
-      else await loadOwn("gifts");
-    }
-    const pop = $("#pop", v);
-    if (!pop || !(st.items.length || (st.own || []).length)) return;
-    pop.innerHTML = `<div class="sect-h"><h2>${esc(t("popular"))}</h2><a href="#rent" class="link">${esc(t("see_all"))} ›</a></div>
-      <div class="strip">${(st.own || []).concat(st.items).slice(0, 10).map((it) => giftCard("gifts", it, st.formula)).join("")}</div>`;
-    pop.querySelectorAll(".gcard").forEach((c) => c.addEventListener("click", () => pickRent("gifts", c.dataset.a)));
-  } catch { /* ixtiyoriy */ }
+  const draw = (own) => {
+    const buyable = own.filter((x) => x.installment && x.salePrice > 0);
+    const hero = buyable.find((x) => x.image) || buyable[0] || null;
+    const minLease = buyable.length ? Math.min(...buyable.map((x) => leaseMin(x.salePrice))) : null;
+    const rentable = own.filter((x) => x.rent);
+    const minRent = rentable.length ? Math.min(...rentable.map((x) => bestPerDay(x, null))) : null;
+    const way = (tab, ic, title, desc, right, main) => `<a class="way${main ? " main" : ""}" href="#gifts" data-gt="${tab}"><span class="ic">${ic}</span>
+      <span><b>${title}</b><small>${esc(desc)}</small></span>${right || ""}</a>`;
+    const rr = (lbl, val) => (val ? `<span class="r"><span>${esc(lbl)}</span><b>${esc(money(val))} ${esc(t("from_sfx"))}</b></span>` : "");
+    const svcs = [["premium", "#premium", t("svc_premium"), ""], ["stars", "#stars", t("svc_stars"), ""],
+      ["username_rent", "#gifts", t("svc_username_rent"), t("w_rent")], ["number_rent", "#gifts", t("svc_number_rent"), t("w_rent")]].filter(([k]) => en[k] !== false);
+    v.innerHTML = `${SILVER_DEFS}
+      ${en.nft_gift !== false ? `<a class="hx" href="#gifts" data-gt="lease"><span class="k">${esc(t("hx_k"))}</span>
+        <h1>${esc(t("hx_t1"))} <span>${esc(t("hx_t2"))}</span>${esc(t("hx_t3"))}</h1>
+        <p>${esc(t("hx_p"))}</p>
+        ${hero ? `<span class="im">${hero.image ? `<img src="${esc(hero.image)}" alt="">` : imgTag("gifts", hero.name)}</span>` : ""}
+        <span class="go">${esc(t("hx_go"))} →</span>
+        ${minLease ? `<div class="pr">${esc(t("per_month"))}<b>${esc(money(minLease))} ${esc(t("som_from"))}</b></div>` : ""}</a>
+      <div class="trust"><div><b>0%</b><small>${esc(t("trust_0"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>` : ""}
+      ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
+      <h2 class="h2x">${esc(t("ways_title"))}</h2>
+      ${en.nft_gift !== false ? way("lease", HIC.lease, `${esc(t("w_lease"))}<span class="bdg0">0%</span>`, t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
+      ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
+      ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
+      ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
+      ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
+        <div class="strip own-strip feat">${buyable.slice(0, 8).map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>
+        ${buyable.length > 1 ? `<div class="fdots">${buyable.slice(0, 8).map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}` : ""}
+      <h2 class="h2x">${esc(t("how_title"))}</h2>
+      <div class="how"><div><i>01</i><span><b>${esc(t("how1"))}</b><small>${esc(t("how1d"))}</small></span></div>
+        <div><i>02</i><span><b>${esc(t("how2"))}</b><small>${esc(t("how2d"))}</small></span></div>
+        <div><i>03</i><span><b>${esc(t("how3"))}</b><small>${esc(t("how3d"))}</small></span></div></div>
+      ${svcs.length ? `<h2 class="h2x">${esc(t("other_title"))}</h2><div class="more2">${svcs.map(([k, href, title, sub]) => `<a href="${href}" data-svc="${k}"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</a>`).join("")}</div>` : ""}
+      <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
+    v.querySelectorAll("[data-gt]").forEach((a) => a.addEventListener("click", () => { S.giftsTab = a.dataset.gt; }));
+    v.querySelectorAll(".more2 a[data-svc]").forEach((a) => a.addEventListener("click", () => {
+      if (RENT_TAB[a.dataset.svc]) { S.giftsTab = "rent"; S.rentTab = RENT_TAB[a.dataset.svc]; }
+    }));
+    v.querySelectorAll(".own-strip .gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
+      const it = own.find((x) => x.address === c.dataset.a);
+      if (it) openOwnBuy(it, "lease");
+    }));
+  };
+  draw(S.ownGifts || []);
+  const own = await ownGifts();
+  if ((location.hash.slice(1) || "home") === "home") draw(own);
+}
+/** O'z giftini sotib olish sahifasini ochish (lizing / bo'lib to'lash / naqd). */
+function openOwnBuy(it, mode) {
+  S.rentPick = { category: "gifts", service: RENT_SVC.gifts, route: "gifts", item: it, formula: rentState("gifts").formula || (S.cfg && S.cfg.rentFormula),
+    days: it.minDays, pay: mode === "cash" ? "cash" : "installment", key: key(), mode: "buy", itype: mode === "lease" ? "lease" : null, buyMode: mode };
+  location.hash = "rent-item";
 }
 
 function viewPremium(v) {
@@ -731,11 +767,32 @@ async function loadRent(cat, more) {
 }
 const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
 /** "Bizning giftlarimiz" bloki: sarlavha + gorizontal suriladigan qator. */
-function ownSection(cat, list, f, sub) {
+function ownSection(cat, list, f, sub, noAll) {
   if (!list.length) return "";
   return `<section class="ownsec"><div class="ownsec-h"><h2>⭐ ${esc(t("our_gifts"))}${sub ? ` <span>· ${esc(t(sub))}</span>` : ""}</h2></div>
-    <div class="strip own-strip">${list.map((it) => giftCard(cat, it, f)).join("")}</div></section>
-    <div class="sect-h"><h2>${esc(t("all_gifts"))}</h2></div>`;
+    <div class="strip own-strip feat">${list.map((it) => giftCard(cat, it, f)).join("")}</div>
+    ${list.length > 1 ? `<div class="fdots">${list.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}</section>
+    ${noAll ? "" : `<div class="sect-h"><h2>${esc(t("all_gifts"))}</h2></div>`}`;
+}
+/** "Bizning giftlarimiz": giftlar birin-ketin (4 soniyada) almashib turadi; surib ham ko'rish mumkin. */
+function startFeat() {
+  clearInterval(S.featTimer);
+  const sync = (el) => {
+    const dots = el.parentElement && el.parentElement.querySelector(".fdots");
+    if (!dots) return;
+    const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+    dots.querySelectorAll("i").forEach((d, k) => d.classList.toggle("on", k === i));
+  };
+  document.querySelectorAll(".feat").forEach((el) => { if (!el.dataset.b) { el.dataset.b = "1"; el.addEventListener("scroll", () => sync(el), { passive: true }); } });
+  S.featTimer = setInterval(() => {
+    document.querySelectorAll(".feat").forEach((el) => {
+      if (el.children.length < 2 || el.matches(":hover")) return;
+      const w = el.clientWidth, i = Math.round(el.scrollLeft / Math.max(1, w));
+      el.scrollTo({ left: i + 1 >= el.children.length ? 0 : (i + 1) * w, behavior: "smooth" });
+    });
+  }, 4000);
+  // dev-serverda ham render() dan keyin bitta yangi blok bo'lishi mumkin
+  setTimeout(() => document.querySelectorAll(".feat").forEach((el) => { if (!el.dataset.b) startFeat(); }), 1500);
 }
 function priceLine(it, f) {
   if (it.buyLine) return it.buyLine;
@@ -751,8 +808,9 @@ function minMonthly(price) {
 }
 /** Kartochkadagi narx: turi (💎 Sotib olish / ⏳ Ijara) va summa. mode: "inst" — faqat oylik, to'liq narx ko'rsatilmaydi. */
 function buyPriceHtml(price, mode, from) {
-  const kind = `<span class="gk">💎 ${esc(t("kind_buy"))}</span>`;
-  if (!(price > 0)) return kind + esc(t(mode === "inst" ? "own_inst_only" : "price_by_admin"));
+  const kind = `<span class="gk">${esc(t(mode === "lease" ? "kind_lease" : mode === "inst" ? "kind_inst" : "kind_buy"))}</span>`;
+  if (!(price > 0)) return kind + esc(t(mode === "inst" || mode === "lease" ? "own_inst_only" : "price_by_admin"));
+  if (mode === "lease") return kind + `${esc(t("inst_monthly"))} ≈ <b>${esc(money(leaseMin(price)))}</b> ${esc(t("som_from"))}`;
   if (mode === "inst") return kind + `${esc(t("inst_monthly"))} ≈ <b>${esc(money(minMonthly(price)))}</b> ${esc(t("som_from"))}`;
   return kind + `<b>${esc(money(price))}</b> ${esc(t(from ? "som_from" : "som"))}`;
 }
@@ -791,14 +849,14 @@ function pickSheet(title, options, current, onPick) {
   draw();
 }
 
-async function viewRent(v) {
+async function viewRent(v, outerHead, outerBind) {
   const tab = S.rentTab || "gifts";
   const en = (S.cfg && S.cfg.services) || {};
   const tabs = [["gifts", "tab_gifts", "gift_rent"], ["numbers", "tab_numbers", "number_rent"], ["usernames", "tab_usernames", "username_rent"], ["mine", "tab_mine", null]]
     .filter(([, , svc]) => !svc || en[svc] !== false);
-  const head = `<h1 class="page-title">${esc(t("store_title"))}</h1>
-    <div class="seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sg${tab === k ? " on" : ""}" data-tab="${k}">${esc(t(l))}</button>`).join("")}</div>`;
-  const bindTabs = () => v.querySelectorAll(".sg").forEach((b) => (b.onclick = () => { S.rentTab = b.dataset.tab; render(); }));
+  const head = (outerHead || `<h1 class="page-title">${esc(t("store_title"))}</h1>`) + `
+    <div class="filters" role="tablist" style="padding-bottom:0">${tabs.map(([k, l]) => `<button type="button" role="tab" class="fchip sg${tab === k ? " on" : ""}" data-tab="${k}">${esc(t(l))}</button>`).join("")}</div>`;
+  const bindTabs = () => { if (outerBind) outerBind(); v.querySelectorAll(".sg[data-tab]").forEach((b) => (b.onclick = () => { S.rentTab = b.dataset.tab; render(); })); };
 
   if (tab === "mine") {
     v.innerHTML = head + `<div class="spin"></div>`; bindTabs();
@@ -852,7 +910,7 @@ async function viewRent(v) {
     if (!more) { st.loaded = false; st.items = []; }
     st.error = null; draw();
     try { await loadRent(cat, more); } catch (e) { st.error = t("catalog_error"); st.loaded = true; }
-    if (location.hash.slice(1) === "rent" && (S.rentTab || "gifts") === cat) draw();
+    if (onGiftsTab("rent") && (S.rentTab || "gifts") === cat) draw();
   };
   const openFilter = async (k) => {
     if (k === "clear") {
@@ -976,7 +1034,7 @@ async function loadSale(st, more) {
     const f = st.f;
     const r = await call("portalsSale", { offset: more ? st.next : 0, sort: st.sort, collection: f.collection || undefined, model: f.model || undefined,
       backdrop: f.backdrop || undefined, symbol: f.symbol || undefined, minPrice: f.min || undefined, maxPrice: f.max || undefined, num: st.num || undefined,
-      inst: st.mode === "inst" || undefined });
+      inst: st.mode === "inst" || st.mode === "lease" || undefined });
     if (req !== st.req) return; // eskiroq so'rov javobi
     st.items = more ? st.items.concat(r.items) : r.items;
     st.next = r.next; st.loaded = true; st.error = null;
@@ -995,15 +1053,15 @@ async function viewSale(v, head, bindTabs, mode) {
   S.sales ||= {};
   const st = S.sales[mode] ||= { mode, items: [], next: null, loaded: false, error: null, cols: null, f: {}, sort: "price asc", num: "", attrs: null, req: 0, own: null };
   // O'z mahsulotlarim (Reklama): shu to'lov turida sotib olish mumkin bo'lganlari, ro'yxat boshida
-  if (!st.own) { try { st.own = (await api("/api/own/gifts")).map(normOwn).filter((it) => (mode === "inst" ? it.installment : it.cashPrice)); } catch { st.own = []; } }
+  if (!st.own) st.own = (await ownGifts()).filter((it) => (mode === "cash" ? it.cashPrice : it.installment));
   const chip = (k, label, val, disabled) => `<button type="button" class="fchip${val ? " on" : ""}" data-f="${k}" ${disabled ? "disabled" : ""}>${esc(val || label)}<span aria-hidden="true">⌄</span></button>`;
   const priceLbl = () => (st.f.min || st.f.max ? `${st.f.min ? money(st.f.min) : "0"} – ${st.f.max ? money(st.f.max) : "∞"}` : "");
   const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); if (st.f.collection) { await loadSale(st); draw(); } };
   const searching = `<div class="spin"></div><p class="hint" style="text-align:center">${esc(t("sale_searching"))}</p>`;
   const sellLink = `<a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
   const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
-  const ownLine = (it) => buyPriceHtml(mode === "inst" ? it.salePrice : it.cashPrice, mode);
-  const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null, mode === "inst" ? "our_inst" : "our_cash");
+  const ownLine = (it) => buyPriceHtml(mode === "cash" ? it.cashPrice : it.salePrice, mode);
+  const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null, mode === "lease" ? "our_lease" : mode === "inst" ? "our_inst" : "our_cash", mode === "cash");
   // 1-ekran: kolleksiyalar (rasm, nom, "… so'mdan")
   const drawCols = () => {
     const q = String(st.colQ || "").trim().toLowerCase();
@@ -1014,7 +1072,7 @@ async function viewSale(v, head, bindTabs, mode) {
       <div class="filters">${sortChip}</div>
       ${st.colErr ? `<p class="alert">${esc(st.colErr)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
       ${!st.colList && !st.colErr ? searching : ""}
-      ${st.colList && !cols.length && !st.own.length ? `<p class="empty">${esc(t(mode === "inst" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
+      ${st.colList && !cols.length && !st.own.length ? `<p class="empty">${esc(t(mode !== "cash" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
       <div class="grid3">${cols.map((c) => `<button type="button" class="gcard" data-col="${esc(c.name)}">
         <span class="gimg">${imgTag("gifts", c.name + " #1")}</span>
         <span class="gb"><b>${esc(c.name)}</b><span class="gp">${c.from ? buyPriceHtml(c.from, mode, true) : ""}</span></span></button>`).join("")}</div>`;
@@ -1032,18 +1090,16 @@ async function viewSale(v, head, bindTabs, mode) {
   };
   const loadCols = async () => {
     drawCols();
-    try { st.colList = await call("saleCollections", { inst: mode === "inst" }); } catch (e) { st.colErr = errText(e); }
-    if (location.hash.slice(1) === "buy-nft" && S.buyMode === mode && !st.f.collection) drawCols();
+    try { st.colList = await call("saleCollections", { inst: mode !== "cash" }); } catch (e) { st.colErr = errText(e); }
+    if (onGiftsTab(mode) && !st.f.collection) drawCols();
   };
   const bindOwn = () => v.querySelectorAll(".gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
     const it = st.own.find((x) => x.address === c.dataset.a);
     if (!it) return;
-    S.rentPick = { category: "gifts", service: RENT_SVC.gifts, route: "buy-nft", item: it, formula: rentState("gifts").formula || (S.cfg && S.cfg.rentFormula),
-      days: it.minDays, pay: mode === "inst" ? "installment" : "cash", key: key(), mode: "buy", itype: null, buyMode: mode };
-    location.hash = "rent-item";
+    openOwnBuy(it, mode);
   }));
   function drawFind() {
-    if (location.hash.slice(1) !== "buy-nft" || S.buyMode !== mode) return;
+    if (!onGiftsTab(mode)) return;
     const q = st.q ||= {};
     const fld = (k, label, val, disabled) => `<div class="field"><label>${esc(label)}</label>
       <button type="button" class="input pickbtn" data-q="${k}" ${disabled ? "disabled" : ""}>${esc(val || t(k === "collection" ? "find_pick" : "find_any"))}<span aria-hidden="true">⌄</span></button></div>`;
@@ -1097,7 +1153,7 @@ async function viewSale(v, head, bindTabs, mode) {
     }));
   }
   const draw = () => {
-    if (location.hash.slice(1) !== "buy-nft" || S.buyMode !== mode) return;
+    if (!onGiftsTab(mode)) return;
     if (!st.f.collection) return drawCols();
     v.innerHTML = head + `
       <div class="filters" style="margin-top:12px"><button type="button" class="fchip on" data-f="allcols">‹ ${esc(t("all_gifts"))}</button></div>
@@ -1122,7 +1178,7 @@ async function viewSale(v, head, bindTabs, mode) {
       ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
     bindTabs();
     v.querySelectorAll(".gcard[data-i]").forEach((c) => c.addEventListener("click", () => {
-      S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: mode === "inst" ? "installment" : "cash", itype: null, mode };
+      S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: mode === "cash" ? "cash" : "installment", itype: mode === "lease" ? "lease" : null, mode };
       location.hash = "sale-item";
     }));
     const more = $("#more", v); if (more) more.onclick = async () => { more.disabled = true; await loadSale(st, true); draw(); };
@@ -1176,40 +1232,163 @@ async function viewSale(v, head, bindTabs, mode) {
   draw();
   if (!st.loaded && !st.loading) { await loadSale(st); draw(); }
 }
+// ---------- Gift sahifasi: Lizing · Bo'lib to'lash · Ijara · Naqd ----------
+const yearPct = () => (S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100);
+/** Oylik to'lov: lizingda ustama 0%, bo'lib to'lashda admin ustamasi. */
+function planMonthly(base, down, months, itype) {
+  const pct = itype === "lease" ? 0 : yearPct();
+  const rest = Math.max(0, Number(base) - Number(down || 0));
+  return Math.ceil(Math.ceil(rest * (1 + (months * pct) / 12 / 100)) / months);
+}
+function productHead(img, name, num, attrs, ownTag) {
+  return `<div class="pimg2">${img}${num != null ? `<span class="pnum">#${esc(num)}</span>` : ""}</div>
+    ${ownTag ? `<div class="kick2">${esc(t("our_gift"))}</div>` : ""}
+    <h1 class="ptitle">${esc(name)}</h1>
+    ${attrs.length ? `<div class="pattrs">${attrs.map(([k, x]) => `<div><span>${esc(t(k))}</span><b>${esc(x)}</b></div>`).join("")}</div>` : ""}`;
+}
+function payTabsHtml(avail, cur) {
+  const w = { lease: ".9fr", inst: "1.35fr", rent: ".85fr", cash: ".85fr" };
+  return `<div class="seg4" style="margin-top:16px;grid-template-columns:${avail.map((k) => w[k]).join(" ")}">${avail.map((k) => `<button type="button" class="${k === cur ? "on" : ""}" data-pt="${k}">${esc(t("tab_" + k))}</button>`).join("")}</div>`;
+}
+/** Lizing / bo'lib to'lash variantlari (kartochkalar). Tanlov p.itype da. */
+function planOptsHtml(p, base, down1) {
+  const card = (val, title, sub, right, badge) => `<button type="button" class="popt${p.itype === val ? " on" : ""}" data-it="${val}"><span class="rd"></span>
+    <span class="pt"><b>${esc(title)}${badge ? `<span class="bdg0">${esc(badge)}</span>` : ""}</b><small>${esc(sub)}</small></span>
+    ${right ? `<span class="pr2"><span>${esc(t("per_month"))}</span><b>${esc(right)}</b></span>` : ""}</button>`;
+  if (p.tab === "lease") {
+    return card("lease", t("lz_nodown"), t("lz_nodown_d"), base > 0 ? money(leaseMin(base)) : "", "") +
+      card("lease_dp", t("lz_down"), t("lz_down_d"), "", "") +
+      `<p class="lznote"><span class="bdg0" style="margin:0 8px 0 0">0%</span>${esc(t("lz_note"))}</p>`;
+  }
+  return card("plan2", t("plan2"), t("lz_nodown_d"), base > 0 ? money(minMonthly(base)) : "", "0%") +
+    card("plan1", t("plan1"), down1 != null ? t("inst_p1_d", { d: money(down1) }) : t("down_by_admin"), "", "") +
+    card("uzum", t("uzum"), t("uzum_d2"), base > 0 ? money(planMonthly(base, 0, 12, "uzum")) : "", "");
+}
+function bindPlanOpts(v, p) {
+  v.querySelectorAll(".popt[data-it]").forEach((b) => (b.onclick = () => { p.itype = b.dataset.it; render(); }));
+}
 function viewSaleItem(v) {
   const p = S.salePick;
-  if (!p) { location.hash = "rent"; return; }
+  if (!p) { location.hash = "gifts"; return; }
   const it = p.item;
-  const canInst = p.mode !== "cash" && saleInstOk(it.price);
-  if (!canInst) p.pay = "cash";
-  p._ctx = () => ({ base: it.price, down1: it.down1 ?? null });
-  // 1-tur boshlang'ich to'lovi: Marketapp formulasi bo'yicha (bir marta so'raladi); topilmasa "admin aytadi"
+  const canInst = saleInstOk(it.price);
+  const avail = canInst ? ["lease", "inst", "cash"] : ["cash"];
+  if (!p.tab || !avail.includes(p.tab)) p.tab = avail.includes(p.mode) ? p.mode : avail[0];
+  if (p.tab === "lease" && !["lease", "lease_dp"].includes(p.itype)) p.itype = "lease";
+  if (p.tab === "inst" && !["plan1", "plan2", "uzum"].includes(p.itype)) p.itype = "plan2";
   if (canInst && it.down1 === undefined) {
     it.down1 = null;
     call("saleDown1", { name: saleLabel(it), model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined })
       .then((r) => { it.down1 = r.down1; if (r.down1 != null && S.salePick === p && location.hash.slice(1) === "sale-item") render(); }).catch(() => {});
   }
   const attrs = [["model", it.model], ["backdrop", it.backdrop], ["f_symbol", it.symbol]].filter(([, x]) => x);
-  const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));
-  v.innerHTML = `<div class="hero-img">${saleImg(it)}</div>
-    <h1 class="page-title" style="text-align:center">${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <span class="num">#${esc(it.num)}</span>` : ""}</h1>
-    ${attrs.length ? `<div class="attrs" style="justify-content:center">${attrs.map(([k, x]) => `<span>${esc(t(k))}: ${esc(x)}</span>`).join("")}</div>` : ""}
-    ${canInst ? `<section class="step">${stepHead(1, t("inst_type"))}<div class="opts" role="radiogroup">
-        ${["plan1", "plan2", "uzum"].map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", p.itype === ty, "itype")).join("")}</div>${instExtra(p)}</section>` : `<section class="step">${stepHead(1, t("step_pay"))}
-      <div class="opts" role="radiogroup">${opt("cash", t("pay_full"), t("pay_full_note"), som(it.price), true, "pay")}</div></section>`}
-    <p class="hint">${esc(t("sale_hint"))}</p>
-    <div class="cta">
-      <div class="sum"><span>${esc(t("total"))}</span><b>${p.pay === "installment" ? esc(instCta(p)) : esc(som(it.price))}</b></div>
-      <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("sale_buy"))}</button>
-    </div>`;
-  if (canInst) {
-    bindOpts(v, (g, val) => { if (g === "pay" && val !== p.pay) p.itype = null; if (g === "itype" && val !== p.itype) resetInst(p, val); p[g] = val; render(); });
-    v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { p.months = Number(c.dataset.v); render(); }));
-    bindInst(v, p, () => ($("#go", v).disabled = !isReady()));
+  const head = productHead(saleImg(it), it.name.replace(/\s*#\s*\d+$/, ""), it.num, attrs, false) + payTabsHtml(avail, p.tab);
+  const body = (extra) => ({ service: "portals", portalsId: it.id, expectedPrice: it.price, idempotencyKey: p.key, ...extra });
+  if (p.tab === "cash") {
+    v.innerHTML = head + cashBoxHtml(it.price) + `<div class="cta2"><div class="s"><span>${esc(t("total_up"))}</span><b>${esc(som(it.price))}</b></div>
+      <button class="btn btn-primary" id="go" type="button">${esc(t("sale_buy"))}</button></div>`;
+    bindPayTabs(v, p);
+    $("#go", v).onclick = () => placeOrder(body({ paymentMethod: "cash" }), it.price);
+    return;
   }
-  $("#go", v).addEventListener("click", () => placeOrder({ service: "portals", portalsId: it.id, expectedPrice: it.price, paymentMethod: p.pay, idempotencyKey: p.key,
-    ...(p.pay === "installment" ? { installmentType: p.itype, ...instBody(p) } : {}) }, it.price));
+  v.innerHTML = head + planOptsHtml(p, it.price, it.down1) + planCtaHtml(p, it.price);
+  bindPayTabs(v, p); bindPlanOpts(v, p);
+  $("#go", v).onclick = () => openPlan({ name: saleLabel(it), img: saleImg(it), base: it.price, itype: p.itype, down1: it.down1, key: p.key,
+    build: (x) => body({ paymentMethod: "installment", ...x }) });
 }
+function cashBoxHtml(price) {
+  return `<div class="box"><div class="big2"><span>${esc(t("price_up"))}</span><b>${esc(som(price))}</b></div>
+    <div class="kv2"><span>${esc(t("pay_word"))}</span><b>${esc(t("pay_full_note"))}</b></div>
+    <div class="kv2"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me ? S.me.balance : 0))}</b></div>
+    <p class="hint">${esc(t("sale_hint"))}</p></div>`;
+}
+function planCtaHtml(p, base) {
+  const m = p.itype === "lease" ? leaseMin(base) : p.itype === "plan2" ? minMonthly(base) : p.itype === "uzum" ? planMonthly(base, 0, 12, "uzum") : null;
+  return `<div class="cta2"><div class="s"><span>${esc(t("per_month_up"))}</span><b>${m ? esc(som(m)) : "—"}</b></div>
+    <button class="btn btn-primary" id="go" type="button">${esc(t("next"))}</button></div>`;
+}
+function bindPayTabs(v, p) {
+  v.querySelectorAll(".seg4 button[data-pt]").forEach((b) => (b.onclick = () => { p.tab = b.dataset.pt; p.itype = null; render(); }));
+}
+
+// ---------- Hisob sahifasi (lizing / bo'lib to'lash): muddat barabani, boshlang'ich to'lov, jadval ----------
+function openPlan(o) {
+  const lease = o.itype === "lease" || o.itype === "lease_dp";
+  S.plan = { ...o, itype: lease ? "lease" : o.itype, dp: o.itype === "lease_dp" ? "yes" : "no", dpAmt: "",
+    months: o.itype === "uzum" ? 12 : lease ? 24 : 12, from: location.hash.slice(1) || "gifts" };
+  location.hash = "plan";
+}
+function addMonths(d, n) { const x = new Date(d); const day = x.getDate(); x.setMonth(x.getMonth() + n); if (x.getDate() !== day) x.setDate(0); return x; }
+function viewPlan(v) {
+  const pl = S.plan;
+  if (!pl) { location.hash = "gifts"; return; }
+  const lease = pl.itype === "lease";
+  const fixedDown = pl.itype === "plan1";
+  const down = () => (fixedDown ? Number(pl.down1 || 0) : pl.dp === "yes" ? Number(pl.dpAmt) || 0 : 0);
+  const monthly = (m) => (pl.base > 0 && !(fixedDown && pl.down1 == null) ? planMonthly(pl.base, down(), m, pl.itype) : null);
+  const fmtD = (d) => `${d.getDate()} ${t("mon_" + d.getMonth())}${d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""}`;
+  const title = lease ? t("tab_lease") : t(pl.itype);
+  const wheelHtml = () => pl.itype === "uzum"
+    ? `<div class="chips">${[3, 6, 12].map((m) => `<button type="button" class="chip" data-mo="${m}" aria-pressed="${pl.months === m}">${m} ${esc(t("months_unit"))}</button>`).join("")}</div>`
+    : `<div class="wheel wheel2" id="pWheel"><div class="wheel-pad"></div>${Array.from({ length: WHEEL_MAX }, (_, i) => {
+        const m = i + 1, mm = monthly(m);
+        return `<div class="wheel-i${m === pl.months ? " on" : ""}"><span>${m} ${esc(t("months_unit"))}</span><span>${mm ? esc(money(mm)) : ""}</span></div>`;
+      }).join("")}<div class="wheel-pad"></div></div>`;
+  const dyn = () => {
+    const m = monthly(pl.months), d = down();
+    const today = new Date();
+    const rows = [];
+    if (d > 0) rows.push([t("today"), som(d), "on"]);
+    rows.push([fmtD(addMonths(today, 1)), m ? som(m) : "—", ""]);
+    if (pl.months > 2) rows.push([fmtD(addMonths(today, 2)), m ? som(m) : "—", ""], ["…", "", ""]);
+    if (pl.months > 1) rows.push([fmtD(addMonths(today, pl.months)), t("last_pay"), "end"]);
+    return {
+      res: `<div class="t"><span>${esc(t("monthly_up"))}</span><span class="bdg0" style="margin:0">${esc(lease ? t("zero_markup") : d === 0 ? t("zero_down") : t("approx"))}</span></div>
+        <b>${m ? esc(money(m)) : "—"} <em>${esc(t("som"))}</em></b>
+        <div class="m">${esc(pl.months)} ${esc(t("months_unit"))} · ${esc(t("pay_day", { d: today.getDate() }))}${d > 0 ? ` · ${esc(t("today_pay", { a: money(d) }))}` : ""}</div>`,
+      tl: rows.map(([a, b, c]) => `<div><i class="${c}"></i><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join(""),
+      cta: `<span>${esc(t("per_month_up"))} · ${esc(pl.months)} ${esc(t("months_unit"))}</span><b>${m ? esc(som(m)) : "—"}</b>`,
+      ok: !(pl.dp === "yes" && !fixedDown && !(Number(pl.dpAmt) > 0)) && !(Number(pl.dpAmt) >= pl.base && pl.base > 0),
+    };
+  };
+  const D = dyn();
+  v.innerHTML = `<div class="plan-h"><span class="pthumb">${pl.img}</span><span><small>${esc(title)}</small><b>${esc(pl.name)}</b></span></div>
+    <div class="res" id="pRes">${D.res}</div>
+    <div class="box"><div class="fh"><span>${esc(t("months_q"))}</span><span class="hint">${pl.itype === "uzum" ? "" : esc(t("wheel_hint"))}</span></div>${wheelHtml()}</div>
+    <div class="box"><div class="fh"><span>${esc(t("inst_down"))}</span></div>
+      ${fixedDown ? `<p class="alert" style="margin:0">${pl.down1 != null ? esc(som(pl.down1)) : esc(t("down_by_admin"))}</p>`
+        : `<div class="row2"><button type="button" class="ynb${pl.dp === "no" ? " on" : ""}" data-dp="no">${esc(t("dp_no"))}</button><button type="button" class="ynb${pl.dp === "yes" ? " on" : ""}" data-dp="yes">${esc(t("dp_yes"))}</button></div>
+          ${pl.dp === "yes" ? `<div class="amt"><input id="dpIn" type="number" inputmode="numeric" min="1" value="${esc(pl.dpAmt)}" placeholder="0"><em>${esc(t("som"))}</em></div>` : ""}`}</div>
+    <div class="box"><div class="fh"><span>${esc(t("schedule"))}</span></div><div class="tl" id="pTl">${D.tl}</div></div>
+    <div class="cta2"><div class="s" id="pCta">${D.cta}</div><button class="btn btn-primary" id="go" type="button" ${D.ok ? "" : "disabled"}>${esc(t("confirm_btn"))}</button></div>`;
+  const refresh = () => { const x = dyn(); $("#pRes", v).innerHTML = x.res; $("#pTl", v).innerHTML = x.tl; $("#pCta", v).innerHTML = x.cta; $("#go", v).disabled = !x.ok; };
+  const w = $("#pWheel", v);
+  if (w) {
+    w.scrollTop = (pl.months - 1) * WHEEL_H;
+    let tm;
+    w.addEventListener("scroll", () => {
+      clearTimeout(tm);
+      tm = setTimeout(() => {
+        const m = Math.min(WHEEL_MAX, Math.max(1, Math.round(w.scrollTop / WHEEL_H) + 1));
+        pl.months = m;
+        w.querySelectorAll(".wheel-i").forEach((el, i) => el.classList.toggle("on", i + 1 === m));
+        refresh();
+      }, 90);
+    });
+    w.querySelectorAll(".wheel-i").forEach((el, i) => el.addEventListener("click", () => w.scrollTo({ top: i * WHEEL_H, behavior: "smooth" })));
+  }
+  v.querySelectorAll(".chip[data-mo]").forEach((c) => (c.onclick = () => { pl.months = Number(c.dataset.mo); render(); }));
+  v.querySelectorAll("[data-dp]").forEach((b) => (b.onclick = () => { pl.dp = b.dataset.dp; render(); }));
+  const di = $("#dpIn", v);
+  if (di) di.addEventListener("input", () => {
+    pl.dpAmt = di.value;
+    // barabandagi oylik summalar ham yangilanadi
+    if (w) w.querySelectorAll(".wheel-i").forEach((el, i) => { const mm = monthly(i + 1); el.lastElementChild.textContent = mm ? money(mm) : ""; });
+    refresh();
+  });
+  $("#go", v).onclick = () => placeOrder(pl.build({ installmentType: pl.itype, months: pl.months, downPayment: fixedDown ? 0 : down() }), null);
+}
+
 // ---------- "Sotib olish" bo'limi ----------
 /** Ega bo'lgan o'z mahsulotlarim (username / +888) bormi: shu bo'yicha "Sotib olish" ro'yxatiga qo'shiladi. */
 async function ownBuyable(kind) {
@@ -1264,6 +1443,25 @@ function viewBuyOwn(v) {
   }));
 }
 
+// ---------- "Giftlar": Lizing · Bo'lib to'lash · Ijara · Naqd ----------
+const GIFT_ROUTES = new Set(["gifts", "rent", "buy-nft"]);
+function onGiftsTab(tab) { return GIFT_ROUTES.has(location.hash.slice(1)) && (S.giftsTab || "lease") === tab; }
+async function viewGifts(v) {
+  const en = (S.cfg && S.cfg.services) || {};
+  const all = [["lease", "tab_lease"], ["inst", "tab_inst"], ["rent", "tab_rent"], ["cash", "tab_cash"]].filter(([k]) =>
+    k === "rent" ? en.gift_rent !== false || en.username_rent !== false || en.number_rent !== false : en.nft_gift !== false);
+  if (!all.length) { v.innerHTML = `<p class="empty">${esc(t("empty_catalog"))}</p>`; return; }
+  let tab = S.giftsTab || "lease";
+  if (!all.some(([k]) => k === tab)) tab = all[0][0];
+  S.giftsTab = tab;
+  const head = `<h1 class="page-title">${esc(t("nav_gifts"))}</h1>
+    <div class="seg4" role="tablist" style="grid-template-columns:${all.map(([k]) => (k === "inst" ? "1.35fr" : k === "lease" ? ".9fr" : ".85fr")).join(" ")}">${all.map(([k, l]) => `<button type="button" role="tab" class="${tab === k ? "on" : ""}" data-gt="${k}">${esc(t(l))}</button>`).join("")}</div>`;
+  const bindTop = () => v.querySelectorAll(".seg4 button[data-gt]").forEach((b) => (b.onclick = () => { S.giftsTab = b.dataset.gt; window.scrollTo(0, 0); render(); }));
+  if (tab === "rent") return viewRent(v, head, bindTop);
+  const extra = tab === "inst" || tab === "lease" ? `<a class="svc" href="#nft" style="margin-top:12px"><span class="svc-ic">${HIC.cash.replace("<svg", '<svg fill="none" stroke="#1E3D2F" stroke-width="1.8"')}</span><span class="svc-t"><b>${esc(t("buy_custom"))}</b><small>${esc(t("buy_custom_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : "";
+  return viewSale(v, head + extra, bindTop, tab);
+}
+
 /** "Giftimni sotaman": havola va narx. Admin tasdiqlagach "Sotuvda" bo'limida chiqadi. */
 function viewSell(v) {
   const d = S.drafts.sell ||= { link: "", price: "" };
@@ -1284,7 +1482,7 @@ function viewSell(v) {
     if (!(await needLogin())) return;
     if (!(await ensurePhone())) return;
     e.target.disabled = true;
-    try { await call("sellGift", { link: d.link, price: Number(d.price) }); S.drafts.sell = null; toast(t("sell_sent")); location.hash = "rent"; }
+    try { await call("sellGift", { link: d.link, price: Number(d.price) }); S.drafts.sell = null; toast(t("sell_sent")); location.hash = "gifts"; }
     catch (er) { e.target.disabled = false; toast(errText(er)); }
   });
 }
@@ -1293,42 +1491,32 @@ function viewRentItem(v) {
   const p = S.rentPick;
   if (!p) { location.hash = "home"; return; }
   const it = p.item;
-  const canRent = !it.own || it.rent, canBuy = it.own && (it.installment || it.cashPrice);
-  if (p.mode === "rent" && !canRent) p.mode = "buy";
-  const title = `<div class="hero-img">${it.own && it.image ? `<img src="${esc(it.image)}" alt="">` : imgTag(p.category, it.name)}</div>
-    <h1 class="page-title" style="text-align:center">${esc(p.category === "gifts" ? shortName(it.name) : it.name)}${p.category === "gifts" && /#\d+$/.test(it.name) ? ` <span class="num">#${esc(it.name.split("#").pop())}</span>` : ""}</h1>
-    ${it.own ? `<p style="text-align:center"><span class="adtag inline">${esc(t("ad_tag"))}</span></p>` : ""}
-    ${attrsOf(it).length ? `<div class="attrs" style="justify-content:center">${attrsOf(it).map((a) => `<span>${esc(a.trait_type)}: ${esc(a.value)}</span>`).join("")}</div>` : ""}
-    ${canRent && canBuy ? `<section class="step"><div class="step-h"><h2>${esc(t("mode_q"))}</h2></div><div class="modes">
-      <button type="button" class="mcard${p.mode === "rent" ? " on" : ""}" data-mode="rent"><i>⏳</i><b>${esc(t("mode_rent"))}</b><small>${esc(t("mode_rent_note"))}</small>
-        <em>${esc(money(bestPerDay(it, p.formula)))} ${esc(t("per_day_from"))}</em></button>
-      <button type="button" class="mcard${p.mode === "buy" ? " on" : ""}" data-mode="buy"><i>💎</i><b>${esc(t("mode_buy"))}</b><small>${esc(t("mode_buy_note"))}</small>
-        <em>${it.cashPrice && p.buyMode !== "inst" ? esc(som(it.cashPrice)) : esc(t("pay_inst"))}</em></button></div></section>` : ""}`;
-  const bindMode = () => v.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { p.mode = b.dataset.mode; p.pay = null; p.itype = null; render(); }));
+  const canRent = !it.own || it.rent;
+  // O'z giftlari: Lizing · Bo'lib to'lash · Ijara · Naqd (bor bo'lganlari)
+  const avail = it.own ? [...(it.installment ? ["lease", "inst"] : []), ...(canRent ? ["rent"] : []), ...(it.cashPrice ? ["cash"] : [])] : ["rent"];
+  if (!p.tab || !avail.includes(p.tab)) p.tab = avail.includes(p.buyMode) ? p.buyMode : p.mode === "rent" && canRent ? "rent" : avail[0];
+  p.mode = p.tab === "rent" ? "rent" : "buy";
+  if (p.tab === "lease" && !["lease", "lease_dp"].includes(p.itype)) p.itype = "lease";
+  if (p.tab === "inst" && !["plan1", "plan2", "uzum"].includes(p.itype)) p.itype = "plan2";
+  const img = it.own && it.image ? `<img src="${esc(it.image)}" alt="">` : imgTag(p.category, it.name);
+  const nm = p.category === "gifts" ? shortName(it.name) : it.name;
+  const num = p.category === "gifts" && /#\d+$/.test(it.name) ? it.name.split("#").pop() : null;
+  const attrs = attrsOf(it).map((a) => [/model/i.test(a.trait_type) ? "model" : /backdrop/i.test(a.trait_type) ? "backdrop" : "f_symbol", a.value]);
+  const title = productHead(img, nm, num, attrs, it.own) + (avail.length > 1 ? payTabsHtml(avail, p.tab) : "");
+  const bindMode = () => bindPayTabs(v, p);
 
-  if (p.mode === "buy") {
-    p._ctx = () => ({ base: it.salePrice, down1: it.down1 });
-    const opts = [];
-    if (it.cashPrice && p.buyMode !== "inst") opts.push(opt("cash", t("pay_full"), t("pay_full_note"), som(it.cashPrice), p.pay === "cash", "pay"));
-    if (it.installment) opts.push(opt("installment", t("pay_inst"), instNote(p), "", p.pay === "installment", "pay"));
-    if (opts.length === 1 && !p.pay) p.pay = it.cashPrice ? "cash" : "installment";
-    const isReady = () => p.pay === "cash" || (p.pay === "installment" && instOk(p));
-    v.innerHTML = title + `<section class="step">${stepHead(1, t("step_pay"))}<div class="opts" role="radiogroup">${opts.join("")}</div>
-      ${p.pay === "installment" ? `<div class="field"><label>${esc(t("inst_type"))}</label><div class="opts" role="radiogroup">
-        ${["plan1", "plan2", "uzum"].map((ty) => opt(ty, t(ty), t(ty + "_desc"), "", p.itype === ty, "itype")).join("")}</div></div>${instExtra(p)}` : ""}
-      </section>
-      <div class="cta">
-        <div class="sum"><span>${esc(t("total"))}</span><b>${p.pay === "cash" ? esc(som(it.cashPrice)) : esc(instCta(p))}</b></div>
-        <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("next"))}</button>
-      </div>`;
+  if (p.tab === "cash") {
+    v.innerHTML = title + cashBoxHtml(it.cashPrice) + `<div class="cta2"><div class="s"><span>${esc(t("total_up"))}</span><b>${esc(som(it.cashPrice))}</b></div>
+      <button class="btn btn-primary" id="go" type="button">${esc(t("sale_buy"))}</button></div>`;
     bindMode();
-    bindOpts(v, (g, val) => { if (g === "itype" && val !== p.itype) resetInst(p, val); if (g === "pay" && val !== p.pay) p.itype = null; p[g] = val; render(); });
-    v.querySelectorAll(".chip[data-g='months']").forEach((c) => c.addEventListener("click", () => { p.months = Number(c.dataset.v); render(); }));
-    bindInst(v, p, () => ($("#go", v).disabled = !isReady()));
-    $("#go", v).addEventListener("click", () => placeOrder({
-      service: "own", ownId: it.id, ownMode: "buy", paymentMethod: p.pay, installmentType: p.pay === "installment" ? p.itype : undefined,
-      ...(p.pay === "installment" ? instBody(p) : {}), idempotencyKey: p.key,
-    }, it.cashPrice));
+    $("#go", v).onclick = () => placeOrder({ service: "own", ownId: it.id, ownMode: "buy", paymentMethod: "cash", idempotencyKey: p.key }, it.cashPrice);
+    return;
+  }
+  if (p.tab === "lease" || p.tab === "inst") {
+    v.innerHTML = title + planOptsHtml(p, it.salePrice, it.down1) + planCtaHtml(p, it.salePrice);
+    bindMode(); bindPlanOpts(v, p);
+    $("#go", v).onclick = () => openPlan({ name: it.name, img, base: it.salePrice, itype: p.itype, down1: it.down1, key: p.key,
+      build: (x) => ({ service: "own", ownId: it.id, ownMode: "buy", paymentMethod: "installment", idempotencyKey: p.key, ...x }) });
     return;
   }
 
@@ -1407,26 +1595,37 @@ async function viewOrders(v) {
   v.innerHTML = `<h1 class="page-title">${esc(t("orders_title"))}</h1><div class="spin"></div>`;
   let data;
   try { data = await api("/api/orders"); } catch (e) { v.innerHTML = `<h1 class="page-title">${esc(t("orders_title"))}</h1><p class="alert">${esc(errText(e))}</p>`; return; }
-  const instBlock = (i) => i ? `<div class="kv">
-      <span>${esc(t("purchased_at"))}</span><b>${esc(date(i.purchasedAt))}</b>
-      <span>${esc(t("monthly"))}</span><b>${esc(som(i.monthlyPayment))}</b>
-      <span>${esc(t("final_date"))}</span><b>${esc(date(i.finalDate))}</b></div>
-      ${i.active ? `<button class="btn btn-ghost btn-sm" type="button" data-pay="${i.id}">${esc(t("pay_monthly"))}</button>` : ""}` : "";
+  // Lizing / bo'lib to'lash: progress (necha oy to'langan) va keyingi to'lov
+  const instBlock = (i) => {
+    if (!i) return "";
+    const pct = i.months ? Math.max(0, Math.min(100, Math.round(((i.paidMonths || 0) / i.months) * 100))) : 0;
+    return `${i.months ? `<div class="prog"><div style="width:${pct}%"></div></div>
+        <div class="fh"><span>${esc(t("paid_months", { a: i.paidMonths || 0, b: i.months }))}</span><span>${esc(t("final_date"))}: ${esc(date(i.finalDate))}</span></div>` : ""}
+      ${i.active && i.nextDueDate ? `<div class="paybox${i.overdue ? " late" : ""}"><div><span>${esc(t(i.overdue ? "overdue_pay" : "next_pay"))} · ${esc(date(i.nextDueDate))}</span><b>${esc(som(i.monthlyPayment))}</b></div>
+        <button class="btn btn-primary btn-sm" type="button" data-pay="${i.id}">${esc(t("pay_now"))}</button></div>` : ""}`;
+  };
+  const nameOf = (title) => String(title || "").split(" — ")[0];
+  const kindLine = (o) => (o.plan ? `${t(o.plan.type === "lease" ? "tab_lease" : o.plan.type || "pay_inst")}${o.plan.months ? ` · ${o.plan.months} ${t("months_unit")}` : ""}` : "");
   const cards = data.orders.map((o) => `<article class="item">
-      <div class="item-h"><b>${esc(o.title)}</b><span class="badge b-${esc(o.status)}">${esc(t("st_" + o.status))}</span></div>
-      <div class="meta"><code>${esc(o.publicId)}</code><span>${esc(date(o.createdAt))}</span><span>${esc(t("pm_" + o.paymentMethod))}</span>
+      <div class="ord-h"><span class="othumb">${imgTag("gifts", nameOf(o.title))}</span><span class="ot"><b>${esc(nameOf(o.title))}</b>${o.plan ? `<small>${esc(kindLine(o))}</small>` : ""}</span>
+        <span class="badge b-${esc(o.status)}">${esc(t("st_" + o.status))}</span></div>
+      <div class="meta"><code>${esc(o.publicId)}</code><span>${esc(date(o.createdAt))}</span>${o.plan ? "" : `<span>${esc(t("pm_" + o.paymentMethod))}</span>`}
         ${o.price != null ? `<span>${esc(som(o.price))}</span>` : ""}${o.recipient ? `<span>@${esc(o.recipient)}</span>` : ""}</div>
       ${o.rentEndsAt ? `<div class="kv"><span>${esc(t("rent_ends"))}</span><b>${esc(date(o.rentEndsAt))}</b></div>` : ""}
-      ${o.paymentMethod === "installment" ? (o.installment ? instBlock(o.installment) : `<p class="hint">${esc(t("inst_pending"))}</p>`) : ""}
+      ${o.paymentMethod === "installment" ? (o.installment ? instBlock(o.installment) : `<p class="hint">${esc(t("inst_pending"))}${o.plan && o.plan.estMonthly ? ` · ${esc(t("inst_monthly"))} ≈ ${esc(som(o.plan.estMonthly))}` : ""}</p>`) : ""}
       ${o.canReview ? `<button class="btn btn-ghost btn-sm" type="button" data-rev="${esc(o.publicId)}">${esc(t("leave_review"))}</button>`
         : o.reviewStatus === "pending" ? `<p class="hint">${esc(t("review_pending"))}</p>` : o.reviewStatus === "published" ? `<p class="hint">${esc(t("review_published"))}</p>` : ""}
     </article>`);
   const legacy = data.agreements.map((a) => `<article class="item">
       <div class="item-h"><b>${esc(a.title)}</b><span class="badge ${a.active ? "b-queued" : "b-completed"}">${esc(t("pm_installment"))}</span></div>
       ${instBlock({ ...a })}</article>`);
-  const all = cards.concat(legacy);
+  const instIdx = new Set(data.orders.map((o, i) => (o.paymentMethod === "installment" ? i : -1)).filter((i) => i >= 0));
+  const otab = S.ordersTab || (instIdx.size || legacy.length ? "inst" : "other");
+  const all = otab === "inst" ? cards.filter((_, i) => instIdx.has(i)).concat(legacy) : cards.filter((_, i) => !instIdx.has(i));
   v.innerHTML = `<h1 class="page-title">${esc(t("orders_title"))}</h1>
+    <div class="seg4" style="grid-template-columns:1.4fr 1fr;margin-bottom:12px">${[["inst", "orders_inst"], ["other", "orders_other"]].map(([k, l]) => `<button type="button" class="${otab === k ? "on" : ""}" data-ot="${k}">${esc(t(l))}</button>`).join("")}</div>
     ${all.length ? `<div class="list">${all.join("")}</div>` : `<div class="empty"><p>${esc(t("no_orders"))}</p><p style="margin-top:14px"><a class="btn btn-primary" href="#home">${esc(t("choose_service"))}</a></p></div>`}`;
+  v.querySelectorAll("[data-ot]").forEach((b) => (b.onclick = () => { S.ordersTab = b.dataset.ot; render(); }));
   v.querySelectorAll("[data-rev]").forEach((b) => b.addEventListener("click", () => {
     let rating = 5;
     const draw = () => {
@@ -1465,11 +1664,10 @@ async function viewBalance(v) {
   let b;
   try { b = await api("/api/balance"); } catch (e) { v.innerHTML = `<p class="alert">${esc(errText(e))}</p>`; return; }
   const admin = (b.adminContact || "").replace(/^@/, "");
-  v.innerHTML = `<div class="balhero reveal"><span class="lbl">${esc(t("balance_short"))}</span><b>${esc(som(b.balance))}</b></div>
-    <section class="box">
-      <p>${esc(t("topup_contact"))}</p>
-      ${admin ? `<a class="btn btn-primary" href="https://t.me/${esc(admin)}" target="_blank" rel="noopener">${esc(t("write_admin"))}</a>` : ""}
-    </section>
+  v.innerHTML = `<h1 class="page-title">${esc(t("balance_short"))}</h1>
+    <div class="balhero reveal"><span class="lbl">${esc(t("balance_up"))}</span><b>${esc(som(b.balance))}</b>
+      <p class="bh">${esc(t("topup_contact"))}</p>
+      ${admin ? `<a class="bhb" href="https://t.me/${esc(admin)}" target="_blank" rel="noopener">${esc(t("write_admin"))}</a>` : ""}</div>
     <section class="box"><h2>${esc(t("history"))}</h2>
       ${b.ledger.length ? b.ledger.map((l) => `<div class="led"><div>${esc(t("k_" + l.kind))}${l.note ? ` · ${esc(l.note)}` : ""}<small>${esc(date(l.created_at))}</small></div>
         <span class="${Number(l.amount) > 0 ? "p" : "m"}">${Number(l.amount) > 0 ? "+" : "−"}${esc(som(Math.abs(Number(l.amount))))}</span></div>`).join("") : `<p class="hint">${esc(t("no_history"))}</p>`}
@@ -1510,12 +1708,14 @@ async function viewHelp(v) {
 // ---------- marshrutlash ----------
 const VIEWS = {
   home: viewHome, premium: viewPremium, stars: viewStars, nft: viewNft,
-  rent: viewRent,
+  gifts: viewGifts,
+  rent: (v) => { S.giftsTab = "rent"; return viewGifts(v); },
+  "buy-nft": (v) => { S.giftsTab = S.buyMode === "cash" ? "cash" : S.buyMode === "lease" ? "lease" : "inst"; return viewGifts(v); },
   "rent-gifts": (v) => { S.rentTab = "gifts"; location.replace("#rent"); }, "rent-usernames": (v) => { S.rentTab = "usernames"; location.replace("#rent"); }, "rent-numbers": (v) => { S.rentTab = "numbers"; location.replace("#rent"); },
-  "rent-item": viewRentItem, "sale-item": viewSaleItem, sell: viewSell, buy: viewBuy, "buy-pay": viewBuyPay, "buy-nft": viewBuyNft, "buy-own": viewBuyOwn, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
+  "rent-item": viewRentItem, "sale-item": viewSaleItem, plan: viewPlan, sell: viewSell, buy: viewBuy, "buy-pay": viewBuyPay, "buy-own": viewBuyOwn, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
-const TOP = new Set(["home", "rent", "buy", "orders", "balance", "login", "done"]);
-const PARENT = { "rent-item": () => (S.rentPick && S.rentPick.route) || "rent", "sale-item": () => "buy-nft", sell: () => "buy-nft", "buy-pay": () => "buy", "buy-nft": () => "buy", "buy-own": () => "buy" };
+const TOP = new Set(["home", "gifts", "rent", "buy-nft", "orders", "balance", "login", "done"]);
+const PARENT = { "rent-item": () => (S.rentPick && S.rentPick.route === "buy-own" ? "buy-own" : "gifts"), "sale-item": () => "gifts", sell: () => "gifts", "buy-pay": () => "gifts", "buy-own": () => "buy", nft: () => "gifts", plan: () => (S.plan && S.plan.from) || "gifts" };
 
 function applyStatic() {
   document.documentElement.lang = S.lang === "zh" ? "zh-CN" : S.lang;
@@ -1527,9 +1727,8 @@ async function render() {
   const route = location.hash.slice(1) || "home";
   const fn = VIEWS[route] || viewHome;
   applyStatic();
-  const BUY = ["buy", "buy-pay", "buy-nft", "buy-own", "sale-item", "sell"];
-  const tab = ["orders", "balance", "rent"].includes(route) ? route : BUY.includes(route) || (route === "rent-item" && S.rentPick && /^buy/.test(S.rentPick.route || "")) ? "buy"
-    : route === "rent-item" ? "rent" : "home";
+  const GIFTS = ["gifts", "rent", "buy", "buy-pay", "buy-nft", "buy-own", "sale-item", "sell", "rent-item", "nft", "plan"];
+  const tab = ["orders", "balance"].includes(route) ? route : GIFTS.includes(route) ? "gifts" : "home";
   document.querySelectorAll(".tab").forEach((a) => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   $("#backBtn").hidden = TOP.has(route);
   $("#brand").hidden = !TOP.has(route);
@@ -1538,6 +1737,7 @@ async function render() {
   S.lastRoute = route;
   if ((route === "premium" || route === "stars") && !S.me) await login();
   await fn(v);
+  startFeat();
 }
 $("#backBtn").addEventListener("click", () => { const r = location.hash.slice(1); location.hash = PARENT[r] ? PARENT[r]() : "home"; });
 $("#lang").addEventListener("change", (e) => {

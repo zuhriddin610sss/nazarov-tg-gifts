@@ -3,7 +3,7 @@ import { api, InputFile } from 'sdk';
 import { all, get, run, fail, getSettings, toSom, toTiyin, nowMs, int, str, idemKey, USERNAME_RE, cleanUser, adminIds, logError } from 'lib/core';
 import { listRent, seenRentItem, giftCollections, collectionAttributes, searchRecipient, marketappConfigured } from 'lib/marketapp';
 import { PREMIUM_PLANS, PREMIUM_LABEL, rentTotalTon, rentPriceTiyin, rentCostTiyin, starsPriceTiyin } from 'lib/pricing';
-import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, summarize } from 'lib/shop';
+import { createOrder, createReceipt, payInstallment, checkPromo, leaveReview, summarize, listAgreements } from 'lib/shop';
 import { notifyNewOrder, receiptButtons, notifyNewListing } from 'lib/notify';
 import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
@@ -289,7 +289,7 @@ export const actions = {
         if (method === 'cash' && !(p.cash_enabled && p.cash_price)) throw fail('VALIDATION', { field: 'paymentMethod' });
         if (method === 'installment' && !p.inst_enabled) throw fail('VALIDATION', { field: 'paymentMethod' });
         const q = method === 'installment' ? await ownSaleQuote(p, s) : null;
-        o = { service: 'nft_gift', title: `${p.name} — sotib olish`, installmentType: itype(['plan1', 'plan2', 'uzum']),
+        o = { service: 'nft_gift', title: `${p.name} — sotib olish`, installmentType: itype(['lease', 'plan1', 'plan2', 'uzum']),
           estBase: q && q.price ? toTiyin(q.price) : null, down1: q ? q.down1 : null,
           price: method === 'cash' ? Number(p.cash_price) : null,
           details: { own: p.id, sale: true, kind: p.kind, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined } };
@@ -317,7 +317,7 @@ export const actions = {
       if (method === 'installment' && !(s.sale_inst.enabled && price <= Number(s.sale_inst.max))) throw fail('VALIDATION', { field: 'paymentMethod' });
       const label = `${it.name}${it.num != null && !/#\d+$/.test(it.name) ? ' #' + it.num : ''}`;
       const seller = listing ? await get('SELECT username, phone FROM customers WHERE id = :id', { id: listing.customer_id }) : null;
-      const ty = itype(['plan1', 'plan2', 'uzum']);
+      const ty = itype(['lease', 'plan1', 'plan2', 'uzum']);
       o = { service: 'nft_gift', title: `${label} — sotib olish`, installmentType: ty,
         price: method === 'cash' ? toTiyin(price) : null, estBase: toTiyin(price),
         down1: ty === 'plan1' ? await giftDown1(label, { model: it.model, backdrop: it.backdrop, symbol: it.symbol }, s) : null,
@@ -359,7 +359,8 @@ export const actions = {
       const months = int(i.months, { min: 1, max: 240, name: 'months' });
       if (o.installmentType === 'uzum' && ![3, 6, 12].includes(months)) throw fail('VALIDATION', { field: 'months' });
       o.details = { ...(o.details || {}), months };
-      if (o.installmentType === 'plan2' || o.installmentType === 'uzum') {
+      // Lizing: ustama 0%, boshlang'ich to'lov ixtiyoriy (bo'lsa — mijoz yozgan summa)
+      if (o.installmentType === 'plan2' || o.installmentType === 'uzum' || o.installmentType === 'lease') {
         const dp = Number(i.downPayment || 0);
         if (!Number.isFinite(dp) || dp < 0 || dp > 1000000000) throw fail('VALIDATION', { field: 'downPayment' });
         o.details.downPayment = Math.round(dp);
@@ -368,7 +369,10 @@ export const actions = {
       // Taxminiy oylik to'lov (narxi ma'lum bo'lsa)
       if (o.estBase && o.details.downPayment != null) {
         const base = Math.ceil(Number(o.estBase) / 100);
-        if (o.details.downPayment < base) { const m = monthlyPayment(base, o.details.downPayment, months, s); o.details.estPrice = base; o.details.estMonthly = m.monthly; }
+        if (o.details.downPayment < base) {
+          const m = monthlyPayment(base, o.details.downPayment, months, o.installmentType === 'lease' ? { ...s, inst_markup_year: 0 } : s);
+          o.details.estPrice = base; o.details.estMonthly = m.monthly;
+        }
       }
     }
     const afterCreate = o.afterCreate;
@@ -389,6 +393,16 @@ export const actions = {
     const legacy = await all(`SELECT id, product_name, start_date, monthly_payment, final_date, status FROM agreements
         WHERE customer_id = :c AND order_id IS NULL ORDER BY start_date DESC`, { c: c.id });
     const DAY = 86400000;
+    // To'lov holati (progress, keyingi to'lov) — shartnomalar bo'yicha
+    const sums = new Map((await listAgreements({ customerId: c.id })).map((a) => [a.id, a]));
+    const prog = (id) => {
+      const a = sums.get(id);
+      if (!a) return {};
+      const sm = a.summary, monthly = Number(a.monthly_payment), down = Number(a.down_payment);
+      const months = monthly > 0 ? Math.round((Number(a.total_price) - down) / monthly) : null;
+      // Mijozga umumiy va qolgan qarz summasi aytilmaydi: faqat necha oy to'langani va keyingi to'lov sanasi
+      return { nextDueDate: sm.nextDueDate, overdue: sm.overdue, months, paidMonths: monthly > 0 ? Math.min(months || 0, Math.floor((sm.paid - down) / monthly)) : null };
+    };
     return {
       orders: rows.map((r) => {
         const det = JSON.parse(r.details || '{}');
@@ -397,10 +411,11 @@ export const actions = {
           publicId: r.public_id, service: r.service, title: r.title, paymentMethod: r.payment_method, status: r.status,
           price: r.payment_method === 'cash' ? toSom(r.price) : null, recipient: r.recipient, createdAt: Number(r.created_at), rentEndsAt: rent,
           canReview: r.status === 'completed' && !r.review_status, reviewStatus: r.review_status || null,
-          installment: r.agreement_id ? { id: r.agreement_id, purchasedAt: r.start_date, monthlyPayment: toSom(r.monthly_payment), finalDate: r.final_date, active: r.agreement_status === 'active' } : null,
+          installment: r.agreement_id ? { id: r.agreement_id, purchasedAt: r.start_date, monthlyPayment: toSom(r.monthly_payment), finalDate: r.final_date, active: r.agreement_status === 'active', ...prog(r.agreement_id) } : null,
+          plan: r.payment_method === 'installment' ? { type: r.installment_type || null, months: det.months || null, estMonthly: det.estMonthly || null, downPayment: det.downPayment ?? null } : null,
         };
       }),
-      agreements: legacy.map((a) => ({ id: a.id, title: a.product_name, purchasedAt: a.start_date, monthlyPayment: toSom(a.monthly_payment), finalDate: a.final_date, active: a.status === 'active' })),
+      agreements: legacy.map((a) => ({ id: a.id, title: a.product_name, purchasedAt: a.start_date, monthlyPayment: toSom(a.monthly_payment), finalDate: a.final_date, active: a.status === 'active', ...prog(a.id) })),
     };
   },
 

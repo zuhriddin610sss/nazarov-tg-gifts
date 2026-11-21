@@ -139,7 +139,8 @@ test("bo'lib to'lash: mijoz faqat 3 ma'lumotni ko'radi, oylik to'lov bir marta y
   const q = await admin({ action: 'queue' });
   const { id } = await admin({ action: 'saveInstallment', orderId: q[0].id, productName: 'Plush Pepe', totalPrice: 3000000, downPayment: 500000, monthlyPayment: 250000, startDate: '2026-11-08', finalDate: '2027-09-08' });
   const mine = (await app({ action: 'myOrders' })).orders.find((x) => x.publicId === o.publicId);
-  assert.deepEqual(Object.keys(mine.installment).sort(), ['active', 'finalDate', 'id', 'monthlyPayment', 'purchasedAt']);
+  assert.deepEqual(Object.keys(mine.installment).sort(), ['active', 'finalDate', 'id', 'monthlyPayment', 'months', 'nextDueDate', 'overdue', 'paidMonths', 'purchasedAt']);
+  assert.ok(!('remaining' in mine.installment) && !('total' in mine.installment), 'umumiy qarz ko\'rsatilmaydi');
   assert.equal(mine.price, null);
   const pk = key();
   await app({ action: 'payInstallment', id, idempotencyKey: pk });
@@ -685,4 +686,27 @@ test("O'z giftining ijarasi avtomatik: Marketapp'dagi model + fon eng arzon ijar
   const r = await app({ action: 'createOrder', service: 'own', ownId: p.id, ownMode: 'rent', days: 30, paymentMethod: 'cash', idempotencyKey: key() });
   const o = (await admin({ action: 'orders', search: r.publicId }))[0];
   assert.equal(Number(o.price), 42750);
+});
+
+test("Lizing: ustama 0%, boshlang'ich to'lov ixtiyoriy; o'z gifti va bozor gifti uchun", async () => {
+  await withPhone();
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_K', sale_inst: { enabled: true, max: 1000000 } });
+  setFetch(async (url) => {
+    const u = String(url);
+    const body = u.includes('/collections/preview') ? { collections: [{ id: 'c', name: 'Trapped Heart', short_name: 'x', floor_price: '9' }] }
+      : { total_count: 1, results: [{ id: 'L1', name: 'Trapped Heart', external_collection_number: 5, price: '10', status: 'listed', attributes: [] }] };
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  // Bozor gifti: 10 TON -> (10 + 0.1) × 17 000 = 171 700; 24 oy, boshlang'ich 21 700 -> 150 000 / 24 = 6 250
+  const r = await app({ action: 'createOrder', service: 'portals', portalsId: 'L1', paymentMethod: 'installment', installmentType: 'lease', months: 24, downPayment: 21700, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(o.installment_type, 'lease');
+  assert.deepEqual([o.details.downPayment, o.details.estMonthly], [21700, 6250]);
+  // O'z gifti: boshlang'ich to'lovsiz, 240 oy
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Diamond Ring #1250', inst_enabled: true, price_source: 'manual_som', price_manual: 765340 });
+  const own = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.name === 'Diamond Ring #1250');
+  const r2 = await app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', months: 240, downPayment: 0, idempotencyKey: key() });
+  const o2 = (await admin({ action: 'orders', search: r2.publicId }))[0];
+  assert.equal(o2.details.estMonthly, Math.ceil(765340 / 240));
+  sent.length = 0;
 });

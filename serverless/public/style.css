@@ -265,3 +265,166 @@ select.input option{background:var(--bg)}
 .pickbtn{display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer;color:var(--ink)}
 .pickbtn:disabled{opacity:.45;cursor:not-allowed}
 .pickbtn span{color:var(--muted)}
+
+/* ================= Yangi och dizayn (faqat mijoz ilovasi: body.lt) =================
+   Krem fon, oq kartochkalar, to'q yashil (logotip) va oltin aksentlar. Admin panelga ta'sir qilmaydi. */
+body.lt{
+  color-scheme:light;
+  --bg:#F6F2EA; --bg-2:#FBF8F2; --card:#FFFFFF; --card-2:#F1ECE1; --line:#E6DFD2; --line-2:#D9CFBC;
+  --sage:#1E3D2F; --sage-2:#2C5A44; --sage-deep:#1E3D2F; --cream:#14201A; --ink:#14201A; --muted:#6E756F;
+  --gold:#B48A3E; --gold-2:#E7CF95; --green-dark:#132A1F;
+  --ok:#2C5A44; --warn:#8A6A2A; --bad:#A2462F;
+  --sage-soft:rgba(30,61,47,.07); --on-sage:#F4EFE4; --warn-soft:#F6EBD3;
+  --f-display:"Inter",system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);font-size:15px;padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))
+}
+body.lt h1{letter-spacing:-.03em}
+body.lt h2{letter-spacing:-.02em}
+body.lt #sv stop{stop-color:#1E3D2F}
+body.lt .top{background:rgba(246,242,234,.92);border-bottom-color:transparent}
+body.lt .wm b{color:var(--sage)}
+body.lt .wm small{background:none;color:var(--gold);-webkit-text-fill-color:var(--gold);letter-spacing:.16em}
+body.lt .lang{background:var(--card)}
+body.lt .lang option,body.lt select.input option{background:#fff}
+body.lt .svc-ic{background:var(--card-2);box-shadow:none}
+body.lt .gimg,body.lt .hero-img{background:#EFE8DA}
+body.lt .hero-img{box-shadow:0 24px 40px -28px rgba(60,45,20,.5)}
+body.lt .gcard{box-shadow:0 10px 24px -22px rgba(60,45,20,.5)}
+body.lt .input::placeholder{color:#A39C8E}
+body.lt .btn-ghost{color:var(--sage);border-color:var(--line-2)}
+body.lt .sheet{background:var(--bg-2);border-top-color:var(--line)}
+body.lt .modal{background:rgba(20,32,26,.45)}
+body.lt .toast{background:#14201A;color:#F4EFE4}
+body.lt .wheel{background:linear-gradient(transparent 44px,#fff 44px,#fff 88px,transparent 88px),var(--card-2)}
+body.lt .balrow{background:linear-gradient(135deg,#244A38,#132A1F)}
+body.lt .balrow span{color:#C9D2CA}.body.lt .balrow b{color:#F4EFE4}
+body.lt .balrow b,body.lt .balhero b{color:#F4EFE4}
+body.lt .balhero{background:linear-gradient(155deg,#244A38,#132A1F)}
+body.lt .ownsec{border-color:#E3D3AE;background:linear-gradient(135deg,#FFFFFF,#FBF6EA)}
+body.lt .ownsec-h h2{color:var(--ink)}
+body.lt .ownsec-h h2 span{color:var(--gold)}
+body.lt .own-strip .gcard{border-color:var(--line)}
+body.lt .gk{color:var(--gold)}
+body.lt .seg{background:#EDE6D8;border-color:transparent;border-radius:15px}
+body.lt .sg{border-radius:11px;color:var(--muted);font-weight:600}
+body.lt .sg.on{background:#fff;color:var(--sage);box-shadow:0 2px 8px -4px rgba(40,30,10,.35)}
+body.lt .fchip{border-radius:11px}
+body.lt .fchip.on{background:var(--sage);color:#F4EFE4;border-color:var(--sage)}
+body.lt .fchip.on span{color:#C9D2CA}
+body.lt .tabbar-in{grid-template-columns:repeat(4,1fr);background:var(--sage);border-color:transparent;box-shadow:0 16px 30px -16px rgba(20,32,26,.6)}
+body.lt .tab{color:#9FB3A6;font-size:.68rem;font-weight:600}
+body.lt .tab[aria-current="page"]{background:#F4EFE4;color:var(--sage)}
+body.lt .opt[aria-checked="true"]{border-color:#D9BE7A;background:linear-gradient(135deg,#FFFFFF,#FBF6EA)}
+body.lt .opt[aria-checked="true"] .dot{border-color:var(--sage)}
+body.lt .opt[aria-checked="true"] .dot::after{background:var(--sage)}
+body.lt .chip[aria-pressed="true"]{background:var(--sage);color:#F4EFE4;border-color:var(--sage)}
+body.lt .step-n{background:var(--sage);color:#F4EFE4}
+body.lt .mcard.on{border-color:#D9BE7A;background:linear-gradient(135deg,#fff,#FBF6EA);box-shadow:none}
+
+/* --- Bosh sahifa --- */
+.hx{position:relative;overflow:hidden;border-radius:28px;margin-top:6px;padding:22px 20px 20px;min-height:270px;color:#F4EFE4;
+  background:linear-gradient(155deg,#244A38 0%,#1A3428 60%,#132A1F 100%);text-decoration:none;display:block}
+.hx:after{content:"";position:absolute;inset:0;background:radial-gradient(300px 220px at 85% 25%,rgba(231,207,149,.22),transparent 70%);pointer-events:none}
+.hx .k{position:relative;z-index:1;display:inline-flex;border:1px solid rgba(231,207,149,.55);color:#E7CF95;font-size:.66rem;font-weight:700;letter-spacing:.16em;padding:5px 10px;border-radius:999px}
+.hx h1{position:relative;z-index:1;font:700 1.8rem/1.06 var(--f-display);letter-spacing:-.035em;margin:14px 0 10px;max-width:62%;color:#F4EFE4}
+.hx h1 span{color:#E7CF95}
+.hx p{position:relative;z-index:1;font-size:.82rem;line-height:1.45;color:#C9D2CA;max-width:56%;margin:0 0 18px}
+.hx .im{position:absolute;right:-14px;top:92px;width:40%;max-width:150px;aspect-ratio:1;border-radius:30px;overflow:hidden;transform:rotate(6deg);box-shadow:0 30px 50px -20px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.14);background:#2C4535}
+.hx .im img{width:100%;height:100%;object-fit:cover;display:block}
+.hx .go{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;background:#F4EFE4;color:var(--sage);font-weight:700;font-size:.9rem;padding:12px 16px;border-radius:14px}
+.hx .pr{position:relative;z-index:1;font-size:.7rem;color:#AEB9B0;margin-top:10px}.hx .pr b{display:block;font-size:1.05rem;color:#fff;letter-spacing:-.02em}
+.trust{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:20px}
+.trust div{padding:12px 6px;text-align:center}.trust div+div{border-left:1px solid var(--line)}
+.trust b{display:block;font-size:1.05rem;letter-spacing:-.02em;color:var(--sage)}.trust small{font-size:.66rem;color:var(--muted);font-weight:600}
+.h2x{font:700 1.22rem var(--f-display);letter-spacing:-.025em;margin:26px 0 12px}
+.way{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px 16px;margin-bottom:10px;text-decoration:none;color:var(--ink)}
+.way .ic{flex:0 0 44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--card-2)}
+.way .ic svg{width:21px;height:21px;fill:none;stroke:var(--sage);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.way b{display:block;font-size:.95rem;letter-spacing:-.01em}.way small{font-size:.76rem;color:var(--muted)}
+.way .r{margin-left:auto;text-align:right;white-space:nowrap}.way .r span{display:block;font-size:.6rem;color:var(--muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase}.way .r b{font-size:.9rem;color:var(--sage)}
+.way.main{background:linear-gradient(135deg,#FFFFFF,#FBF6EA);border-color:#E3D3AE}.way.main .ic{background:var(--sage)}.way.main .ic svg{stroke:#E7CF95}
+.bdg0{display:inline-block;font-size:.62rem;font-weight:800;color:#3A2A00;background:#E7CF95;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:2px;letter-spacing:0}
+.how{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:4px 16px}
+.how div{display:flex;gap:14px;align-items:flex-start;padding:12px 0}.how div+div{border-top:1px solid var(--line)}
+.how i{font-style:normal;font-weight:700;font-size:.82rem;color:var(--gold);letter-spacing:.06em;margin-top:2px}
+.how b{display:block;font-size:.9rem}.how small{font-size:.76rem;color:var(--muted)}
+.more2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.more2 a{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px 14px;text-decoration:none;color:var(--ink)}.more2 b{display:block;font-size:.88rem}.more2 small{font-size:.72rem;color:var(--muted)}
+.seg4{display:grid;grid-template-columns:.9fr 1.35fr .85fr .85fr;gap:4px;padding:4px;border-radius:15px;background:#EDE6D8;margin-top:4px}
+.seg4 button{border:0;background:transparent;padding:9px 2px;border-radius:11px;font-weight:600;font-size:.8rem;color:var(--muted);cursor:pointer;white-space:nowrap}
+.seg4 button.on{background:#fff;color:var(--sage);box-shadow:0 2px 8px -4px rgba(40,30,10,.35)}
+
+/* --- Gift sahifasi va hisob sahifasi --- */
+.pimg2{position:relative;margin-top:8px;aspect-ratio:1.45;border-radius:30px;overflow:hidden;display:grid;place-items:center;background:#EFE8DA}
+.pimg2 img{width:100%;height:100%;object-fit:cover}
+.pimg2 .ph{font:700 1.1rem var(--f-display);color:var(--muted)}
+.pnum{position:absolute;right:12px;bottom:12px;background:rgba(255,255,255,.88);padding:5px 10px;border-radius:10px;font-weight:700;font-size:.78rem}
+.kick2{margin-top:16px;font-size:.66rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold,#B48A3E)}
+.ptitle{font:700 1.65rem var(--f-display);letter-spacing:-.03em;margin:4px 0 0}
+.pattrs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.pattrs div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px;min-width:0}
+.pattrs span{display:block;font-size:.58rem;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.pattrs b{display:block;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.popt{display:flex;align-items:center;gap:12px;width:100%;margin-top:10px;text-align:left;border-radius:20px;border:1px solid var(--line);background:var(--card);padding:14px 16px;cursor:pointer;color:var(--ink)}
+.popt.on{border-color:#D9BE7A;background:linear-gradient(135deg,#FFFFFF,#FBF6EA);box-shadow:0 14px 26px -20px rgba(120,90,30,.6)}
+.popt .rd{flex:0 0 18px;height:18px;border-radius:50%;border:2px solid #CFC6B4}
+.popt.on .rd{border-color:var(--sage);box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 9px var(--sage)}
+.popt .pt{flex:1;min-width:0;display:grid;gap:2px}.popt .pt b{font-size:.95rem}.popt .pt small{font-size:.76rem;color:var(--muted)}
+.popt .pr2{text-align:right;white-space:nowrap}.popt .pr2 span{display:block;font-size:.6rem;color:var(--muted);font-weight:700;letter-spacing:.1em;text-transform:uppercase}.popt .pr2 b{font-size:1.1rem;color:var(--sage);letter-spacing:-.02em}
+.lznote{display:flex;align-items:center;margin-top:12px;font-size:.76rem;color:var(--muted)}
+.cta2{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:center;margin-top:10px;padding:18px 0 8px;background:linear-gradient(180deg,rgba(246,242,234,0),var(--bg) 30%)}
+.cta2 .s{white-space:nowrap}.cta2 .s span{display:block;font-size:.6rem;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase}.cta2 .s b{font-size:1.2rem;letter-spacing:-.02em;color:var(--sage)}
+.cta2 .btn{flex:1}
+.big2{text-align:center;padding:6px 0 2px}.big2 span{font-size:.64rem;letter-spacing:.16em;font-weight:700;color:var(--muted)}.big2 b{display:block;font:700 2rem var(--f-display);letter-spacing:-.035em;color:var(--sage);margin-top:4px}
+.kv2{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);font-size:.84rem;color:var(--muted)}.kv2 b{color:var(--ink)}
+.plan-h{display:flex;align-items:center;gap:12px;margin:10px 0 14px}
+.pthumb{flex:0 0 52px;height:52px;border-radius:15px;overflow:hidden;display:grid;place-items:center;background:#EFE8DA}.pthumb img{width:100%;height:100%;object-fit:cover}.pthumb .ph{font-size:.5rem}
+.plan-h small{display:block;font-size:.64rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold,#B48A3E)}.plan-h b{font-size:1.05rem}
+.res{border-radius:26px;padding:18px;background:linear-gradient(155deg,#244A38,#132A1F);color:#F4EFE4}
+.res .t{display:flex;justify-content:space-between;align-items:center}.res .t>span:first-child{font-size:.64rem;letter-spacing:.18em;font-weight:700;color:#C9D2CA}
+.res b{display:block;font:700 2.4rem var(--f-display);letter-spacing:-.04em;margin:6px 0 8px;color:#F4EFE4}.res b em{font-style:normal;font-size:1rem;font-weight:600;color:#C9D2CA}
+.res .m{font-size:.76rem;color:#C9D2CA}
+.fh{display:flex;justify-content:space-between;align-items:baseline;font-size:.84rem;color:var(--muted);font-weight:600}
+.wheel2 .wheel-i{display:flex;justify-content:space-between;padding:0 22px;font-size:.95rem}
+.wheel2 .wheel-i span:last-child{font-size:.86em}
+.wheel2 .wheel-i.on span:last-child{color:var(--sage)}
+.ynb{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:11px;font-weight:600;color:var(--muted);cursor:pointer}
+.ynb.on{border-color:var(--sage);color:var(--sage);background:#F1F5F0}
+.amt{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:13px;border:1.5px solid var(--sage);background:#fff}
+.amt input{flex:1;min-width:0;border:0;outline:0;font:800 1.3rem var(--f-display);letter-spacing:-.02em;background:transparent}
+.amt em{font-style:normal;color:var(--muted);font-weight:600}
+.tl div{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:10px;padding:7px 0;position:relative;font-size:.84rem;color:var(--muted)}
+.tl div b{color:var(--ink)}
+.tl i{width:10px;height:10px;border-radius:50%;border:2px solid #D6CDBB;justify-self:center;background:#fff;z-index:1}
+.tl i.on{border-color:#B48A3E;background:#B48A3E}.tl i.end{border-color:var(--sage);background:var(--sage)}
+.tl div:not(:last-child):after{content:"";position:absolute;left:8px;top:22px;bottom:-8px;width:2px;background:#E6DFD2}
+
+body.lt .box{grid-template-columns:minmax(0,1fr)}
+.amt input{width:0}
+.res .bdg0{margin:0}
+
+/* Bitta katta "reklama" kartochka (birin-ketin almashadi) */
+.feat{scroll-snap-type:x mandatory;gap:12px;padding-right:14px}
+.feat .gcard{flex:0 0 100%!important;min-width:0!important;scroll-snap-align:start;display:grid;grid-template-columns:46% 1fr;align-items:center}
+.feat .gcard .gimg{aspect-ratio:1}
+.feat .gcard .gb{padding:12px 14px;gap:4px}
+.feat .gcard .gb b{font-size:1.02rem;white-space:normal}
+.feat .gcard .gp b{font-size:1.15rem}
+.fdots{display:flex;gap:5px;justify-content:center;margin-top:10px;padding-right:14px}
+.fdots i{width:6px;height:6px;border-radius:3px;background:#D5CCBC;transition:width .2s}
+.fdots i.on{width:18px;background:var(--sage)}
+/* Gift sahifasida rasm to'liq ko'rinadi */
+.pimg2{aspect-ratio:1;max-width:380px;margin:8px auto 0}
+/* Xaridlarim va balans */
+.ord-h{display:flex;align-items:center;gap:12px}
+.othumb{flex:0 0 52px;height:52px;border-radius:15px;overflow:hidden;display:grid;place-items:center;background:#EFE8DA}.othumb img{width:100%;height:100%;object-fit:cover}.othumb .ph{font-size:.5rem;padding:2px}
+.ot{flex:1;min-width:0;display:grid;gap:2px}.ot b{font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ot small{font-size:.66rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold,#B48A3E)}
+.prog{height:8px;border-radius:8px;background:#EDE6D8;margin-top:6px;overflow:hidden}.prog div{height:100%;background:linear-gradient(90deg,#2C5A44,#B48A3E)}
+.paybox{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--bg)}
+.paybox span{display:block;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}.paybox b{font-size:1.1rem;letter-spacing:-.02em}
+.paybox.late span{color:var(--bad)}
+.paybox .btn{flex:0 0 auto}
+body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
+.balhero .bh{color:#C9D2CA;font-size:.8rem;margin-top:10px}
+.balhero .bhb{display:inline-block;margin-top:12px;justify-self:start;background:#F4EFE4;color:#1E3D2F;font-weight:700;font-size:.88rem;padding:11px 16px;border-radius:13px;text-decoration:none}
