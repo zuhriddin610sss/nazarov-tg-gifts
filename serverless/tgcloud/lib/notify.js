@@ -6,7 +6,7 @@ import { t, money } from 'lib/texts';
 import { MINI_APP_URL } from 'lib/config';
 
 const SERVICE = { nft_gift: "NFT gift", gift_rent: "NFT gift ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
-const ITYPE = { lease: 'Lizing (0%)', plan1: '1-tur', plan2: "Boshlang'ich to'lovsiz", uzum: 'Uzum Nasiya' };
+const ITYPE = { lease: 'Lizing', plan1: '1-tur', plan2: "Boshlang'ich to'lovsiz", uzum: 'Uzum Nasiya' };
 
 async function send(chatId, text, extra = {}) {
   try { return await api.sendMessage({ chat_id: chatId, text, ...extra }); }
@@ -42,7 +42,7 @@ export async function notifyNewOrder(orderId) {
     det.listing ? `Sotuvchi (gift egasi): ${det.seller}. Unga yozib, giftni oling. E'lon "Sotildi" deb belgilandi.` : null,
     det.market ? `Bozor: ${det.market} · narxi ${det.ton} TON${det.slug ? ` · ${det.slug}` : ''}. Avval hali sotuvdaligini tekshiring.` : null,
     det.portals ? `Portals narxi: ${det.ton} TON (ID: ${det.portals}). Avval Portals'da hali sotuvdaligini tekshiring.` : null,
-    `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : o.installment_type === 'lease' ? 'Lizing (0%, ustamasiz)' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
+    `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : o.installment_type === 'lease' ? 'Lizing' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
     det.months ? `Muddat: ${det.months} oy` : null,
     det.downPayment != null ? `Boshlang'ich to'lov: ${det.downPayment > 0 ? money(det.downPayment) + " so'm" : "yo'q"}`
       : o.installment_type === 'plan1' ? "Boshlang'ich to'lov: admin belgilaydi" : null,

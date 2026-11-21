@@ -697,16 +697,16 @@ test("Lizing: ustama 0%, boshlang'ich to'lov ixtiyoriy; o'z gifti va bozor gifti
       : { total_count: 1, results: [{ id: 'L1', name: 'Trapped Heart', external_collection_number: 5, price: '10', status: 'listed', attributes: [] }] };
     return { ok: true, status: 200, text: async () => JSON.stringify(body) };
   });
-  // Bozor gifti: 10 TON -> (10 + 0.1) × 17 000 = 171 700; 24 oy, boshlang'ich 21 700 -> 150 000 / 24 = 6 250
+  // Bozor gifti: 10 TON -> (10 + 0.1) × 17 000 = 171 700; 24 oy, boshlang'ich 21 700 -> 150 000 × (1 + 24×100%/12) / 24 = 18 750 (lizingda ham ustama)
   const r = await app({ action: 'createOrder', service: 'portals', portalsId: 'L1', paymentMethod: 'installment', installmentType: 'lease', months: 24, downPayment: 21700, idempotencyKey: key() });
   const o = (await admin({ action: 'orders', search: r.publicId }))[0];
   assert.equal(o.installment_type, 'lease');
-  assert.deepEqual([o.details.downPayment, o.details.estMonthly], [21700, 6250]);
+  assert.deepEqual([o.details.downPayment, o.details.estMonthly], [21700, 18750]);
   // O'z gifti: boshlang'ich to'lovsiz, 240 oy
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Diamond Ring #1250', inst_enabled: true, price_source: 'manual_som', price_manual: 765340 });
   const own = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.name === 'Diamond Ring #1250');
   const r2 = await app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', months: 240, downPayment: 0, idempotencyKey: key() });
   const o2 = (await admin({ action: 'orders', search: r2.publicId }))[0];
-  assert.equal(o2.details.estMonthly, Math.ceil(765340 / 240));
+  assert.equal(o2.details.estMonthly, Math.ceil(Math.ceil(765340 * 21) / 240));
   sent.length = 0;
 });

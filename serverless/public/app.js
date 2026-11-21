@@ -460,8 +460,8 @@ const SILVER_DEFS = '<svg width="0" height="0" style="position:absolute" aria-hi
 const HOME_ROUTE = { nft_gift: "buy-nft", buy: "buy", gift_rent: "rent", username_rent: "rent", number_rent: "rent", premium: "premium", stars: "stars" };
 const RENT_TAB = { gift_rent: "gifts", username_rent: "usernames", number_rent: "numbers" };
 
-/** Lizing (0%): eng kichik oylik to'lov (240 oy, boshlang'ich to'lovsiz). */
-const leaseMin = (price) => (price > 0 ? Math.ceil(Number(price) / WHEEL_MAX) : null);
+/** Lizing: eng kichik oylik to'lov (240 oy, boshlang'ich to'lovsiz, ustama bilan). */
+const leaseMin = (price) => (price > 0 ? planMonthly(price, 0, WHEEL_MAX, "lease") : null);
 const HIC = {
   lease: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   inst: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="3"/><path d="M2 11h20M6 15h4"/></svg>',
@@ -495,7 +495,7 @@ async function viewHome(v) {
       <div class="trust"><div><b>0%</b><small>${esc(t("trust_0"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>` : ""}
       ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
       <h2 class="h2x">${esc(t("ways_title"))}</h2>
-      ${en.nft_gift !== false ? way("lease", HIC.lease, `${esc(t("w_lease"))}<span class="bdg0">0%</span>`, t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
+      ${en.nft_gift !== false ? way("lease", HIC.lease, esc(t("w_lease")), t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
       ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
       ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
       ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
@@ -1234,9 +1234,9 @@ async function viewSale(v, head, bindTabs, mode) {
 }
 // ---------- Gift sahifasi: Lizing · Bo'lib to'lash · Ijara · Naqd ----------
 const yearPct = () => (S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100);
-/** Oylik to'lov: lizingda ustama 0%, bo'lib to'lashda admin ustamasi. */
+/** Oylik to'lov: lizing va bo'lib to'lashda admin ustamasi (oyiga qarab). */
 function planMonthly(base, down, months, itype) {
-  const pct = itype === "lease" ? 0 : yearPct();
+  const pct = yearPct();
   const rest = Math.max(0, Number(base) - Number(down || 0));
   return Math.ceil(Math.ceil(rest * (1 + (months * pct) / 12 / 100)) / months);
 }
@@ -1258,7 +1258,7 @@ function planOptsHtml(p, base, down1) {
   if (p.tab === "lease") {
     return card("lease", t("lz_nodown"), t("lz_nodown_d"), base > 0 ? money(leaseMin(base)) : "", "") +
       card("lease_dp", t("lz_down"), t("lz_down_d"), "", "") +
-      `<p class="lznote"><span class="bdg0" style="margin:0 8px 0 0">0%</span>${esc(t("lz_note"))}</p>`;
+      `<p class="lznote">${esc(t("lz_note"))}</p>`;
   }
   return card("plan2", t("plan2"), t("lz_nodown_d"), base > 0 ? money(minMonthly(base)) : "", "0%") +
     card("plan1", t("plan1"), down1 != null ? t("inst_p1_d", { d: money(down1) }) : t("down_by_admin"), "", "") +
@@ -1343,7 +1343,7 @@ function viewPlan(v) {
     if (pl.months > 2) rows.push([fmtD(addMonths(today, 2)), m ? som(m) : "—", ""], ["…", "", ""]);
     if (pl.months > 1) rows.push([fmtD(addMonths(today, pl.months)), t("last_pay"), "end"]);
     return {
-      res: `<div class="t"><span>${esc(t("monthly_up"))}</span><span class="bdg0" style="margin:0">${esc(lease ? t("zero_markup") : d === 0 ? t("zero_down") : t("approx"))}</span></div>
+      res: `<div class="t"><span>${esc(t("monthly_up"))}</span><span class="bdg0" style="margin:0">${esc(d === 0 ? t("zero_down") : t("approx"))}</span></div>
         <b>${m ? esc(money(m)) : "—"} <em>${esc(t("som"))}</em></b>
         <div class="m">${esc(pl.months)} ${esc(t("months_unit"))} · ${esc(t("pay_day", { d: today.getDate() }))}${d > 0 ? ` · ${esc(t("today_pay", { a: money(d) }))}` : ""}</div>`,
       tl: rows.map(([a, b, c]) => `<div><i class="${c}"></i><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join(""),

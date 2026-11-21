@@ -13,7 +13,7 @@ const day = (d) => d ? String(d).slice(0, 10) : "—";
 const key = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-zA-Z0-9]/g, "").slice(0, 40);
 const SVC = { nft_gift: "NFT gift", gift_rent: "NFT ijara", username_rent: "Username ijara", number_rent: "Raqam ijara", premium: "Premium", stars: "Stars" };
 const ST = { queued: "Navbatda", completed: "Amalga oshirildi", cancelled: "Bekor qilindi" };
-const IT = { lease: "Lizing (0%)", plan1: "1-tur", plan2: "Boshlang'ich to'lovsiz", uzum: "Uzum Nasiya" };
+const IT = { lease: "Lizing", plan1: "1-tur", plan2: "Boshlang'ich to'lovsiz", uzum: "Uzum Nasiya" };
 let toastT;
 const toast = (m) => { const el = $("#toast"); el.textContent = m; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), 3500); };
 const sheet = (h) => { $("#sheet").innerHTML = h; $("#modal").hidden = false; };

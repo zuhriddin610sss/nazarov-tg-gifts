@@ -370,7 +370,7 @@ export const actions = {
       if (o.estBase && o.details.downPayment != null) {
         const base = Math.ceil(Number(o.estBase) / 100);
         if (o.details.downPayment < base) {
-          const m = monthlyPayment(base, o.details.downPayment, months, o.installmentType === 'lease' ? { ...s, inst_markup_year: 0 } : s);
+          const m = monthlyPayment(base, o.details.downPayment, months, s);
           o.details.estPrice = base; o.details.estMonthly = m.monthly;
         }
       }
