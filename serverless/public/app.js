@@ -1290,11 +1290,11 @@ function planOptsHtml(p, base, down1) {
     ${right ? `<span class="pr2"><span>${esc(t("per_month"))}</span><b>${esc(right)}</b></span>` : ""}</button>`;
   if (p.tab === "lease") {
     return card("lease", t("lz_nodown"), t("lz_nodown_d"), base > 0 ? money(leaseMin(base)) : "", "") +
-      card("lease_dp", t("lz_down"), t("lz_down_d"), "", "") +
+      card("lease_dp", t("lz_down"), t("lz_down_d"), base > 0 ? t("lt_x", { a: money(leaseMin(base)) }) : "", "") +
       `<p class="lznote"><span class="bdg0" style="margin:0 8px 0 0">${esc(t("zero_fine"))}</span>${esc(t("lz_note"))}</p>`;
   }
   return card("plan2", t("plan2"), t("lz_nodown_d"), base > 0 ? money(minMonthly(base)) : "", "0%") +
-    card("plan1", t("plan1"), down1 != null ? t("inst_p1_d", { d: money(down1) }) : t("down_by_admin"), "", "") +
+    card("plan1", t("plan1"), down1 != null ? t("inst_p1_d", { d: money(down1) }) : t("down_by_admin"), base > 0 && down1 != null && down1 < base ? money(planMonthly(base, down1, WHEEL_MAX, "plan1")) : "", "") +
     card("uzum", t("uzum"), t("uzum_d2"), base > 0 ? money(planMonthly(base, 0, 12, "uzum")) : "", "");
 }
 function bindPlanOpts(v, p) {
@@ -1324,7 +1324,7 @@ function viewSaleItem(v) {
     $("#go", v).onclick = () => placeOrder(body({ paymentMethod: "cash" }), it.price);
     return;
   }
-  v.innerHTML = head + planOptsHtml(p, it.price, it.down1) + planCtaHtml(p, it.price);
+  v.innerHTML = head + planOptsHtml(p, it.price, it.down1) + planCtaHtml(Object.assign(p, { _down1: it.down1 }), it.price);
   bindPayTabs(v, p); bindPlanOpts(v, p);
   $("#go", v).onclick = () => openPlan({ name: saleLabel(it), img: saleImg(it), base: it.price, itype: p.itype, down1: it.down1, key: p.key,
     build: (x) => body({ paymentMethod: "installment", ...x }) });
@@ -1336,8 +1336,9 @@ function cashBoxHtml(price) {
     <p class="hint">${esc(t("sale_hint"))}</p></div>`;
 }
 function planCtaHtml(p, base) {
-  const m = p.itype === "lease" ? leaseMin(base) : p.itype === "plan2" ? minMonthly(base) : p.itype === "uzum" ? planMonthly(base, 0, 12, "uzum") : null;
-  return `<div class="cta2"><div class="s"><span>${esc(t("per_month_up"))}</span><b>${m ? esc(som(m)) : "—"}</b></div>
+  const m = ["lease", "lease_dp"].includes(p.itype) ? leaseMin(base) : p.itype === "plan2" ? minMonthly(base) : p.itype === "uzum" ? planMonthly(base, 0, 12, "uzum")
+    : p.itype === "plan1" && p._down1 != null && p._down1 < base ? planMonthly(base, p._down1, WHEEL_MAX, "plan1") : null;
+  return `<div class="cta2"><div class="s"><span>${esc(t("per_month_up"))}</span><b>${m ? esc(p.itype === "lease_dp" ? t("lt_x", { a: som(m) }) : som(m)) : "—"}</b></div>
     <button class="btn btn-primary" id="go" type="button">${esc(t("next"))}</button></div>`;
 }
 function bindPayTabs(v, p) {
@@ -1580,7 +1581,7 @@ function viewRentItem(v) {
     return;
   }
   if (p.tab === "lease" || p.tab === "inst") {
-    v.innerHTML = title + planOptsHtml(p, it.salePrice, it.down1) + planCtaHtml(p, it.salePrice);
+    v.innerHTML = title + planOptsHtml(p, it.salePrice, it.down1) + planCtaHtml(Object.assign(p, { _down1: it.down1 }), it.salePrice);
     bindMode(); bindPlanOpts(v, p);
     $("#go", v).onclick = () => openPlan({ name: it.name, img, base: it.salePrice, itype: p.itype, down1: it.down1, key: p.key,
       build: (x) => ({ service: "own", ownId: it.id, ownMode: "buy", paymentMethod: "installment", idempotencyKey: p.key, ...x }) });
