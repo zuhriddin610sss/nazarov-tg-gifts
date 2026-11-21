@@ -428,7 +428,7 @@ function agreementForm(a) {
   sheet(`<h2>${edit ? "Shartnomani tahrirlash" : legacy ? "Eski shartnoma qo'shish" : "Yangi shartnoma"}</h2>
     <form class="form" id="af">
       ${legacy ? "" : `<div class="calc full"><b>Kalkulyator</b>
-        <div class="row3"><div class="field"><label>Gift narxi (ustamasiz)</label><input class="input" id="cBase" inputmode="decimal" value="${esc(a._base ?? "")}"></div>
+        <div class="row3"><div class="field"><label>Gift narxi (foizsiz)</label><input class="input" id="cBase" inputmode="decimal" value="${esc(a._base ?? "")}"></div>
         <div class="field"><label>Muddat (oy)</label><input class="input" id="cMon" inputmode="numeric" value="${esc(a._months ?? "")}"></div>
         <button class="btn btn-ghost btn-sm" id="cGo" type="button">Hisoblash</button></div>
         <p class="hint" id="cOut" style="margin:0">Narx, muddat va boshlang'ich to'lovni yozib "Hisoblash"ni bosing — umumiy narx, oylik to'lov va oxirgi sana o'zi to'ladi. Ustama: Sozlamalardan (lizingda — lizing ustamasi).</p></div>`}

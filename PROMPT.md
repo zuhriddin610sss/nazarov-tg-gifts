@@ -85,7 +85,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Marketapp: faqat ijara (bepul). Sotuv narxlari (onsale) pullik — 402.
 
 **Lizing**
-- Lizing ustamasi alohida: Sozlamalar → "Lizing: 12 oylik ustama" (standart 20%/yil). Mijozga "0%" deb ko'rsatiladi (egasi qarori). 1–240 oy, 2 turi: boshlang'ich to'lovsiz va boshlang'ich to'lovli (mijoz summani o'zi yozadi). Muddat barabanda tanlanadi.
+- Lizing ustamasi alohida: Sozlamalar → "Lizing: 12 oylik ustama" (standart 20%/yil). Mijozga "Foizsiz" deb ko'rsatiladi (egasi qarori), "ustamasiz" so'zi ishlatilmaydi. 1–240 oy, 2 turi: boshlang'ich to'lovsiz va boshlang'ich to'lovli (mijoz summani o'zi yozadi). Muddat barabanda tanlanadi.
 - Gift darhol mijozga beriladi. To'lov to'xtasa gift qaytarib olinadi, to'langan pul qaytarilmaydi (bo'lib to'lashda ham). Zalog haqida botda yozilmaydi.
 - To'lov kuni = xarid kuni, mijoz tanlay olmaydi. Mijozga umumiy/qolgan qarz ko'rsatilmaydi — faqat keyingi to'lov, progress va oxirgi sana.
 - Bo'lib to'lashda "0% boshlang'ich" deb halol yoziladi.
