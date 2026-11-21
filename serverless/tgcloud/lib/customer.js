@@ -33,6 +33,7 @@ export function ownOut(p, ppd = null, s = null) {
     id: p.id, kind: p.kind, name: p.name, image: p.image || null, model: p.model || null, backdrop: p.backdrop || null, symbol: p.symbol || null,
     rent,
     installment: Boolean(p.inst_enabled), cashPrice: p.cash_enabled && p.cash_price ? toSom(p.cash_price) : null,
+    isNew: Number(p.created_at) > Date.now() - 7 * 86400000,
   };
 }
 

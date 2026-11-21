@@ -500,8 +500,7 @@ async function viewHome(v) {
       ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
       ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
       ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
-        <div class="strip own-strip feat">${buyable.slice(0, 8).map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>
-        ${buyable.length > 1 ? `<div class="fdots">${buyable.slice(0, 8).map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}` : ""}
+        <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}
       <h2 class="h2x">${esc(t("how_title"))}</h2>
       <div class="how"><div><i>01</i><span><b>${esc(t("how1"))}</b><small>${esc(t("how1d"))}</small></span></div>
         <div><i>02</i><span><b>${esc(t("how2"))}</b><small>${esc(t("how2d"))}</small></span></div>
@@ -742,7 +741,7 @@ function normOwn(o) {
     attributes: [["Model", o.model], ["Backdrop", o.backdrop], ["Symbol", o.symbol]].filter((a) => a[1]).map(([trait_type, value]) => ({ trait_type, value })),
     rent: Boolean(o.rent), ppd: o.rent && o.rent.pricePerDay != null ? Number(o.rent.pricePerDay) : 0, minDays: o.rent ? o.rent.minDays : 1, maxDays: o.rent ? o.rent.maxDays : 1,
     ownPpdNano: o.rent && o.rent.pricePerDayNano ? o.rent.pricePerDayNano : null, ownF: o.rent && o.rent.formula ? o.rent.formula : null,
-    installment: o.installment, cashPrice: o.cashPrice, salePrice: o.salePrice ?? null, down1: o.down1 ?? null };
+    installment: o.installment, cashPrice: o.cashPrice, salePrice: o.salePrice ?? null, down1: o.down1 ?? null, isNew: Boolean(o.isNew) };
 }
 async function loadOwn(cat) {
   const st = rentState(cat);
@@ -770,28 +769,55 @@ const shortName = (name) => String(name).replace(/\s*#\s*\d+$/, "");
 function ownSection(cat, list, f, sub, noAll) {
   if (!list.length) return "";
   return `<section class="ownsec"><div class="ownsec-h"><h2>⭐ ${esc(t("our_gifts"))}${sub ? ` <span>· ${esc(t(sub))}</span>` : ""}</h2></div>
-    <div class="strip own-strip feat">${list.map((it) => giftCard(cat, it, f)).join("")}</div>
-    ${list.length > 1 ? `<div class="fdots">${list.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}</section>
+    <div class="strip own-strip feat">${list.map((it) => giftCard(cat, it, f)).join("")}</div>${featNav(list.length)}</section>
     ${noAll ? "" : `<div class="sect-h"><h2>${esc(t("all_gifts"))}</h2></div>`}`;
 }
-/** "Bizning giftlarimiz": giftlar birin-ketin (4 soniyada) almashib turadi; surib ham ko'rish mumkin. */
+/** Karusel pastidagi panel: "3 / 12", 4 soniyalik to'lib boruvchi chiziq va "Hammasi" tugmasi. */
+function featNav(n) {
+  if (n < 2) return "";
+  return `<div class="fnav"><span class="fcnt"><b>1</b> / ${n}</span><span class="fbar"><i></i></span>
+    <button type="button" class="fall" data-fall>${esc(t("feat_all"))}</button></div>`;
+}
+/** "Bizning giftlarimiz": giftlar birin-ketin (4 soniyada) almashadi. Mijoz tegsa — 8 soniya to'xtaydi.
+ *  "Hammasi" bosilsa — hamma giftlar 2 ustunli ro'yxat bo'lib ochiladi. */
 function startFeat() {
   clearInterval(S.featTimer);
-  const sync = (el) => {
-    const dots = el.parentElement && el.parentElement.querySelector(".fdots");
-    if (!dots) return;
-    const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
-    dots.querySelectorAll("i").forEach((d, k) => d.classList.toggle("on", k === i));
+  const step = (el) => (el.children[1] ? el.children[1].offsetLeft - el.children[0].offsetLeft : el.clientWidth);
+  const idx = (el) => (el.scrollLeft >= el.scrollWidth - el.clientWidth - 2 ? el.children.length - 1 : Math.round(el.scrollLeft / Math.max(1, step(el))));
+  const nav = (el) => el.parentElement && el.parentElement.querySelector(".fnav");
+  const restartBar = (el) => {
+    const b = nav(el) && nav(el).querySelector(".fbar i");
+    if (!b) return;
+    b.style.animation = "none"; void b.offsetWidth;
+    b.style.animation = el.classList.contains("all") || el._hold > Date.now() ? "none" : "";
   };
-  document.querySelectorAll(".feat").forEach((el) => { if (!el.dataset.b) { el.dataset.b = "1"; el.addEventListener("scroll", () => sync(el), { passive: true }); } });
-  S.featTimer = setInterval(() => {
-    document.querySelectorAll(".feat").forEach((el) => {
-      if (el.children.length < 2 || el.matches(":hover")) return;
-      const w = el.clientWidth, i = Math.round(el.scrollLeft / Math.max(1, w));
-      el.scrollTo({ left: i + 1 >= el.children.length ? 0 : (i + 1) * w, behavior: "smooth" });
+  const show = (el, i) => { el._i = i; const n = nav(el); if (n) n.querySelector(".fcnt b").textContent = i + 1; restartBar(el); };
+  const sync = (el) => { if (el._auto > Date.now()) return; const i = Math.min(el.children.length - 1, idx(el)); if (el._i !== i) show(el, i); };
+  document.querySelectorAll(".feat").forEach((el) => {
+    if (el.dataset.b) return;
+    el.dataset.b = "1"; el._i = 0;
+    el.addEventListener("scroll", () => sync(el), { passive: true });
+    const hold = () => { el._hold = Date.now() + 8000; restartBar(el); clearTimeout(el._ht); el._ht = setTimeout(() => restartBar(el), 8100); };
+    const bar = nav(el) && nav(el).querySelector(".fbar i");
+    if (bar) bar.addEventListener("animationend", () => {
+      if (!el.isConnected || el.classList.contains("all") || el._hold > Date.now()) return;
+      const next = (el._i + 1) % el.children.length;
+      el._auto = Date.now() + 900;
+      el.scrollTo({ left: next * step(el), behavior: "smooth" });
+      show(el, next);
     });
-  }, 4000);
-  // dev-serverda ham render() dan keyin bitta yangi blok bo'lishi mumkin
+    el.addEventListener("touchstart", hold, { passive: true });
+    el.addEventListener("pointerdown", hold);
+    const n = nav(el), btn = n && n.querySelector("[data-fall]");
+    if (btn) btn.onclick = () => {
+      const open = el.classList.toggle("all");
+      n.classList.toggle("open", open);
+      btn.textContent = t(open ? "feat_less" : "feat_all");
+      if (!open) { el.scrollLeft = 0; show(el, 0); el.parentElement.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+      restartBar(el);
+    };
+    restartBar(el);
+  });
   setTimeout(() => document.querySelectorAll(".feat").forEach((el) => { if (!el.dataset.b) startFeat(); }), 1500);
 }
 function priceLine(it, f) {
@@ -818,7 +844,7 @@ function giftCard(cat, it, f) {
   const model = (it.attributes || []).find((a) => /model/i.test(a.trait_type));
   const img = it.own && it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy">` : imgTag(cat, it.name);
   return `<button type="button" class="gcard${it.own ? " own" : ""}" data-a="${esc(it.address)}">
-    <span class="gimg">${img}${it.own ? `<span class="adtag">${esc(t("ad_tag"))}</span>` : ""}</span>
+    <span class="gimg">${img}${it.own ? `<span class="adtag">${esc(t("ad_tag"))}</span>` : ""}${it.isNew ? `<span class="newtag">${esc(t("new_tag"))}</span>` : ""}</span>
     <span class="gb"><b>${esc(cat === "gifts" ? shortName(it.name) : it.name)}</b>
       ${model ? `<small>${esc(model.value)}</small>` : ""}
       <span class="gp">${priceLine(it, f)}</span></span></button>`;

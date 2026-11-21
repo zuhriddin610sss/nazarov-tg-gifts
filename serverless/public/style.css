@@ -406,7 +406,7 @@ body.lt .box{grid-template-columns:minmax(0,1fr)}
 
 /* Bitta katta "reklama" kartochka (birin-ketin almashadi) */
 .feat{scroll-snap-type:x mandatory;gap:12px;padding-right:14px}
-.feat .gcard{flex:0 0 100%!important;min-width:0!important;scroll-snap-align:start;display:grid;grid-template-columns:46% 1fr;align-items:center}
+.feat .gcard{flex:0 0 88%!important;min-width:0!important;scroll-snap-align:start;display:grid;grid-template-columns:46% 1fr;align-items:center}
 .feat .gcard .gimg{aspect-ratio:1}
 .feat .gcard .gb{padding:12px 14px;gap:4px}
 .feat .gcard .gb b{font-size:1.02rem;white-space:normal}
@@ -428,3 +428,17 @@ body.lt .box{grid-template-columns:minmax(0,1fr)}
 body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .balhero .bh{color:#C9D2CA;font-size:.8rem;margin-top:10px}
 .balhero .bhb{display:inline-block;margin-top:12px;justify-self:start;background:#F4EFE4;color:#1E3D2F;font-weight:700;font-size:.88rem;padding:11px 16px;border-radius:13px;text-decoration:none}
+
+/* Karusel: hisoblagich, 4 soniyalik chiziq, "Hammasi" */
+.fnav{display:flex;align-items:center;gap:10px;margin-top:10px;padding-right:14px}
+.fcnt{font-size:.78rem;color:var(--mute,#7A7468);white-space:nowrap;font-variant-numeric:tabular-nums}
+.fcnt b{color:var(--ink);font-weight:800}
+.fbar{flex:1;height:3px;border-radius:3px;background:#E6DDCB;overflow:hidden}
+.fbar i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,#1E3D2F,#B48A3E);animation:fbar 4s linear forwards}
+@keyframes fbar{to{transform:scaleX(1)}}
+.fall{border:1px solid #E3D3AE;background:#fff;color:#1E3D2F;font:700 .78rem Inter,system-ui,sans-serif;padding:6px 12px;border-radius:999px;cursor:pointer}
+.fnav.open .fcnt,.fnav.open .fbar{visibility:hidden}
+.feat.all{display:grid;grid-template-columns:1fr 1fr;overflow:visible;scroll-snap-type:none}
+.feat.all .gcard{display:grid;grid-template-columns:1fr;flex:none!important}
+.newtag{position:absolute;right:6px;top:6px;background:#1E3D2F;color:#F3E3B5;font:800 .56rem Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+@media (prefers-reduced-motion:reduce){.fbar i{animation:none;transform:scaleX(1)}}
