@@ -6,11 +6,33 @@
 <meta name="robots" content="noindex">
 <title>Admin · NAZAROVtggifts</title>
 <link rel="icon" href="/assets/logo-mark.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/style.css?v=20261121g">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/style.css?v=20261121h">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body{padding-bottom:24px}
+body.lt{--paper:var(--card);--black:var(--bg);--coal:var(--card);--white:var(--ink);--hair:var(--line);--hair-2:var(--line-2);padding-bottom:24px}
+body.lt .side{background:#1E3D2F;border-right:0}
+body.lt .side a{color:#DCE5DD}
+body.lt .side a[aria-current="page"]{background:#F6F2EA;color:#1E3D2F}
+body.lt .side .brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px;color:#fff;font-weight:800}
+body.lt .side .brand small{display:block;color:#E7CF95;font-size:.66rem;letter-spacing:.16em;font-weight:700}
+body.lt .side .cnt{background:#B48A3E;align-self:center;line-height:1.5}
+body.lt .side a{align-items:center;gap:8px}
+@media (max-width:860px){body.lt .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}body.lt .stat{padding:12px}body.lt .stat b{font-size:1.1rem}}
+body.lt .section,body.lt .stat,body.lt .tbl-wrap{box-shadow:0 10px 24px -22px rgba(60,45,20,.5)}
+body.lt .stat.liab{border-color:#E3D3AE;background:#FFFBF2}
+.hello{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.hello h1{margin:0}.hello small{color:var(--muted)}
+.todo{display:grid;gap:8px}
+.todo a,.todo button.trow{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-decoration:none;color:var(--ink);text-align:left;width:100%;cursor:pointer;font:inherit}
+.todo .ic{flex:0 0 34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;background:var(--card-2);color:var(--sage)}
+.todo .ic.red{background:#F7E4DE;color:#A2462F}.todo .ic.gold{background:#F6EBD3;color:#8A6A2A}
+.todo .tx{flex:1;min-width:0}.todo .tx b{display:block}.todo .tx small{color:var(--muted)}
+.todo .am{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.calc{background:var(--card-2);border-radius:12px;padding:12px;display:grid;gap:10px}
+.calc .row3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+@media (max-width:520px){.calc .row3{grid-template-columns:1fr 1fr}.calc .row3 button{grid-column:1/-1}}
 .adm{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 .side{background:var(--paper);border-right:1px solid var(--line);padding:16px 12px;display:grid;align-content:start;gap:4px;position:sticky;top:0;height:100vh}
 .side a{padding:10px 12px;border-radius:10px;text-decoration:none;color:var(--ink);font-weight:700;font-size:.93rem;display:flex;justify-content:space-between}
@@ -48,15 +70,16 @@ tr:last-child td{border-bottom:0}
 }
 </style>
 </head>
-<body>
+<body class="lt">
 <div class="adm">
   <nav class="side" id="side">
+    <div class="brand"><img src="/assets/logo-mark.png" alt="" width="30" height="30"><span>Nazarov<small>ADMIN</small></span></div>
     <a href="#dashboard" data-r="dashboard">Boshqaruv paneli</a>
     <a href="#queue" data-r="queue">Navbat <span class="cnt" id="cQueue" hidden></span></a>
     <a href="#orders" data-r="orders">Buyurtmalar</a>
     <span id="cRc" hidden></span>
     <a href="#customers" data-r="customers">Mijozlar</a>
-    <a href="#installments" data-r="installments">Bo'lib to'lash boshqaruvi</a>
+    <a href="#installments" data-r="installments">Lizing va bo'lib to'lash <span class="cnt" id="cOv" hidden></span></a>
     <a href="#own" data-r="own">Mening mahsulotlarim</a>
     <a href="#listings" data-r="listings">E'lonlar (mijozlar sotuvi)</a>
     <a href="#promos" data-r="promos">Promo-kodlar</a>
@@ -72,6 +95,6 @@ tr:last-child td{border-bottom:0}
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet" style="max-height:90vh;overflow:auto"></div></div>
-<script src="/admin.js?v=20261121g"></script>
+<script src="/admin.js?v=20261121h"></script>
 </body>
 </html>

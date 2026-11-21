@@ -163,12 +163,43 @@ async function exportExcel(btn, from, to) {
   } catch (e) { toast(e.message || "Xato"); }
   finally { btn.disabled = false; btn.textContent = old; }
 }
+function uzDate() {
+  const d = new Date(Date.now() + 5 * 3600000);
+  const M = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+  const W = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
+  return `${d.getUTCDate()}-${M[d.getUTCMonth()]}, ${W[d.getUTCDay()]}`;
+}
 async function dashboard(v) {
   const s = await api("/api/admin/stats");
   const o = s.orders, i = s.installments;
   const revenue = Number(o.cash_revenue) + Number(i.inst_collected) + Number(i.down_payments);
   const box = (l, val, cls = "") => `<div class="stat ${cls}"><small>${esc(l)}</small><b>${esc(val)}</b></div>`;
-  v.innerHTML = `<h1>Boshqaruv paneli</h1>
+  const ag = await api("/api/admin/installments?status=active").catch(() => []);
+  const today = todayStr(), soon = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), mEnd = todayStr().slice(0, 8) + "31";
+  const who = (a) => (a.cust_username || a.client_username ? "@" + (a.cust_username || a.client_username) : a.client_name || "—");
+  const late = ag.filter((a) => a.summary.overdue).sort((x, y) => y.summary.overdueAmount - x.summary.overdueAmount);
+  const due = ag.filter((a) => !a.summary.overdue && a.summary.nextDueDate && a.summary.nextDueDate <= soon);
+  const expect = ag.reduce((t, a) => t + (a.summary.overdue ? a.summary.overdueAmount : 0) + (a.summary.nextDueDate && a.summary.nextDueDate <= mEnd ? Math.min(Number(a.monthly_payment), a.summary.remaining) : 0), 0);
+  const daysLate = (a) => { const d = Math.floor((Date.now() - Date.parse(a.summary.nextDueDate || today)) / 86400000); return d > 0 ? `${d} kun` : ""; };
+  const row = (a, cls, sub) => `<button type="button" class="trow" data-tp="${a.id}"><span class="ic ${cls}">${cls === "red" ? "!" : "⏱"}</span>
+    <span class="tx"><b>${esc(a.product_name)}</b><small>${esc(who(a))} · ${esc(sub)}</small></span><span class="am">${esc(money(cls === "red" ? a.summary.overdueAmount : a.monthly_payment))}</span></button>`;
+  const todo = [
+    o.queued ? `<a href="#queue"><span class="ic">${o.queued}</span><span class="tx"><b>Navbatdagi buyurtmalar</b><small>Bajarish yoki bekor qilish kerak</small></span><span class="am">→</span></a>` : "",
+    s.pendingReceipts ? `<a href="#receipts"><span class="ic gold">${s.pendingReceipts}</span><span class="tx"><b>Tekshirilmagan cheklar</b><small>Balansga tushirish kerak</small></span><span class="am">→</span></a>` : "",
+    s.pendingReviews ? `<a href="#reviews"><span class="ic gold">${s.pendingReviews}</span><span class="tx"><b>Yangi sharhlar</b><small>Tasdiqlash kerak</small></span><span class="am">→</span></a>` : "",
+    ...late.slice(0, 8).map((a) => row(a, "red", `kechikkan${daysLate(a) ? " · " + daysLate(a) : ""}`)),
+    ...due.slice(0, 8).map((a) => row(a, "gold", a.summary.nextDueDate === today ? "bugun to'lashi kerak" : "to'lov kuni: " + a.summary.nextDueDate)),
+  ].filter(Boolean);
+  const hour = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Tashkent", hour: "numeric", hour12: false }));
+  v.innerHTML = `<div class="hello"><div><small>${esc(uzDate())}</small>
+      <h1>${hour < 12 ? "Xayrli tong" : hour < 18 ? "Xayrli kun" : "Xayrli kech"}</h1></div></div>
+    <div class="section"><h2>Bugungi ishlar</h2>
+      ${todo.length ? `<div class="todo">${todo.join("")}</div>` : `<p class="hint">Hammasi joyida — kechikkan to'lov va navbatdagi ish yo'q.</p>`}
+      ${late.length > 8 || due.length > 8 ? `<a class="link" href="#installments">Hammasini ko'rish →</a>` : ""}</div>
+    <div class="section"><h2>Lizing va bo'lib to'lash</h2><div class="stats">
+      ${box("Faol shartnomalar", ag.length)}${box("Kechikkan", late.length, late.length ? "liab" : "")}
+      ${box("Bu oy kutilayotgan tushum", money(expect))}${box("Shu oy yig'ilgan", money(i.inst_this_month))}
+    </div><p class="hint">"Kutilayotgan tushum" — kechikkan summalar va shu oy oxirigacha to'lanishi kerak bo'lgan oylik to'lovlar.</p></div>
     <div class="section"><h2>Buyurtmalar</h2><div class="stats">
       ${box("Bugun", o.today)}${box("Jami", o.total)}${box("Navbatda", o.queued)}${box("Amalga oshirildi", o.completed)}${box("Bekor qilindi", o.cancelled)}${box("Mijozlar", s.customers)}
     </div></div>
@@ -178,7 +209,6 @@ async function dashboard(v) {
       ${box("Mijozlar balansi (majburiyat)", money(s.liabilities), "liab")}
       ${box("Bo'lib to'lash qarzi", money(i.outstandingDebt), "liab")}
       ${box("Shu oy yig'ilgan", money(i.inst_this_month))}
-      ${box("Kechikkan shartnomalar", i.overdue)}
     </div>
     <p class="hint">Tushum: bajarilgan naqd buyurtmalar + bo'lib to'lash to'lovlari + boshlang'ich to'lovlar. Mijozlar balansi tushum emas: bu mijozlarga qarzdorlik. Foyda hozircha faqat ijara uchun hisoblanadi (narx − Marketapp narxi × kurs).</p></div>
     <div class="section"><h2>NFT ijara</h2><div class="stats">${box("Ijara buyurtmalari", o.rent_orders)}${box("Ijara tushumi", money(o.rent_revenue))}</div></div>
@@ -191,6 +221,7 @@ async function dashboard(v) {
     <div class="section"><h2>Eslatmalar</h2><p class="hint">Ijara va oylik to'lov eslatmalari bot faol bo'lganda o'zi yuboriladi. Hozir tekshirish uchun bosing.</p>
       <button class="btn btn-ghost btn-sm" id="runJobs" type="button">Eslatmalarni hozir yuborish</button></div>
     ${s.pendingReceipts ? `<p class="alert">Tekshirilmagan cheklar: ${s.pendingReceipts}. <a href="#receipts">Ko'rish</a></p>` : ""}`;
+  v.querySelectorAll("[data-tp]").forEach((b) => (b.onclick = () => paySheet(b.dataset.tp, ag.find((a) => String(a.id) === b.dataset.tp))));
   $("#xls").onclick = (e) => exportExcel(e.currentTarget, $("#xFrom").value, $("#xTo").value);
   $("#weekly").onclick = async (e) => { e.currentTarget.disabled = true; try { await call("weeklyReport"); toast("Hisobot botdagi chatingizga yuborildi"); } catch (er) { toast(er.message); } };
   $("#runJobs").onclick = async (e) => {
@@ -233,7 +264,8 @@ function orderSheet(o) {
     catch (e) { toast(e.message); }
   };
   const mk = $("#mkAgr"); if (mk) mk.onclick = () => agreementForm({ order_id: o.id, product_name: o.title, installment_type: o.installment_type, client_username: o.customer_username, client_phone: o.customer_phone,
-    down_payment: d.downPayment || 0, monthly_payment: d.estMonthly || "", total_price: d.estMonthly && d.months ? (d.downPayment || 0) + d.estMonthly * d.months : "" });
+    down_payment: d.downPayment || 0, monthly_payment: d.estMonthly || "", total_price: d.estMonthly && d.months ? (d.downPayment || 0) + d.estMonthly * d.months : "",
+    _base: d.estPrice || o.price || "", _months: d.months || "" });
   const close = async (status, btn) => {
     if (status === "cancelled" && !btn.dataset.sure) { btn.dataset.sure = "1"; btn.textContent = "Tasdiqlash: bekor qilinsinmi?"; return; }
     btn.disabled = true;
@@ -369,20 +401,24 @@ async function installments(v) {
     const p = await api(`/api/admin/installments/${b.dataset.h}/payments`);
     sheet(`<h2>To'lovlar tarixi</h2><div class="det">${p.map((x) => `${dt(x.paid_at)} · ${money(x.amount)} · ${x.source === "balance" ? "balansdan" : "qo'lda"}${x.note ? " · " + x.note : ""}`).map(esc).join("\n") || "To'lov yo'q"}</div>`);
   }));
-  v.querySelectorAll("[data-pay]").forEach((b) => (b.onclick = () => {
-    const k = key();
-    sheet(`<h2>To'lov qo'shish</h2><div class="form"><div class="field"><label for="pa">Summa</label><input class="input" id="pa" inputmode="decimal"></div>
-      <div class="field"><label for="pd">Sana</label><input class="input" id="pd" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-      <div class="field full"><label for="pn">Izoh</label><input class="input" id="pn" placeholder="Naqd, karta…"></div></div>
-      <button class="btn btn-primary" id="go" type="button">Saqlash</button>`);
-    $("#go").onclick = async (e) => {
-      const amount = Number($("#pa").value.replace(/[\s,]/g, ""));
-      if (!(amount > 0)) return toast("Summani kiriting");
-      e.currentTarget.disabled = true;
-      try { await api(`/api/admin/installments/${b.dataset.pay}/payments`, { body: { amount, paidAt: $("#pd").value, note: $("#pn").value || undefined, idempotencyKey: k } }); closeSheet(); toast("Saqlandi"); render(); }
-      catch (er) { e.currentTarget.disabled = false; toast(er.message); }
-    };
-  }));
+  v.querySelectorAll("[data-pay]").forEach((b) => (b.onclick = () => paySheet(b.dataset.pay, rows.find((a) => String(a.id) === b.dataset.pay))));
+}
+/** Shartnomaga to'lov qo'shish oynasi (bo'lib to'lash sahifasi va bosh sahifadan). */
+function paySheet(id, a) {
+  const k = key();
+  const sug = a ? (a.summary.overdue ? a.summary.overdueAmount : Number(a.monthly_payment)) : "";
+  sheet(`<h2>To'lov qo'shish</h2>${a ? `<p class="hint">${esc(a.product_name)} · ${esc(a.cust_username || a.client_username ? "@" + (a.cust_username || a.client_username) : a.client_name || "")}</p>` : ""}
+    <div class="form"><div class="field"><label for="pa">Summa</label><input class="input" id="pa" inputmode="decimal" value="${esc(sug)}"></div>
+    <div class="field"><label for="pd">Sana</label><input class="input" id="pd" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
+    <div class="field full"><label for="pn">Izoh</label><input class="input" id="pn" placeholder="Naqd, karta…"></div></div>
+    <button class="btn btn-primary" id="go" type="button">Saqlash</button>`);
+  $("#go").onclick = async (e) => {
+    const amount = Number($("#pa").value.replace(/[\s,]/g, ""));
+    if (!(amount > 0)) return toast("Summani kiriting");
+    e.currentTarget.disabled = true;
+    try { await api(`/api/admin/installments/${id}/payments`, { body: { amount, paidAt: $("#pd").value, note: $("#pn").value || undefined, idempotencyKey: k } }); closeSheet(); toast("Saqlandi"); render(); }
+    catch (er) { e.currentTarget.disabled = false; toast(er.message); }
+  };
 }
 function agreementForm(a) {
   const edit = Boolean(a.id);
@@ -390,6 +426,11 @@ function agreementForm(a) {
   const val = (k) => esc(a[k] ?? "");
   sheet(`<h2>${edit ? "Shartnomani tahrirlash" : legacy ? "Eski shartnoma qo'shish" : "Yangi shartnoma"}</h2>
     <form class="form" id="af">
+      ${legacy ? "" : `<div class="calc full"><b>Kalkulyator</b>
+        <div class="row3"><div class="field"><label>Gift narxi (ustamasiz)</label><input class="input" id="cBase" inputmode="decimal" value="${esc(a._base ?? "")}"></div>
+        <div class="field"><label>Muddat (oy)</label><input class="input" id="cMon" inputmode="numeric" value="${esc(a._months ?? "")}"></div>
+        <button class="btn btn-ghost btn-sm" id="cGo" type="button">Hisoblash</button></div>
+        <p class="hint" id="cOut" style="margin:0">Narx, muddat va boshlang'ich to'lovni yozib "Hisoblash"ni bosing — umumiy narx, oylik to'lov va oxirgi sana o'zi to'ladi. Ustama: Sozlamalardagi "12 oylik ustama".</p></div>`}
       <div class="field full"><label>Mahsulot</label><input class="input" name="productName" required value="${val("product_name")}"></div>
       <div class="field"><label>Mijoz ismi</label><input class="input" name="clientName" value="${val("client_name")}"></div>
       <div class="field"><label>Telegram username</label><input class="input" name="clientUsername" value="${val("client_username") || val("cust_username")}"></div>
@@ -398,7 +439,7 @@ function agreementForm(a) {
       <div class="field"><label>Umumiy narx</label><input class="input" name="totalPrice" required inputmode="decimal" value="${val("total_price")}"></div>
       <div class="field"><label>Boshlang'ich to'lov</label><input class="input" name="downPayment" inputmode="decimal" value="${a.down_payment ?? 0}"></div>
       <div class="field"><label>Oylik to'lov</label><input class="input" name="monthlyPayment" required inputmode="decimal" value="${val("monthly_payment")}"></div>
-      <div class="field"><label>Boshlanish sanasi</label><input class="input" type="date" name="startDate" required value="${esc(day(a.start_date) === "—" ? "" : day(a.start_date))}"></div>
+      <div class="field"><label>Boshlanish sanasi</label><input class="input" type="date" name="startDate" required value="${esc(day(a.start_date) === "—" ? (edit ? "" : todayStr()) : day(a.start_date))}"></div>
       <div class="field"><label>Oxirgi to'lov sanasi</label><input class="input" type="date" name="finalDate" required value="${esc(day(a.final_date) === "—" ? "" : day(a.final_date))}"></div>
       ${legacy && !edit ? `<div class="field"><label>Shu kungacha to'langan (boshlang'ichdan tashqari)</label><input class="input" name="alreadyPaid" inputmode="decimal" value="0"></div>` : ""}
       <div class="field"><label>Garov</label><input class="input" name="collateral" value="${val("collateral")}"></div>
@@ -406,6 +447,20 @@ function agreementForm(a) {
       <div class="field full"><label>Izoh</label><textarea class="input" name="notes" rows="2">${val("notes")}</textarea></div>
       <button class="btn btn-primary full" type="submit">Saqlash</button>
     </form>`);
+  const cGo = $("#cGo");
+  if (cGo) cGo.onclick = async () => {
+    const F = $("#af"), n = (q) => Number(String(q).replace(/[\s,]/g, "")) || 0;
+    const base = n($("#cBase").value), months = Math.round(n($("#cMon").value)), down = n(F.downPayment.value);
+    if (!(base > 0) || !(months >= 1 && months <= 240)) return toast("Narx va muddatni (1–240 oy) kiriting");
+    if (down >= base) return toast("Boshlang'ich to'lov narxdan kichik bo'lsin");
+    const st = (agreementForm.s ||= await api("/api/admin/settings").catch(() => ({ inst_markup_year: 100 })));
+    const pct = months * Number(st.inst_markup_year || 0) / 12;
+    const monthly = Math.ceil(Math.ceil((base - down) * (1 + pct / 100)) / months);
+    const start = F.startDate.value || todayStr();
+    const fin = new Date(start + "T00:00:00Z"); const dd = fin.getUTCDate(); fin.setUTCMonth(fin.getUTCMonth() + months); if (fin.getUTCDate() !== dd) fin.setUTCDate(0);
+    F.startDate.value = start; F.monthlyPayment.value = monthly; F.totalPrice.value = down + monthly * months; F.finalDate.value = fin.toISOString().slice(0, 10);
+    $("#cOut").textContent = `Ustama ${Math.round(pct * 100) / 100}% · oyiga ${money(monthly)} · jami ${money(down + monthly * months)} · oxirgi to'lov ${fin.toISOString().slice(0, 10)}`;
+  };
   $("#af").onsubmit = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target));
@@ -717,8 +772,9 @@ async function render() {
     q.textContent = s.orders.queued; q.hidden = !s.orders.queued;
     c.textContent = s.pendingReceipts; c.hidden = !s.pendingReceipts;
     const rv = $("#cRv"); rv.textContent = s.pendingReviews; rv.hidden = !s.pendingReviews;
+    const ov = $("#cOv"); ov.textContent = s.installments.overdue; ov.hidden = !s.installments.overdue;
   }).catch(() => {});
 }
-window.addEventListener("hashchange", render);
+window.addEventListener("hashchange", () => { if (!$("#modal").hidden) closeSheet(); render(); });
 render();
 })();
