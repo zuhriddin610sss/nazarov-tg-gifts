@@ -495,7 +495,7 @@ async function viewHome(v) {
       <div class="trust"><div><b>0%</b><small>${esc(t("trust_0"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>` : ""}
       ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
       <h2 class="h2x">${esc(t("ways_title"))}</h2>
-      ${en.nft_gift !== false ? way("lease", HIC.lease, esc(t("w_lease")), t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
+      ${en.nft_gift !== false ? way("lease", HIC.lease, `${esc(t("w_lease"))}<span class="bdg0">${esc(t("zero_fine"))}</span>`, t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
       ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
       ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
       ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
@@ -1284,7 +1284,7 @@ function planOptsHtml(p, base, down1) {
   if (p.tab === "lease") {
     return card("lease", t("lz_nodown"), t("lz_nodown_d"), base > 0 ? money(leaseMin(base)) : "", "") +
       card("lease_dp", t("lz_down"), t("lz_down_d"), "", "") +
-      `<p class="lznote">${esc(t("lz_note"))}</p>`;
+      `<p class="lznote"><span class="bdg0" style="margin:0 8px 0 0">${esc(t("zero_fine"))}</span>${esc(t("lz_note"))}</p>`;
   }
   return card("plan2", t("plan2"), t("lz_nodown_d"), base > 0 ? money(minMonthly(base)) : "", "0%") +
     card("plan1", t("plan1"), down1 != null ? t("inst_p1_d", { d: money(down1) }) : t("down_by_admin"), "", "") +
@@ -1369,7 +1369,7 @@ function viewPlan(v) {
     if (pl.months > 2) rows.push([fmtD(addMonths(today, 2)), m ? som(m) : "—", ""], ["…", "", ""]);
     if (pl.months > 1) rows.push([fmtD(addMonths(today, pl.months)), t("last_pay"), "end"]);
     return {
-      res: `<div class="t"><span>${esc(t("monthly_up"))}</span><span class="bdg0" style="margin:0">${esc(d === 0 ? t("zero_down") : t("approx"))}</span></div>
+      res: `<div class="t"><span>${esc(t("monthly_up"))}</span><span class="bdg0" style="margin:0">${esc(lease ? t("zero_fine") : d === 0 ? t("zero_down") : t("approx"))}</span></div>
         <b>${m ? esc(money(m)) : "—"} <em>${esc(t("som"))}</em></b>
         <div class="m">${esc(pl.months)} ${esc(t("months_unit"))} · ${esc(t("pay_day", { d: today.getDate() }))}${d > 0 ? ` · ${esc(t("today_pay", { a: money(d) }))}` : ""}</div>`,
       tl: rows.map(([a, b, c]) => `<div><i class="${c}"></i><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join(""),
