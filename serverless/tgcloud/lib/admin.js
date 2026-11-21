@@ -211,6 +211,8 @@ export const actions = {
       services_enabled: Object.fromEntries(TOGGLES.map((k) => [k, Boolean(i.services_enabled && i.services_enabled[k])])),
       inst_markup_year: n(i.inst_markup_year ?? DEFAULT_SETTINGS.inst_markup_year, 'inst_markup_year'),
       lease_markup_year: n(i.lease_markup_year ?? DEFAULT_SETTINGS.lease_markup_year, 'lease_markup_year'),
+      cashout_pct: n(i.cashout_pct ?? DEFAULT_SETTINGS.cashout_pct, 'cashout_pct'),
+      cashout_max: n(i.cashout_max ?? DEFAULT_SETTINGS.cashout_max, 'cashout_max', 10000),
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),

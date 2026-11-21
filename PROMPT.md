@@ -96,6 +96,12 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Buyurtma: service nft_gift, installment_type cashout. Admin: "Pul berildi — shartnoma tuzish". Sozlamalarda yoqib-o'chiriladi.
 - "Qarz", "kredit", "garov" so'zlari ishlatilmaydi.
 
+**Soddalik (mijoz adashmasin)**
+- Gift sahifasi: bo'limlar + katta "Oyiga X so'mdan" + bitta tugma "Oylik to'lovni hisoblash". Variant kartalari yo'q.
+- Hisob sahifasi: (bo'lib to'lashda tur: Oddiy / 1-tur / Uzum) → 1. Necha oyga → 2. Boshlang'ich to'lov → "Ariza yuborish".
+- "0%"/"Foizsiz" faqat bosh sahifada (kirishda); ichki sahifalarda yozilmaydi.
+- Pul olish: foiz (80%) va eng ko'p summa (50 mln) Sozlamalarda.
+
 ## Texnik eslatma
 - `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.
 

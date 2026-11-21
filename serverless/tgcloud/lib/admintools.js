@@ -6,7 +6,7 @@ import { marketappConfigured, listRent, giftOnSaleByNumber, toTon } from 'lib/ma
 import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
 import { portalsConfigured, portalsDebug, portalsFloor } from 'lib/portals';
 import { satelliteConfigured, satFloor } from 'lib/satellite';
-import { collectionByName, floorPrice, rentListingFor, downByFormula, monthlyPayment, markupPercent, splitGiftName } from 'lib/calc';
+import { collectionByName, floorPrice, rentListingFor, downByFormula, monthlyPayment, markupPercent, markupFor, splitGiftName } from 'lib/calc';
 
 export const ADMIN_HELP = [
   'Admin buyruqlari:',
@@ -47,6 +47,13 @@ export function calcText(args, s) {
   for (const mm of months) {
     const r = monthlyPayment(p, down, mm, s);
     lines.push(`${mm} oy (+${Math.round(markupPercent(mm, s) * 100) / 100}%): jami ${som(r.total)}, oyiga ${som(r.monthly)}`);
+  }
+  // Lizing (va "Pul olish") — alohida ustama bilan
+  const ls = markupFor(s, 'lease');
+  lines.push('', 'Lizing:');
+  for (const mm of months) {
+    const r = monthlyPayment(p, down, mm, ls);
+    lines.push(`${mm} oy (+${Math.round(markupPercent(mm, ls) * 100) / 100}%): jami ${som(r.total)}, oyiga ${som(r.monthly)}`);
   }
   return lines.join('\n');
 }

@@ -83,6 +83,7 @@ export const actions = {
       rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
       instMarkupYear: s.inst_markup_year,
       leaseMarkupYear: s.lease_markup_year,
+      cashoutPct: s.cashout_pct, cashoutMax: s.cashout_max,
       portalsSale: Boolean(s.services_enabled.nft_gift),
       saleInst: s.sale_inst.enabled ? { max: Number(s.sale_inst.max) } : null,
     };
@@ -351,6 +352,7 @@ export const actions = {
       const m = /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(String(i.giftLink || ''));
       if (!m) throw fail('BAD_LINK');
       const amount = int(i.amount, { min: 10000, max: 10000000000, name: 'amount' });
+      if (amount > Number(s.cashout_max)) throw fail('VALIDATION', { field: 'amount', max: Number(s.cashout_max) });
       const slug = m[1], n = Number(m[2]);
       const name = slug.replace(/([a-z])([A-Z])/g, '$1 $2') + ' #' + n;
       const a = (await attrsFromTelegram(slug, n)) || {};

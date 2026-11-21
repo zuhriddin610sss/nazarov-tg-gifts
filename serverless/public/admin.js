@@ -523,6 +523,8 @@ async function settings(v) {
     </div><p class="hint">Misol: P = 1.5 → ${esc(money((1.5 + s.rent_formula.add) * s.rent_formula.mult * s.rent_formula.rate))}</p></div>
     <div class="section"><h2>Bo'lib to'lash</h2><div class="form">
       <div class="field"><label>Bo'lib to'lash: 12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
+      <div class="field"><label>Pul olish: gift qiymatining necha foizigacha</label><input class="input" name="cashout_pct" value="${esc(s.cashout_pct ?? 80)}"></div>
+      <div class="field"><label>Pul olish: eng ko'p summa (so'm)</label><input class="input" name="cashout_max" value="${esc(s.cashout_max ?? 50000000)}"></div>
       <div class="field"><label>Lizing: 12 oylik ustama, %</label><input class="input" name="lease_markup_year" value="${esc(s.lease_markup_year ?? 100)}"></div>
       <div class="field"><label>O'z giftlarim: qo'shimcha, TON (narx = (bozordagi eng arzoni + shu) × kurs)</label><input class="input" name="own_add" value="${esc(s.own_add ?? 0.3)}"></div>
       <div class="field"><label>O'z giftlarim: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
@@ -547,7 +549,7 @@ async function settings(v) {
       stars_price: n("stars_price"), stars_min: n("stars_min"),
       premium_prices: Object.fromEntries(["m1", "m3", "m6", "m12_login", "m12"].map((k) => [k, n("pp_" + k)])),
       rent_formula: { add: n("rf_add"), mult: n("rf_mult"), rate: n("rf_rate") },
-      inst_markup_year: n("inst_markup_year"), lease_markup_year: n("lease_markup_year"), sale_rate: n("sale_rate"), own_add: n("own_add"), own_rent_mult: n("own_rent_mult"),
+      inst_markup_year: n("inst_markup_year"), lease_markup_year: n("lease_markup_year"), cashout_pct: n("cashout_pct"), cashout_max: n("cashout_max"), sale_rate: n("sale_rate"), own_add: n("own_add"), own_rent_mult: n("own_rent_mult"),
       down_formula: { days: n("df_days"), add: n("df_add"), rate: n("df_rate"), mult: n("df_mult") },
       services_enabled: Object.fromEntries(Object.keys(svcL).map((k) => [k, f.get("se_" + k) === "on"])),
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,
