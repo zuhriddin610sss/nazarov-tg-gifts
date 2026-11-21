@@ -491,11 +491,11 @@ async function viewHome(v) {
         ${hero ? `<span class="im">${hero.image ? `<img src="${esc(hero.image)}" alt="">` : imgTag("gifts", hero.name)}</span>` : ""}
         <span class="go">${esc(t("hx_go"))} →</span>
         ${minLease ? `<div class="pr">${esc(t("per_month"))}<b>${esc(money(minLease))} ${esc(t("som_from"))}</b></div>` : ""}</a>
-      <div class="trust"><div><b>0%</b><small>${esc(t("trust_0"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>` : ""}
+      <div class="trust"><div><b>${esc(t("trust_now_b"))}</b><small>${esc(t("trust_now"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>` : ""}
       ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
       <h2 class="h2x">${esc(t("ways_title"))}</h2>
       <div class="ways2">
-      ${en.nft_gift !== false ? way("lease", HIC.lease, `${esc(t("w_lease"))}<span class="bdg0">${esc(t("zero_fine"))}</span>`, t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
+      ${en.nft_gift !== false ? way("lease", HIC.lease, esc(t("w_lease")), t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
       ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
       ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
       ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}

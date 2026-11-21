@@ -85,7 +85,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Marketapp: faqat ijara (bepul). Sotuv narxlari (onsale) pullik — 402.
 
 **Lizing**
-- Lizing ustamasi alohida: Sozlamalar → "Lizing: 12 oylik ustama" (standart 20%/yil). Mijozga "Foizsiz" deb ko'rsatiladi (egasi qarori), "ustamasiz" so'zi ishlatilmaydi. 1–240 oy, 2 turi: boshlang'ich to'lovsiz va boshlang'ich to'lovli (mijoz summani o'zi yozadi). Muddat barabanda tanlanadi.
+- Lizing ustamasi alohida: Sozlamalar → "Lizing: 12 oylik ustama" (standart 20%/yil). Mijozga "0%" ham, "Foizsiz" ham yozilmaydi. 1–240 oy, 2 turi: boshlang'ich to'lovsiz va boshlang'ich to'lovli (mijoz summani o'zi yozadi). Muddat barabanda tanlanadi.
 - Gift darhol mijozga beriladi. To'lov to'xtasa gift qaytarib olinadi, to'langan pul qaytarilmaydi (bo'lib to'lashda ham). Zalog haqida botda yozilmaydi.
 - To'lov kuni = xarid kuni, mijoz tanlay olmaydi. Mijozga umumiy/qolgan qarz ko'rsatilmaydi — faqat keyingi to'lov, progress va oxirgi sana.
 - Bo'lib to'lashda "0% boshlang'ich" deb halol yoziladi.
@@ -99,7 +99,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 **Soddalik (mijoz adashmasin)**
 - Gift sahifasi: bo'limlar + katta "Oyiga X so'mdan" + bitta tugma "Oylik to'lovni hisoblash". Variant kartalari yo'q.
 - Hisob sahifasi: (bo'lib to'lashda tur: Oddiy / 1-tur / Uzum) → 1. Necha oyga → 2. Boshlang'ich to'lov → "Ariza yuborish".
-- "0%"/"Foizsiz" faqat bosh sahifada (kirishda); ichki sahifalarda yozilmaydi.
+- "0%", "Foizsiz", "ustamasiz" hech qayerda yozilmaydi (ustama bor).
 - Pul olish: foiz (80%) va eng ko'p summa (50 mln) Sozlamalarda.
 
 ## Texnik eslatma
