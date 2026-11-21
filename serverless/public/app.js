@@ -1285,7 +1285,8 @@ function productHead(img, name, num, attrs, ownTag) {
 function payTabsHtml(avail, cur) {
   return `<div class="ptk"><div class="ptk-h"><span class="sn">1</span>${esc(t("pt_q"))}</div>
     <div class="ptk-g${avail.length === 3 ? " three" : ""}">${avail.map((k) => `<button type="button" class="ptc${k === cur ? " on" : ""}" data-pt="${k}" aria-pressed="${k === cur}">
-      <span class="ic">${HIC[k]}</span><span class="tx"><b>${esc(t("tab_" + k))}</b><small>${esc(t("pt_" + k))}</small></span><span class="rd"></span></button>`).join("")}</div></div>`;
+      <span class="ic">${HIC[k]}</span><span class="tx"><b>${esc(t("tab_" + k))}</b><small>${esc(t("pt_" + k))}</small></span><span class="rd"></span></button>`).join("")}</div>
+    ${avail.includes("lease") && avail.includes("inst") ? `<p class="hint ptk-d">${esc(t("pt_diff"))}</p>` : ""}</div>`;
 }
 /** Gift sahifasi (lizing / bo'lib to'lash): katta "Oyiga X so'mdan" va bitta tugma. Tafsilotlar hisob sahifasida. */
 function planEntryHtml(p, base) {
@@ -1359,9 +1360,26 @@ function viewPlan(v) {
   const inst = !lease && !pl.cash;
   const sn = (n) => `<span class="sn">${n}</span>`;
   const TY = { plan2: [t("ty_plan2"), t("ty_plan2_d")], plan1: [t("plan1"), pl.down1 != null ? t("inst_p1_d", { d: money(pl.down1) }) : t("down_by_admin")], uzum: [t("uzum"), t("uzum_d2")] };
+  // Har bir bo'lib to'lash turi haqida 3 qator va taqqoslash jadvali
+  const tyInfo = (k) => k === "plan2" ? [t("ty2_1"), t("ty2_2"), t("ty2_3")]
+    : k === "plan1" ? (pl.down1 != null ? [t("ty1_1", { d: money(pl.down1) }), t("ty1_2"), t("ty2_3")] : [t("down_by_admin"), t("ty1_3"), t("ty2_3")])
+    : [t("tyu_1"), t("tyu_2"), t("tyu_3")];
+  const cmpHtml = () => {
+    const b = pl.base;
+    const mm = { plan2: b > 0 ? minMonthly(b) : null, plan1: b > 0 && pl.down1 != null && pl.down1 < b ? planMonthly(b, pl.down1, WHEEL_MAX, "plan1") : null, uzum: b > 0 ? planMonthly(b, 0, 12, "uzum") : null };
+    const dn = { plan2: t("cmp_opt"), plan1: pl.down1 != null ? money(pl.down1) : t("cmp_admin"), uzum: t("cmp_opt") };
+    const tr = { plan2: t("cmp_240"), plan1: t("cmp_240"), uzum: "3 · 6 · 12" };
+    const K = ["plan2", "plan1", "uzum"];
+    return `<table><thead><tr><th></th>${K.map((k) => `<th${pl.itype === k ? ' class="on"' : ""}>${esc(TY[k][0])}</th>`).join("")}</tr></thead><tbody>
+      <tr><td>${esc(t("cmp_down"))}</td>${K.map((k) => `<td${pl.itype === k ? ' class="on"' : ""}>${esc(dn[k])}</td>`).join("")}</tr>
+      <tr><td>${esc(t("cmp_term"))}</td>${K.map((k) => `<td${pl.itype === k ? ' class="on"' : ""}>${esc(tr[k])}</td>`).join("")}</tr>
+      <tr><td>${esc(t("cmp_month"))}</td>${K.map((k) => `<td${pl.itype === k ? ' class="on"' : ""}>${mm[k] ? esc(money(mm[k])) + "+" : "—"}</td>`).join("")}</tr></tbody></table>
+      <p class="hint" style="margin:6px 0 0">${esc(t("cmp_note"))}</p>`;
+  };
   const typeHtml = inst ? `<div class="box"><div class="fh"><span>${sn(1)}${esc(t("ty_q"))}</span></div>
       <div class="seg4" style="grid-template-columns:1fr 1fr 1fr;margin:0">${Object.keys(TY).map((k) => `<button type="button" class="${pl.itype === k ? "on" : ""}" data-ty="${k}">${esc(TY[k][0])}</button>`).join("")}</div>
-      <p class="hint" style="margin:8px 0 0">${esc(TY[pl.itype][1])}</p></div>` : "";
+      <ul class="pe-l ty-l">${tyInfo(pl.itype).map((x) => `<li><i>✓</i>${esc(x)}</li>`).join("")}</ul>
+      <details class="cmp"><summary>${esc(t("cmp_title"))}</summary>${cmpHtml()}</details></div>` : "";
 
   const wheelHtml = () => pl.itype === "uzum"
     ? `<div class="chips">${[3, 6, 12].map((m) => `<button type="button" class="chip" data-mo="${m}" aria-pressed="${pl.months === m}">${m} ${esc(t("months_unit"))}</button>`).join("")}</div>`
