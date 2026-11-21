@@ -1281,16 +1281,19 @@ function productHead(img, name, num, attrs, ownTag) {
     <h1 class="ptitle">${esc(name)}</h1>
     ${attrs.length ? `<div class="pattrs">${attrs.map(([k, x]) => `<div><span>${esc(t(k))}</span><b>${esc(x)}</b></div>`).join("")}</div>` : ""}`;
 }
+/** To'lov turi: sarlavha + katta tanlov kartalari (belgi, nom, qisqa izoh). */
 function payTabsHtml(avail, cur) {
-  const w = { lease: ".9fr", inst: "1.35fr", rent: ".85fr", cash: ".85fr" };
-  return `<div class="seg4" style="margin-top:16px;grid-template-columns:${avail.map((k) => w[k]).join(" ")}">${avail.map((k) => `<button type="button" class="${k === cur ? "on" : ""}" data-pt="${k}">${esc(t("tab_" + k))}</button>`).join("")}</div>`;
+  return `<div class="ptk"><div class="ptk-h"><span class="sn">1</span>${esc(t("pt_q"))}</div>
+    <div class="ptk-g${avail.length === 3 ? " three" : ""}">${avail.map((k) => `<button type="button" class="ptc${k === cur ? " on" : ""}" data-pt="${k}" aria-pressed="${k === cur}">
+      <span class="ic">${HIC[k]}</span><span class="tx"><b>${esc(t("tab_" + k))}</b><small>${esc(t("pt_" + k))}</small></span><span class="rd"></span></button>`).join("")}</div></div>`;
 }
 /** Gift sahifasi (lizing / bo'lib to'lash): katta "Oyiga X so'mdan" va bitta tugma. Tafsilotlar hisob sahifasida. */
 function planEntryHtml(p, base) {
   const m = base > 0 ? (p.tab === "lease" ? leaseMin(base) : minMonthly(base)) : null;
   const li = (k) => `<li><i>✓</i>${esc(t(k))}</li>`;
-  return `<div class="box pe"><span class="pe-k">${esc(t("per_month_up"))}</span><b class="pe-v">${m ? `${esc(money(m))} <em>${esc(t("som_from"))}</em>` : "—"}</b>
-    <ul class="pe-l">${li("pe_l1")}${li("pe_l2")}${li("pe_l3")}</ul></div>
+  const L = p.tab === "lease" ? ["pe_l3", "pe_l1", "pe_l2"] : ["pe_i1", "pe_i2", "pe_i3"];
+  return `<div class="box pe pe-${p.tab}"><span class="pe-t">${HIC[p.tab]}${esc(t("tab_" + p.tab))}</span><span class="pe-k">${esc(t("per_month_up"))}</span><b class="pe-v">${m ? `${esc(money(m))} <em>${esc(t("som_from"))}</em>` : "—"}</b>
+    <ul class="pe-l">${L.map(li).join("")}</ul></div>
     <div class="cta2 one"><button class="btn btn-primary" id="go" type="button">${esc(t("calc_btn"))} →</button></div>`;
 }
 function viewSaleItem(v) {
@@ -1329,7 +1332,7 @@ function cashBoxHtml(price) {
     <p class="hint">${esc(t("sale_hint"))}</p></div>`;
 }
 function bindPayTabs(v, p) {
-  v.querySelectorAll(".seg4 button[data-pt]").forEach((b) => (b.onclick = () => { p.tab = b.dataset.pt; p.itype = null; render(); }));
+  v.querySelectorAll("button[data-pt]").forEach((b) => (b.onclick = () => { p.tab = b.dataset.pt; p.itype = null; render(); }));
 }
 
 // ---------- Hisob sahifasi (lizing / bo'lib to'lash): muddat barabani, boshlang'ich to'lov, jadval ----------
@@ -1350,11 +1353,12 @@ function viewPlan(v) {
   const fmtD = (d) => `${d.getDate()} ${t("mon_" + d.getMonth())}${d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""}`;
   const title = pl.cash ? t("cx_short") : lease ? t("tab_lease") : t("tab_inst");
   const inst = !lease && !pl.cash;
+  const sn = (n) => `<span class="sn">${n}</span>`;
   const TY = { plan2: [t("ty_plan2"), t("ty_plan2_d")], plan1: [t("plan1"), pl.down1 != null ? t("inst_p1_d", { d: money(pl.down1) }) : t("down_by_admin")], uzum: [t("uzum"), t("uzum_d2")] };
-  const typeHtml = inst ? `<div class="box"><div class="fh"><span>${esc(t("ty_q"))}</span></div>
+  const typeHtml = inst ? `<div class="box"><div class="fh"><span>${sn(1)}${esc(t("ty_q"))}</span></div>
       <div class="seg4" style="grid-template-columns:1fr 1fr 1fr;margin:0">${Object.keys(TY).map((k) => `<button type="button" class="${pl.itype === k ? "on" : ""}" data-ty="${k}">${esc(TY[k][0])}</button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">${esc(TY[pl.itype][1])}</p></div>` : "";
-  const sn = (n) => `<span class="sn">${n}</span>`;
+
   const wheelHtml = () => pl.itype === "uzum"
     ? `<div class="chips">${[3, 6, 12].map((m) => `<button type="button" class="chip" data-mo="${m}" aria-pressed="${pl.months === m}">${m} ${esc(t("months_unit"))}</button>`).join("")}</div>`
     : `<div class="wheel wheel2" id="pWheel"><div class="wheel-pad"></div>${Array.from({ length: WHEEL_MAX }, (_, i) => {
@@ -1382,8 +1386,8 @@ function viewPlan(v) {
   const D = dyn();
   v.innerHTML = `<div class="plan-h"><span class="pthumb">${pl.img}</span><span><small>${esc(title)}</small><b>${esc(pl.name)}</b></span></div>
     <div class="res" id="pRes">${D.res}</div>${typeHtml}
-    <div class="box"><div class="fh"><span>${sn(1)}${esc(t("months_q"))}</span><span class="hint">${pl.itype === "uzum" ? "" : esc(t("wheel_hint"))}</span></div>${wheelHtml()}</div>
-    ${pl.cash ? `<div class="box"><div class="kv2"><span>${esc(t("cx_you_get"))}</span><b>${esc(som(pl.base))}</b></div><p class="hint" style="margin:6px 0 0">${esc(t("cx_plan_note"))}</p></div>` : `<div class="box"><div class="fh"><span>${sn(2)}${esc(t("inst_down"))}</span></div>
+    <div class="box"><div class="fh"><span>${sn(inst ? 2 : 1)}${esc(t("months_q"))}</span><span class="hint">${pl.itype === "uzum" ? "" : esc(t("wheel_hint"))}</span></div>${wheelHtml()}</div>
+    ${pl.cash ? `<div class="box"><div class="kv2"><span>${esc(t("cx_you_get"))}</span><b>${esc(som(pl.base))}</b></div><p class="hint" style="margin:6px 0 0">${esc(t("cx_plan_note"))}</p></div>` : `<div class="box"><div class="fh"><span>${sn(inst ? 3 : 2)}${esc(t("inst_down"))}</span></div>
       ${fixedDown ? `<p class="alert" style="margin:0">${pl.down1 != null ? esc(som(pl.down1)) : esc(t("down_by_admin"))}</p>`
         : `<div class="row2"><button type="button" class="ynb${pl.dp === "no" ? " on" : ""}" data-dp="no">${esc(t("dp_no"))}</button><button type="button" class="ynb${pl.dp === "yes" ? " on" : ""}" data-dp="yes">${esc(t("dp_yes"))}</button></div>
           ${pl.dp === "yes" ? `<div class="amt"><input id="dpIn" type="number" inputmode="numeric" min="1" value="${esc(pl.dpAmt)}" placeholder="0"><em>${esc(t("som"))}</em></div>` : ""}`}</div>`}
