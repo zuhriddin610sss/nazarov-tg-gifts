@@ -430,7 +430,7 @@ function agreementForm(a) {
         <div class="row3"><div class="field"><label>Gift narxi (ustamasiz)</label><input class="input" id="cBase" inputmode="decimal" value="${esc(a._base ?? "")}"></div>
         <div class="field"><label>Muddat (oy)</label><input class="input" id="cMon" inputmode="numeric" value="${esc(a._months ?? "")}"></div>
         <button class="btn btn-ghost btn-sm" id="cGo" type="button">Hisoblash</button></div>
-        <p class="hint" id="cOut" style="margin:0">Narx, muddat va boshlang'ich to'lovni yozib "Hisoblash"ni bosing — umumiy narx, oylik to'lov va oxirgi sana o'zi to'ladi. Ustama: Sozlamalardagi "12 oylik ustama".</p></div>`}
+        <p class="hint" id="cOut" style="margin:0">Narx, muddat va boshlang'ich to'lovni yozib "Hisoblash"ni bosing — umumiy narx, oylik to'lov va oxirgi sana o'zi to'ladi. Ustama: Sozlamalardan (lizingda — lizing ustamasi).</p></div>`}
       <div class="field full"><label>Mahsulot</label><input class="input" name="productName" required value="${val("product_name")}"></div>
       <div class="field"><label>Mijoz ismi</label><input class="input" name="clientName" value="${val("client_name")}"></div>
       <div class="field"><label>Telegram username</label><input class="input" name="clientUsername" value="${val("client_username") || val("cust_username")}"></div>
@@ -454,7 +454,8 @@ function agreementForm(a) {
     if (!(base > 0) || !(months >= 1 && months <= 240)) return toast("Narx va muddatni (1–240 oy) kiriting");
     if (down >= base) return toast("Boshlang'ich to'lov narxdan kichik bo'lsin");
     const st = (agreementForm.s ||= await api("/api/admin/settings").catch(() => ({ inst_markup_year: 100 })));
-    const pct = months * Number(st.inst_markup_year || 0) / 12;
+    const yr = F.installmentType.value === "lease" ? (st.lease_markup_year ?? st.inst_markup_year) : st.inst_markup_year;
+    const pct = months * Number(yr || 0) / 12;
     const monthly = Math.ceil(Math.ceil((base - down) * (1 + pct / 100)) / months);
     const start = F.startDate.value || todayStr();
     const fin = new Date(start + "T00:00:00Z"); const dd = fin.getUTCDate(); fin.setUTCMonth(fin.getUTCMonth() + months); if (fin.getUTCDate() !== dd) fin.setUTCDate(0);
@@ -520,10 +521,11 @@ async function settings(v) {
       <div class="field"><label>Kurs</label><input class="input" name="rf_rate" value="${esc(s.rent_formula.rate)}"></div>
     </div><p class="hint">Misol: P = 1.5 → ${esc(money((1.5 + s.rent_formula.add) * s.rent_formula.mult * s.rent_formula.rate))}</p></div>
     <div class="section"><h2>Bo'lib to'lash</h2><div class="form">
-      <div class="field"><label>12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
+      <div class="field"><label>Bo'lib to'lash: 12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
+      <div class="field"><label>Lizing: 12 oylik ustama, %</label><input class="input" name="lease_markup_year" value="${esc(s.lease_markup_year ?? 20)}"></div>
       <div class="field"><label>O'z giftlarim: qo'shimcha, TON (narx = (bozordagi eng arzoni + shu) × kurs)</label><input class="input" name="own_add" value="${esc(s.own_add ?? 0.3)}"></div>
       <div class="field"><label>O'z giftlarim: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
-    </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%</p>
+    </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%. Lizing: 12 oy +${esc(s.lease_markup_year ?? 20)}%, 24 oy +${esc((s.lease_markup_year ?? 20) * 2)}%, 240 oy +${esc((s.lease_markup_year ?? 20) * 20)}%</p>
       <h2 style="margin-top:8px">1-tur boshlang'ich to'lovi: (kunlik ijara × kun + qo'shimcha) × kurs × koeffitsiyent</h2><div class="form">
       <div class="field"><label>Kun</label><input class="input" name="df_days" value="${esc(s.down_formula.days)}"></div>
       <div class="field"><label>Qo'shimcha (TON)</label><input class="input" name="df_add" value="${esc(s.down_formula.add)}"></div>
@@ -544,7 +546,7 @@ async function settings(v) {
       stars_price: n("stars_price"), stars_min: n("stars_min"),
       premium_prices: Object.fromEntries(["m1", "m3", "m6", "m12_login", "m12"].map((k) => [k, n("pp_" + k)])),
       rent_formula: { add: n("rf_add"), mult: n("rf_mult"), rate: n("rf_rate") },
-      inst_markup_year: n("inst_markup_year"), sale_rate: n("sale_rate"), own_add: n("own_add"), own_rent_mult: n("own_rent_mult"),
+      inst_markup_year: n("inst_markup_year"), lease_markup_year: n("lease_markup_year"), sale_rate: n("sale_rate"), own_add: n("own_add"), own_rent_mult: n("own_rent_mult"),
       down_formula: { days: n("df_days"), add: n("df_add"), rate: n("df_rate"), mult: n("df_mult") },
       services_enabled: Object.fromEntries(Object.keys(svcL).map((k) => [k, f.get("se_" + k) === "on"])),
       marketappToken: String(f.get("marketapp_token") || "").trim() || undefined,

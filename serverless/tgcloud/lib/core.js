@@ -125,6 +125,7 @@ export const DEFAULT_SETTINGS = {
   rent_formula: { add: 0.15, mult: 2, rate: 19000 },
   // Bo'lib to'lash ustamasi: 12 oyga necha foiz (oyiga = shu / 12). 3 oy +25%, 6 oy +50%, 12 oy +100%.
   inst_markup_year: 100,
+  lease_markup_year: 20,
   // 1-tur boshlang'ich to'lovi: (Marketapp kunlik ijara × days + add) × rate × mult
   down_formula: { days: 45, add: 0.1, rate: 17000, mult: 3 },
   // O'z giftlarining sotuv narxi: (bozordagi eng arzoni + own_add) × sale_rate so'm

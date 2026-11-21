@@ -8,7 +8,7 @@ import { notifyNewOrder, receiptButtons, notifyNewListing } from 'lib/notify';
 import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
-import { ownSaleQuote, monthlyPayment, giftDown1, ownRentPpd, ownRentFormula } from 'lib/calc';
+import { ownSaleQuote, monthlyPayment, markupFor, giftDown1, ownRentPpd, ownRentFormula } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames, portalsCollectionFloors } from 'lib/portals';
 import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, satCachedFloors, normName, MARKET_NAME } from 'lib/satellite';
 
@@ -82,6 +82,7 @@ export const actions = {
       services: s.services_enabled, starsPrice: s.stars_price, starsMin: s.stars_min, premiumPrices: s.premium_prices,
       rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
       instMarkupYear: s.inst_markup_year,
+      leaseMarkupYear: s.lease_markup_year,
       portalsSale: Boolean(s.services_enabled.nft_gift),
       saleInst: s.sale_inst.enabled ? { max: Number(s.sale_inst.max) } : null,
     };
@@ -371,7 +372,7 @@ export const actions = {
       if (o.estBase && o.details.downPayment != null) {
         const base = Math.ceil(Number(o.estBase) / 100);
         if (o.details.downPayment < base) {
-          const m = monthlyPayment(base, o.details.downPayment, months, s);
+          const m = monthlyPayment(base, o.details.downPayment, months, markupFor(s, o.installmentType));
           o.details.estPrice = base; o.details.estMonthly = m.monthly;
         }
       }

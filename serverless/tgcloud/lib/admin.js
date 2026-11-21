@@ -4,7 +4,7 @@ import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSe
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
-import { ownSaleQuote, monthlyPayment, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
+import { ownSaleQuote, monthlyPayment, markupFor, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
 import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
 import { send } from 'lib/notify';
 import { money, t } from 'lib/texts';
@@ -209,6 +209,7 @@ export const actions = {
       rent_formula: { add: n(i.rent_formula && i.rent_formula.add, 'add'), mult: n(i.rent_formula && i.rent_formula.mult, 'mult', 0.0001), rate: n(i.rent_formula && i.rent_formula.rate, 'rate', 0.0001) },
       services_enabled: Object.fromEntries(SERVICES.map((k) => [k, Boolean(i.services_enabled && i.services_enabled[k])])),
       inst_markup_year: n(i.inst_markup_year ?? DEFAULT_SETTINGS.inst_markup_year, 'inst_markup_year'),
+      lease_markup_year: n(i.lease_markup_year ?? DEFAULT_SETTINGS.lease_markup_year, 'lease_markup_year'),
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),
         rate: n(i.down_formula && i.down_formula.rate, 'df_rate', 0.0001), mult: n(i.down_formula && i.down_formula.mult, 'df_mult', 0.0001) },
       sale_rate: n(i.sale_rate ?? DEFAULT_SETTINGS.sale_rate, 'sale_rate', 0.0001),
@@ -254,7 +255,7 @@ export const actions = {
     if (o.payment_method !== 'installment') throw fail('VALIDATION', { field: 'payment_method' });
     const det = JSON.parse(o.details || '{}');
     det.downPayment = amount;
-    if (det.estPrice && det.months && amount < det.estPrice) det.estMonthly = monthlyPayment(det.estPrice, amount, det.months, await getSettings()).monthly;
+    if (det.estPrice && det.months && amount < det.estPrice) det.estMonthly = monthlyPayment(det.estPrice, amount, det.months, markupFor(await getSettings(), o.installment_type)).monthly;
     await run('UPDATE orders SET details = :d WHERE id = :id', { d: JSON.stringify(det), id });
     await audit(admin, 'order.down', o.public_id, { amount });
     const txt = { uz: `Buyurtma ${o.public_id}: boshlang'ich to'lov ${money(amount)} so'm`, ru: `Заказ ${o.public_id}: первоначальный взнос ${money(amount)} сум`,

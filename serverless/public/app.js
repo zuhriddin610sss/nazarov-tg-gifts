@@ -379,8 +379,7 @@ function instCalc(d) {
   // "Ha" tanlanib summa hali yozilmagan bo'lsa hisob ko'rsatilmaydi
   const down = d.itype === "plan1" ? c.down1 : needsDown(d.itype) ? (d.dp === "yes" ? (Number(d.dpAmt) > 0 ? Number(d.dpAmt) : null) : d.dp === "no" ? 0 : null) : 0;
   if (down == null || down >= c.base) return null;
-  const yearPct = S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100;
-  return { down, monthly: Math.ceil(Math.ceil((c.base - down) * (1 + (months * yearPct) / 12 / 100)) / months) };
+  return { down, monthly: planMonthly(c.base, down, months, d.itype) };
 }
 /** "Bo'lib to'lash" tugmasi ostidagi izoh: narx ma'lum bo'lsa "oylik to'lov pastda ko'rsatiladi". */
 function instNote(d) {
@@ -1259,10 +1258,10 @@ async function viewSale(v, head, bindTabs, mode) {
   if (!st.loaded && !st.loading) { await loadSale(st); draw(); }
 }
 // ---------- Gift sahifasi: Lizing · Bo'lib to'lash · Ijara · Naqd ----------
-const yearPct = () => (S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100);
-/** Oylik to'lov: lizing va bo'lib to'lashda admin ustamasi (oyiga qarab). */
+const yearPct = (itype) => (itype === "lease" && S.cfg && S.cfg.leaseMarkupYear != null ? Number(S.cfg.leaseMarkupYear) : S.cfg && S.cfg.instMarkupYear != null ? Number(S.cfg.instMarkupYear) : 100);
+/** Oylik to'lov: lizingda lizing ustamasi, bo'lib to'lashda bo'lib to'lash ustamasi (oyiga qarab). */
 function planMonthly(base, down, months, itype) {
-  const pct = yearPct();
+  const pct = yearPct(itype);
   const rest = Math.max(0, Number(base) - Number(down || 0));
   return Math.ceil(Math.ceil(rest * (1 + (months * pct) / 12 / 100)) / months);
 }

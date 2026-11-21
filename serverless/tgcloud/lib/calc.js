@@ -9,6 +9,11 @@ export function markupPercent(months, s) {
   return (Number(months) * Number(s.inst_markup_year)) / 12;
 }
 
+/** Lizing uchun alohida yillik ustama (lease_markup_year), qolganlarga inst_markup_year. */
+export function markupFor(s, itype) {
+  return itype === 'lease' ? { ...s, inst_markup_year: s.lease_markup_year ?? s.inst_markup_year } : s;
+}
+
 /** Oylik to'lov: (narx − boshlang'ich) × (1 + ustama) ÷ oy. */
 export function monthlyPayment(priceSom, downSom, months, s) {
   const rest = Math.max(0, Number(priceSom) - Number(downSom || 0));
