@@ -498,7 +498,14 @@ async function viewHome(v) {
       ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
       ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
       ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
-      ${en.cashout !== false ? `<a class="cxc" href="#cashout"><span class="k">${esc(t("cx_k"))}</span><b>${esc(t("cx_t"))}</b><small>${esc(t("cx_d"))}</small><span class="go">${esc(t("cx_btn"))} →</span></a>` : ""}
+      ${en.cashout !== false ? (() => {
+        const g = own.find((x) => x.image && x !== hero) || hero;
+        const pic = g && g.image ? `<img src="${esc(g.image)}" alt="">` : HIC.lease;
+        return `<a class="cxc" href="#cashout"><span class="k">${esc(t("cx_k"))}</span>
+          <div class="cxg"><ul class="cxl"><li class="no"><i>✕</i>${esc(t("cx_l1"))}</li><li class="no"><i>✕</i>${esc(t("cx_l2"))}</li><li class="yes"><i>✓</i>${esc(t("cx_l3"))}</li></ul>
+            <span class="cxa"><span class="cxp">${pic}<em>${esc(t("cx_stays"))}</em></span><span class="cxm">+ ${esc(t("som"))}</span></span></div>
+          <small>${esc(t("cx_d"))}</small><span class="go">${esc(t("cx_btn"))} <span aria-hidden="true">→</span></span></a>`;
+      })() : ""}
       ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
         <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}
       <h2 class="h2x">${esc(t("how_title"))}</h2>

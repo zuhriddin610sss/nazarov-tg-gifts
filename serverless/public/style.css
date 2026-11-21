@@ -450,3 +450,26 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .cxc small{color:#C9D3CB;font-size:.86rem;line-height:1.4}
 .cxc .go{justify-self:start;margin-top:6px;background:#E7CF95;color:#1E1A0E;font-weight:800;font-size:.88rem;padding:9px 14px;border-radius:12px}
 .cxh{padding:4px 0 12px}.cxh h1{font:800 1.6rem/1.15 Inter,system-ui,sans-serif;letter-spacing:-.03em;margin:8px 0}.cxh p{color:var(--muted);margin:0}
+
+/* Pul olish kartasi: ✕ sotish, ✕ ijara, ✓ pul — o'ngda gift "Sizda qoladi" va suzib yuruvchi "+ so'm" */
+.cxc{position:relative;overflow:hidden;gap:10px}
+.cxc:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,240,200,.10) 50%,transparent 65%);transform:translateX(-100%);animation:cxshine 5s ease-in-out infinite;pointer-events:none}
+@keyframes cxshine{0%,55%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.cxg{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.cxl{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.cxl li{display:flex;align-items:center;gap:9px;font:800 1.02rem/1.25 Inter,system-ui,sans-serif;letter-spacing:-.01em}
+.cxl i{flex:0 0 22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:.72rem;font-weight:900}
+.cxl .no{color:#C9D3CB}
+.cxl .no i{background:rgba(255,255,255,.08);color:#C98B7A}
+.cxl .yes{color:#F3E3B5;font-size:1.42rem;margin-top:2px}
+.cxl .yes i{background:#E7CF95;color:#1E1A0E;flex-basis:26px;height:26px;font-size:.85rem}
+.cxa{position:relative;width:96px;height:104px}
+.cxp{position:absolute;inset:0 0 8px;border-radius:20px;overflow:hidden;background:#24473A;border:2px solid rgba(231,207,149,.55);display:grid;place-items:center;transform:rotate(4deg);box-shadow:0 14px 24px -12px rgba(0,0,0,.6)}
+.cxp img{width:100%;height:100%;object-fit:cover}
+.cxp svg{width:40px;height:40px;color:#E7CF95}
+.cxp em{position:absolute;left:6px;right:6px;bottom:6px;font:800 .56rem Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;text-align:center;color:#1E3D2F;background:rgba(246,242,234,.92);border-radius:999px;padding:3px 0}
+.cxm{position:absolute;left:-18px;top:-6px;background:linear-gradient(135deg,#F6E7B8,#C9A44E);color:#1E1A0E;font:900 .8rem Inter,system-ui,sans-serif;padding:6px 10px;border-radius:12px;box-shadow:0 8px 16px -6px rgba(0,0,0,.5);transform:rotate(-8deg);animation:cxfloat 3s ease-in-out infinite}
+@keyframes cxfloat{0%,100%{translate:0 0}50%{translate:0 -6px}}
+.cxc .go{display:inline-flex;gap:6px;align-items:center}
+.cxc .go span{transition:transform .2s}.cxc:active .go span{transform:translateX(4px)}
+@media (prefers-reduced-motion:reduce){.cxc:after,.cxm{animation:none}}
