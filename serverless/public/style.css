@@ -520,3 +520,6 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .pe-inst .pe-v{color:#8A6A2A}
 .pe-inst .pe-l i{background:#B48A3E;color:#fff}
 @media (prefers-reduced-motion:reduce){.pe{animation:none}}
+/* Gift sahifasi: rasm ixchamroq, tugma to'lov turi kartalarini yopmasin (sticky emas) */
+.pimg2{max-width:min(240px,64vw)}
+.cta2.one{position:static;padding-top:6px;background:none}

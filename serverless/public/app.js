@@ -1332,7 +1332,11 @@ function cashBoxHtml(price) {
     <p class="hint">${esc(t("sale_hint"))}</p></div>`;
 }
 function bindPayTabs(v, p) {
-  v.querySelectorAll("button[data-pt]").forEach((b) => (b.onclick = () => { p.tab = b.dataset.pt; p.itype = null; render(); }));
+  // Tanlangandan keyin "Oylik to'lovni hisoblash" tugmasigacha o'zi suriladi
+  v.querySelectorAll("button[data-pt]").forEach((b) => (b.onclick = () => {
+    p.tab = b.dataset.pt; p.itype = null;
+    render().then(() => { const g = $("#go"); if (g) g.scrollIntoView({ block: "center", behavior: "smooth" }); });
+  }));
 }
 
 // ---------- Hisob sahifasi (lizing / bo'lib to'lash): muddat barabani, boshlang'ich to'lov, jadval ----------
