@@ -6,7 +6,7 @@ import { t, money } from 'lib/texts';
 import { MINI_APP_URL } from 'lib/config';
 
 const SERVICE = { nft_gift: "NFT gift", gift_rent: "NFT gift ijarasi", username_rent: 'Username ijarasi', number_rent: 'Anonim raqam ijarasi', premium: 'Telegram Premium', stars: 'Telegram Stars' };
-const ITYPE = { lease: 'Lizing', plan1: '1-tur', plan2: "Boshlang'ich to'lovsiz", uzum: 'Uzum Nasiya' };
+const ITYPE = { cashout: 'Pul olish (gift qiymatidan)', lease: 'Lizing', plan1: '1-tur', plan2: "Boshlang'ich to'lovsiz", uzum: 'Uzum Nasiya' };
 
 async function send(chatId, text, extra = {}) {
   try { return await api.sendMessage({ chat_id: chatId, text, ...extra }); }
@@ -34,7 +34,8 @@ export async function notifyNewOrder(orderId) {
     `🆕 Yangi buyurtma ${o.public_id}`,
     `Navbat: #${String(pos || '-').padStart(2, '0')}`,
     `Mijoz: ${o.customer_username ? '@' + o.customer_username : "(username yo'q)"} · ${o.customer_phone || '-'}`,
-    `Xizmat: ${det.market ? `${det.market}'dagi giftni sotib olish` : det.portals ? "Portals'dagi giftni sotib olish" : det.listing ? "Mijoz e'lonidan sotib olish" : det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
+    det.cashout ? `💵 PUL OLISH: mijoz giftini sotmasdan ${money(det.amount)} so'm so'rayapti. Giftni tekshiring, summani tasdiqlang, pulni bering va admin panelda "Pul berildi — shartnoma" tugmasini bosing.` : null,
+    det.cashout ? null : `Xizmat: ${det.market ? `${det.market}'dagi giftni sotib olish` : det.portals ? "Portals'dagi giftni sotib olish" : det.listing ? "Mijoz e'lonidan sotib olish" : det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
     `Mahsulot: ${o.title}`,
     o.recipient ? `Qabul qiluvchi: @${o.recipient}` : null,
     det.model || det.backdrop ? [det.model ? `Model: ${det.model === 'any' ? "Farqi yo'q" : det.model}` : null, det.backdrop ? `Fon: ${det.backdrop === 'any' ? "Farqi yo'q" : det.backdrop}` : null].filter(Boolean).join(' · ') : null,

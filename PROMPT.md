@@ -90,6 +90,12 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - To'lov kuni = xarid kuni, mijoz tanlay olmaydi. Mijozga umumiy/qolgan qarz ko'rsatilmaydi — faqat keyingi to'lov, progress va oxirgi sana.
 - Bo'lib to'lashda "0% boshlang'ich" deb halol yoziladi.
 
+**"Giftni sotmang. Ijaraga bermang. Pul oling."** (pul berish)
+- Mijoz gift havolasi (t.me/nft/…), kerakli summa va muddatni (1–240 oy) yozadi; bozor narxi avtomatik qidirilmaydi. Gift qiymatining 80% igacha, summani admin tasdiqlaydi.
+- Oylik to'lov mijozga berilgan puldan, lizing ustamasi bilan (yiliga 100%). Gift mijozning Telegramida qoladi; to'lov to'xtasa olib qo'yiladi.
+- Buyurtma: service nft_gift, installment_type cashout. Admin: "Pul berildi — shartnoma tuzish". Sozlamalarda yoqib-o'chiriladi.
+- "Qarz", "kredit", "garov" so'zlari ishlatilmaydi.
+
 ## Texnik eslatma
 - `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.
 

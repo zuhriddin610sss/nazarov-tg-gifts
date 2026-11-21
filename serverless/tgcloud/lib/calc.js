@@ -11,7 +11,7 @@ export function markupPercent(months, s) {
 
 /** Lizing uchun alohida yillik ustama (lease_markup_year), qolganlarga inst_markup_year. */
 export function markupFor(s, itype) {
-  return itype === 'lease' ? { ...s, inst_markup_year: s.lease_markup_year ?? s.inst_markup_year } : s;
+  return itype === 'lease' || itype === 'cashout' ? { ...s, inst_markup_year: s.lease_markup_year ?? s.inst_markup_year } : s;
 }
 
 /** Oylik to'lov: (narx − boshlang'ich) × (1 + ustama) ÷ oy. */

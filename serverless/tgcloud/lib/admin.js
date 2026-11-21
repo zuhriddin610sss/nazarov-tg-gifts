@@ -11,6 +11,7 @@ import { money, t } from 'lib/texts';
 import { encode, decode } from 'lib/b64';
 
 const SERVICES = ['nft_gift', 'gift_rent', 'username_rent', 'number_rent', 'premium', 'stars'];
+const TOGGLES = [...SERVICES, 'cashout'];
 const som = (x) => toSom(x);
 const date = (v, name) => { if (v == null || v === '') return null; if (!DATE_RE.test(String(v))) throw fail('VALIDATION', { field: name }); return String(v); };
 const key = (v) => { if (!KEY_RE.test(String(v || ''))) throw fail('VALIDATION', { field: 'idempotencyKey' }); return String(v); };
@@ -207,7 +208,7 @@ export const actions = {
       stars_price: n(i.stars_price, 'stars_price', 0.01), stars_min: int(i.stars_min, { min: 1, name: 'stars_min' }),
       premium_prices: Object.fromEntries(Object.keys(DEFAULT_SETTINGS.premium_prices).map((k) => [k, n(i.premium_prices && i.premium_prices[k], 'premium_' + k, 0.01)])),
       rent_formula: { add: n(i.rent_formula && i.rent_formula.add, 'add'), mult: n(i.rent_formula && i.rent_formula.mult, 'mult', 0.0001), rate: n(i.rent_formula && i.rent_formula.rate, 'rate', 0.0001) },
-      services_enabled: Object.fromEntries(SERVICES.map((k) => [k, Boolean(i.services_enabled && i.services_enabled[k])])),
+      services_enabled: Object.fromEntries(TOGGLES.map((k) => [k, Boolean(i.services_enabled && i.services_enabled[k])])),
       inst_markup_year: n(i.inst_markup_year ?? DEFAULT_SETTINGS.inst_markup_year, 'inst_markup_year'),
       lease_markup_year: n(i.lease_markup_year ?? DEFAULT_SETTINGS.lease_markup_year, 'lease_markup_year'),
       down_formula: { days: n(i.down_formula && i.down_formula.days, 'df_days', 1), add: n(i.down_formula && i.down_formula.add, 'df_add'),

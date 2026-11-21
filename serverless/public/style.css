@@ -442,3 +442,11 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .feat.all .gcard{display:grid;grid-template-columns:1fr;flex:none!important}
 .newtag{position:absolute;right:6px;top:6px;background:#1E3D2F;color:#F3E3B5;font:800 .56rem Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
 @media (prefers-reduced-motion:reduce){.fbar i{animation:none;transform:scaleX(1)}}
+
+/* "Giftni sotmang. Ijaraga bermang. Pul oling." */
+.cxc{display:grid;gap:6px;margin:6px 0 10px;padding:18px;border-radius:22px;text-decoration:none;color:#F4EFE4;background:radial-gradient(220px 160px at 100% 0%,rgba(231,207,149,.28),transparent 70%),linear-gradient(135deg,#1E3D2F,#132A1F)}
+.cxc .k,.cxh .k{font:800 .66rem Inter,system-ui,sans-serif;letter-spacing:.16em;color:#E7CF95}
+.cxc b{font:800 1.22rem/1.2 Inter,system-ui,sans-serif;letter-spacing:-.02em}
+.cxc small{color:#C9D3CB;font-size:.86rem;line-height:1.4}
+.cxc .go{justify-self:start;margin-top:6px;background:#E7CF95;color:#1E1A0E;font-weight:800;font-size:.88rem;padding:9px 14px;border-radius:12px}
+.cxh{padding:4px 0 12px}.cxh h1{font:800 1.6rem/1.15 Inter,system-ui,sans-serif;letter-spacing:-.03em;margin:8px 0}.cxh p{color:var(--muted);margin:0}

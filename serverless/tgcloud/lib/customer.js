@@ -344,6 +344,20 @@ export const actions = {
       if (link && !/^https?:\/\/\S+$/i.test(link)) throw fail('BAD_LINK');
       o = { service, title: name ? `NFT sovg'a — ${name}` : "NFT sovg'a (maxsus so'rov)", installmentType: itype(['plan1', 'plan2', 'uzum']), price: null,
         details: { name, link, image, collectionAddress: str(i.collectionAddress, 80), model: str(i.model, 80) || 'any', backdrop: str(i.backdrop, 80) || 'any' } };
+    } else if (service === 'cashout') {
+      // "Giftni sotmang. Ijaraga bermang. Pul oling.": mijoz gift havolasi va kerakli summani yozadi, summani admin tasdiqlaydi.
+      if (s.services_enabled.cashout === false) throw fail('SERVICE_DISABLED');
+      if (method !== 'installment') throw fail('VALIDATION', { field: 'paymentMethod' });
+      const m = /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(String(i.giftLink || ''));
+      if (!m) throw fail('BAD_LINK');
+      const amount = int(i.amount, { min: 10000, max: 10000000000, name: 'amount' });
+      const slug = m[1], n = Number(m[2]);
+      const name = slug.replace(/([a-z])([A-Z])/g, '$1 $2') + ' #' + n;
+      const a = (await attrsFromTelegram(slug, n)) || {};
+      i.installmentType = 'cashout'; i.downPayment = 0;
+      o = { service: 'nft_gift', title: `${name} — pul olish`, installmentType: 'cashout', price: null, estBase: toTiyin(amount),
+        details: { cashout: true, name, amount, link: `https://t.me/nft/${slug}-${n}`, image: `https://nft.fragment.com/gift/${slug.toLowerCase()}-${n}.webp`,
+          model: a.model || undefined, backdrop: a.backdrop || undefined, symbol: a.symbol || undefined } };
     } else if (RENT[service]) {
       const item = await seenRentItem(RENT[service], str(i.address, 100, { required: true }));
       const minDays = Math.max(1, Math.ceil(Number(item.min_duration) / 86400)), maxDays = Math.floor(Number(item.max_duration) / 86400);
@@ -362,7 +376,7 @@ export const actions = {
       if (o.installmentType === 'uzum' && ![3, 6, 12].includes(months)) throw fail('VALIDATION', { field: 'months' });
       o.details = { ...(o.details || {}), months };
       // Lizing: ustama 0%, boshlang'ich to'lov ixtiyoriy (bo'lsa — mijoz yozgan summa)
-      if (o.installmentType === 'plan2' || o.installmentType === 'uzum' || o.installmentType === 'lease') {
+      if (['plan2', 'uzum', 'lease', 'cashout'].includes(o.installmentType)) {
         const dp = Number(i.downPayment || 0);
         if (!Number.isFinite(dp) || dp < 0 || dp > 1000000000) throw fail('VALIDATION', { field: 'downPayment' });
         o.details.downPayment = Math.round(dp);

@@ -697,16 +697,32 @@ test("Lizing: ustama 0%, boshlang'ich to'lov ixtiyoriy; o'z gifti va bozor gifti
       : { total_count: 1, results: [{ id: 'L1', name: 'Trapped Heart', external_collection_number: 5, price: '10', status: 'listed', attributes: [] }] };
     return { ok: true, status: 200, text: async () => JSON.stringify(body) };
   });
-  // Bozor gifti: 10 TON -> (10 + 0.1) × 17 000 = 171 700; 24 oy, boshlang'ich 21 700 -> 150 000 × (1 + 24×20%/12) / 24 = 8 750 (lizing ustamasi 20%/yil)
+  // Bozor gifti: 10 TON -> (10 + 0.1) × 17 000 = 171 700; 24 oy, boshlang'ich 21 700 -> 150 000 × (1 + 24×100%/12) / 24 = 18 750 (lizing ustamasi 100%/yil)
   const r = await app({ action: 'createOrder', service: 'portals', portalsId: 'L1', paymentMethod: 'installment', installmentType: 'lease', months: 24, downPayment: 21700, idempotencyKey: key() });
   const o = (await admin({ action: 'orders', search: r.publicId }))[0];
   assert.equal(o.installment_type, 'lease');
-  assert.deepEqual([o.details.downPayment, o.details.estMonthly], [21700, 8750]);
+  assert.deepEqual([o.details.downPayment, o.details.estMonthly], [21700, 18750]);
   // O'z gifti: boshlang'ich to'lovsiz, 240 oy
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Diamond Ring #1250', inst_enabled: true, price_source: 'manual_som', price_manual: 765340 });
   const own = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.name === 'Diamond Ring #1250');
   const r2 = await app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', months: 240, downPayment: 0, idempotencyKey: key() });
   const o2 = (await admin({ action: 'orders', search: r2.publicId }))[0];
-  assert.equal(o2.details.estMonthly, Math.ceil(Math.ceil(765340 * 5) / 240));
+  assert.equal(o2.details.estMonthly, Math.ceil(Math.ceil(765340 * 21) / 240));
   sent.length = 0;
+});
+
+test("Pul olish (gift sotilmaydi): havola + summa + muddat, oylik lizing ustamasi bilan, adminga ariza", async () => {
+  await withPhone();
+  setFetch(async () => ({ ok: true, status: 200, text: async () => '<table><tr><th>Model</th><td>Bow Wizzle</td></tr><tr><th>Backdrop</th><td>Gunmetal</td></tr></table>' }));
+  await assert.rejects(app({ action: 'createOrder', service: 'cashout', giftLink: 'https://example.com', amount: 800000, months: 12, paymentMethod: 'installment', idempotencyKey: key() }), /BAD_LINK/);
+  const r = await app({ action: 'createOrder', service: 'cashout', giftLink: 'https://t.me/nft/SnoopDogg-1203', amount: 800000, months: 12, paymentMethod: 'installment', idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(o.installment_type, 'cashout');
+  assert.equal(o.title, 'Snoop Dogg #1203 — pul olish');
+  // 800 000 × (1 + 12 × 100%/12) / 12 = 133 334
+  assert.deepEqual([o.details.amount, o.details.model, o.details.estMonthly, o.details.downPayment], [800000, 'Bow Wizzle', 133334, 0]);
+  const st = await admin({ action: 'settings' });
+  await admin({ action: 'saveSettings', ...st, services_enabled: { ...st.services_enabled, cashout: false } });
+  await assert.rejects(app({ action: 'createOrder', service: 'cashout', giftLink: 'https://t.me/nft/SnoopDogg-1203', amount: 800000, months: 12, paymentMethod: 'installment', idempotencyKey: key() }), /SERVICE_DISABLED/);
+  await admin({ action: 'saveSettings', ...st });
 });

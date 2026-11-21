@@ -498,6 +498,7 @@ async function viewHome(v) {
       ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
       ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
       ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
+      ${en.cashout !== false ? `<a class="cxc" href="#cashout"><span class="k">${esc(t("cx_k"))}</span><b>${esc(t("cx_t"))}</b><small>${esc(t("cx_d"))}</small><span class="go">${esc(t("cx_btn"))} →</span></a>` : ""}
       ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
         <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}
       <h2 class="h2x">${esc(t("how_title"))}</h2>
@@ -1352,7 +1353,7 @@ function viewPlan(v) {
   const down = () => (fixedDown ? Number(pl.down1 || 0) : pl.dp === "yes" ? Number(pl.dpAmt) || 0 : 0);
   const monthly = (m) => (pl.base > 0 && !(fixedDown && pl.down1 == null) ? planMonthly(pl.base, down(), m, pl.itype) : null);
   const fmtD = (d) => `${d.getDate()} ${t("mon_" + d.getMonth())}${d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""}`;
-  const title = lease ? t("tab_lease") : t(pl.itype);
+  const title = pl.cash ? t("cx_short") : lease ? t("tab_lease") : t(pl.itype);
   const wheelHtml = () => pl.itype === "uzum"
     ? `<div class="chips">${[3, 6, 12].map((m) => `<button type="button" class="chip" data-mo="${m}" aria-pressed="${pl.months === m}">${m} ${esc(t("months_unit"))}</button>`).join("")}</div>`
     : `<div class="wheel wheel2" id="pWheel"><div class="wheel-pad"></div>${Array.from({ length: WHEEL_MAX }, (_, i) => {
@@ -1363,12 +1364,13 @@ function viewPlan(v) {
     const m = monthly(pl.months), d = down();
     const today = new Date();
     const rows = [];
+    if (pl.cash) rows.push([t("today"), "+" + som(pl.base), "on"]);
     if (d > 0) rows.push([t("today"), som(d), "on"]);
     rows.push([fmtD(addMonths(today, 1)), m ? som(m) : "—", ""]);
     if (pl.months > 2) rows.push([fmtD(addMonths(today, 2)), m ? som(m) : "—", ""], ["…", "", ""]);
     if (pl.months > 1) rows.push([fmtD(addMonths(today, pl.months)), t("last_pay"), "end"]);
     return {
-      res: `<div class="t"><span>${esc(t("monthly_up"))}</span><span class="bdg0" style="margin:0">${esc(lease ? t("zero_fine") : d === 0 ? t("zero_down") : t("approx"))}</span></div>
+      res: `<div class="t"><span>${esc(t("monthly_up"))}</span>${pl.cash ? "" : `<span class="bdg0" style="margin:0">${esc(lease ? t("zero_fine") : d === 0 ? t("zero_down") : t("approx"))}</span>`}</div>
         <b>${m ? esc(money(m)) : "—"} <em>${esc(t("som"))}</em></b>
         <div class="m">${esc(pl.months)} ${esc(t("months_unit"))} · ${esc(t("pay_day", { d: today.getDate() }))}${d > 0 ? ` · ${esc(t("today_pay", { a: money(d) }))}` : ""}</div>`,
       tl: rows.map(([a, b, c]) => `<div><i class="${c}"></i><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join(""),
@@ -1380,10 +1382,10 @@ function viewPlan(v) {
   v.innerHTML = `<div class="plan-h"><span class="pthumb">${pl.img}</span><span><small>${esc(title)}</small><b>${esc(pl.name)}</b></span></div>
     <div class="res" id="pRes">${D.res}</div>
     <div class="box"><div class="fh"><span>${esc(t("months_q"))}</span><span class="hint">${pl.itype === "uzum" ? "" : esc(t("wheel_hint"))}</span></div>${wheelHtml()}</div>
-    <div class="box"><div class="fh"><span>${esc(t("inst_down"))}</span></div>
+    ${pl.cash ? `<div class="box"><div class="kv2"><span>${esc(t("cx_you_get"))}</span><b>${esc(som(pl.base))}</b></div><p class="hint" style="margin:6px 0 0">${esc(t("cx_plan_note"))}</p></div>` : `<div class="box"><div class="fh"><span>${esc(t("inst_down"))}</span></div>
       ${fixedDown ? `<p class="alert" style="margin:0">${pl.down1 != null ? esc(som(pl.down1)) : esc(t("down_by_admin"))}</p>`
         : `<div class="row2"><button type="button" class="ynb${pl.dp === "no" ? " on" : ""}" data-dp="no">${esc(t("dp_no"))}</button><button type="button" class="ynb${pl.dp === "yes" ? " on" : ""}" data-dp="yes">${esc(t("dp_yes"))}</button></div>
-          ${pl.dp === "yes" ? `<div class="amt"><input id="dpIn" type="number" inputmode="numeric" min="1" value="${esc(pl.dpAmt)}" placeholder="0"><em>${esc(t("som"))}</em></div>` : ""}`}</div>
+          ${pl.dp === "yes" ? `<div class="amt"><input id="dpIn" type="number" inputmode="numeric" min="1" value="${esc(pl.dpAmt)}" placeholder="0"><em>${esc(t("som"))}</em></div>` : ""}`}</div>`}
     <div class="box"><div class="fh"><span>${esc(t("schedule"))}</span></div><div class="tl" id="pTl">${D.tl}</div></div>
     <div class="cta2"><div class="s" id="pCta">${D.cta}</div><button class="btn btn-primary" id="go" type="button" ${D.ok ? "" : "disabled"}>${esc(t("confirm_btn"))}</button></div>`;
   const refresh = () => { const x = dyn(); $("#pRes", v).innerHTML = x.res; $("#pTl", v).innerHTML = x.tl; $("#pCta", v).innerHTML = x.cta; $("#go", v).disabled = !x.ok; };
@@ -1488,6 +1490,39 @@ async function viewGifts(v) {
 }
 
 /** "Giftimni sotaman": havola va narx. Admin tasdiqlagach "Sotuvda" bo'limida chiqadi. */
+/** "Giftni sotmang. Ijaraga bermang. Pul oling.": gift havolasi + kerakli summa → muddat (baraban) → ariza. Summani admin tasdiqlaydi. */
+function viewCashout(v) {
+  const d = S.drafts.cashout ||= { link: "", amount: "" };
+  const m = () => /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(d.link);
+  const ready = () => Boolean(m()) && Number(d.amount) >= 10000;
+  const steps = ["cx_s1", "cx_s2", "cx_s3", "cx_s4"];
+  v.innerHTML = `<div class="cxh"><span class="k">${esc(t("cx_k"))}</span><h1>${esc(t("cx_t"))}</h1><p>${esc(t("cx_d"))}</p></div>
+    <div class="how">${steps.map((k, i) => `<div><i>0${i + 1}</i><span><b>${esc(t(k))}</b><small>${esc(t(k + "d"))}</small></span></div>`).join("")}</div>
+    <div class="box"><div class="fh"><span>${esc(t("gift_link"))}</span></div>
+      <input class="input" id="cLink" value="${esc(d.link)}" placeholder="t.me/nft/SnoopDogg-1203" inputmode="url" autocapitalize="off" autocomplete="off">
+      <div id="cPrev"></div></div>
+    <div class="box"><div class="fh"><span>${esc(t("cx_amount"))}</span></div>
+      <div class="amt"><input id="cAmt" type="number" inputmode="numeric" min="10000" value="${esc(d.amount)}" placeholder="0"><em>${esc(t("som"))}</em></div>
+      <p class="hint" style="margin:6px 0 0">${esc(t("cx_amount_hint"))}</p></div>
+    <div class="cta2"><div class="s"><span>${esc(t("cx_get_up"))}</span><b id="cSum">${Number(d.amount) > 0 ? esc(som(Number(d.amount))) : "—"}</b></div>
+      <button class="btn btn-primary" id="go" type="button" ${ready() ? "" : "disabled"}>${esc(t("next"))}</button></div>`;
+  const prev = () => {
+    const x = m();
+    $("#cPrev", v).innerHTML = x ? `<div class="plan-h" style="margin:10px 0 0"><span class="pthumb"><img src="https://nft.fragment.com/gift/${esc(x[1].toLowerCase())}-${esc(x[2])}.webp" alt=""></span><span><small>${esc(t("cx_short"))}</small><b>${esc(x[1].replace(/([a-z])([A-Z])/g, "$1 $2"))} #${esc(x[2])}</b></span></div>`
+      : d.link ? `<p class="hint" style="margin:6px 0 0">${esc(t("sell_link_hint"))}</p>` : "";
+  };
+  prev();
+  const upd = () => { $("#go", v).disabled = !ready(); $("#cSum", v).textContent = Number(d.amount) > 0 ? som(Number(d.amount)) : "—"; };
+  $("#cLink", v).addEventListener("input", (e) => { d.link = e.target.value.trim(); prev(); upd(); });
+  $("#cAmt", v).addEventListener("input", (e) => { d.amount = e.target.value; upd(); });
+  $("#go", v).onclick = () => {
+    const x = m(); if (!x) return;
+    const k = key(), amount = Math.round(Number(d.amount));
+    openPlan({ name: `${x[1].replace(/([a-z])([A-Z])/g, "$1 $2")} #${x[2]}`, img: `<img src="https://nft.fragment.com/gift/${esc(x[1].toLowerCase())}-${esc(x[2])}.webp" alt="">`,
+      base: amount, itype: "lease", cash: true, key: k,
+      build: (p) => ({ service: "cashout", giftLink: d.link, amount, paymentMethod: "installment", installmentType: "cashout", months: p.months, idempotencyKey: k }) });
+  };
+}
 function viewSell(v) {
   const d = S.drafts.sell ||= { link: "", price: "" };
   const okLink = () => /t\.me\/nft\/[A-Za-z0-9]+-\d+/i.test(d.link);
@@ -1630,7 +1665,7 @@ async function viewOrders(v) {
         <button class="btn btn-primary btn-sm" type="button" data-pay="${i.id}">${esc(t("pay_now"))}</button></div>` : ""}`;
   };
   const nameOf = (title) => String(title || "").split(" — ")[0];
-  const kindLine = (o) => (o.plan ? `${t(o.plan.type === "lease" ? "tab_lease" : o.plan.type || "pay_inst")}${o.plan.months ? ` · ${o.plan.months} ${t("months_unit")}` : ""}` : "");
+  const kindLine = (o) => (o.plan ? `${t(o.plan.type === "lease" ? "tab_lease" : o.plan.type === "cashout" ? "cx_short" : o.plan.type || "pay_inst")}${o.plan.months ? ` · ${o.plan.months} ${t("months_unit")}` : ""}` : "");
   const cards = data.orders.map((o) => `<article class="item">
       <div class="ord-h"><span class="othumb">${imgTag("gifts", nameOf(o.title))}</span><span class="ot"><b>${esc(nameOf(o.title))}</b>${o.plan ? `<small>${esc(kindLine(o))}</small>` : ""}</span>
         <span class="badge b-${esc(o.status)}">${esc(t("st_" + o.status))}</span></div>
@@ -1737,10 +1772,10 @@ const VIEWS = {
   rent: (v) => { S.giftsTab = "rent"; return viewGifts(v); },
   "buy-nft": (v) => { S.giftsTab = S.buyMode === "cash" ? "cash" : S.buyMode === "lease" ? "lease" : "inst"; return viewGifts(v); },
   "rent-gifts": (v) => { S.rentTab = "gifts"; location.replace("#rent"); }, "rent-usernames": (v) => { S.rentTab = "usernames"; location.replace("#rent"); }, "rent-numbers": (v) => { S.rentTab = "numbers"; location.replace("#rent"); },
-  "rent-item": viewRentItem, "sale-item": viewSaleItem, plan: viewPlan, sell: viewSell, buy: viewBuy, "buy-pay": viewBuyPay, "buy-own": viewBuyOwn, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
+  "rent-item": viewRentItem, "sale-item": viewSaleItem, plan: viewPlan, cashout: viewCashout, sell: viewSell, buy: viewBuy, "buy-pay": viewBuyPay, "buy-own": viewBuyOwn, orders: viewOrders, balance: viewBalance, done: viewDone, login: viewLogin, help: viewHelp,
 };
 const TOP = new Set(["home", "gifts", "rent", "buy-nft", "orders", "balance", "login", "done"]);
-const PARENT = { "rent-item": () => (S.rentPick && S.rentPick.route === "buy-own" ? "buy-own" : "gifts"), "sale-item": () => "gifts", sell: () => "gifts", "buy-pay": () => "gifts", "buy-own": () => "buy", nft: () => "gifts", plan: () => (S.plan && S.plan.from) || "gifts" };
+const PARENT = { "rent-item": () => (S.rentPick && S.rentPick.route === "buy-own" ? "buy-own" : "gifts"), "sale-item": () => "gifts", sell: () => "gifts", "buy-pay": () => "gifts", "buy-own": () => "buy", nft: () => "gifts", plan: () => (S.plan && S.plan.from) || "gifts", cashout: () => "home" };
 
 function applyStatic() {
   document.documentElement.lang = S.lang === "zh" ? "zh-CN" : S.lang;

@@ -13,7 +13,7 @@ const day = (d) => d ? String(d).slice(0, 10) : "—";
 const key = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-zA-Z0-9]/g, "").slice(0, 40);
 const SVC = { nft_gift: "NFT gift", gift_rent: "NFT ijara", username_rent: "Username ijara", number_rent: "Raqam ijara", premium: "Premium", stars: "Stars" };
 const ST = { queued: "Navbatda", completed: "Amalga oshirildi", cancelled: "Bekor qilindi" };
-const IT = { lease: "Lizing", plan1: "1-tur", plan2: "Boshlang'ich to'lovsiz", uzum: "Uzum Nasiya" };
+const IT = { cashout: "Pul olish (gift qiymatidan)", lease: "Lizing", plan1: "1-tur", plan2: "Boshlang'ich to'lovsiz", uzum: "Uzum Nasiya" };
 let toastT;
 const toast = (m) => { const el = $("#toast"); el.textContent = m; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), 3500); };
 const sheet = (h) => { $("#sheet").innerHTML = h; $("#modal").hidden = false; };
@@ -251,7 +251,8 @@ function orderSheet(o) {
     ${o.customer_username ? `<a class="btn btn-ghost btn-sm" href="https://t.me/${esc(o.customer_username)}" target="_blank" rel="noopener">Mijozga yozish</a>` : ""}
     ${o.payment_method === "installment" && o.status === "queued" ? `<div class="row2" style="grid-template-columns:1fr auto"><input class="input" id="downIn" inputmode="numeric" placeholder="Boshlang'ich to'lov, so'm" value="${esc(d.downPayment != null ? d.downPayment : "")}"><button class="btn btn-ghost btn-sm" id="downSave" type="button">Saqlash</button></div>` : ""}
     ${o.customer_id ? `<button class="btn btn-primary btn-sm" id="topUp" type="button">Balansni to'ldirish${o.balance != null ? ` (hozir: ${esc(money(o.balance))})` : ""}</button>` : ""}
-    ${o.payment_method === "installment" && !o.agreementId ? `<button class="btn btn-ghost btn-sm" id="mkAgr" type="button">Shartnoma tuzish</button>` : ""}
+    ${d.cashout ? `<p class="alert">💵 Mijoz giftini sotmasdan <b>${esc(money(d.amount))}</b> so'raydi${d.months ? `, ${esc(d.months)} oyga` : ""}. Giftni tekshiring, summani kelishing, pulni bering — keyin pastdagi tugmani bosing.</p>` : ""}
+    ${o.payment_method === "installment" && !o.agreementId ? `<button class="btn ${d.cashout ? "btn-primary" : "btn-ghost"} btn-sm" id="mkAgr" type="button">${d.cashout ? "Pul berildi — shartnoma tuzish" : "Shartnoma tuzish"}</button>` : ""}
     ${o.status === "queued" ? `<textarea class="input" id="note" rows="2" placeholder="Izoh (ixtiyoriy)"></textarea>
       <div class="row2"><button class="btn btn-primary" id="done" type="button">Amalga oshirildi</button>
       <button class="btn btn-ghost" id="cancel" type="button">Bekor qilish${Number(o.paid_amount) > 0 ? " (pul qaytadi)" : ""}</button></div>` : ""}`);
@@ -454,7 +455,7 @@ function agreementForm(a) {
     if (!(base > 0) || !(months >= 1 && months <= 240)) return toast("Narx va muddatni (1–240 oy) kiriting");
     if (down >= base) return toast("Boshlang'ich to'lov narxdan kichik bo'lsin");
     const st = (agreementForm.s ||= await api("/api/admin/settings").catch(() => ({ inst_markup_year: 100 })));
-    const yr = F.installmentType.value === "lease" ? (st.lease_markup_year ?? st.inst_markup_year) : st.inst_markup_year;
+    const yr = ["lease", "cashout"].includes(F.installmentType.value) ? (st.lease_markup_year ?? st.inst_markup_year) : st.inst_markup_year;
     const pct = months * Number(yr || 0) / 12;
     const monthly = Math.ceil(Math.ceil((base - down) * (1 + pct / 100)) / months);
     const start = F.startDate.value || todayStr();
@@ -482,7 +483,7 @@ function agreementForm(a) {
 async function settings(v) {
   const s = await api("/api/admin/settings");
   const L = ["uz", "ru", "en", "zh"];
-  const svcL = { nft_gift: "NFT gift sotib olish", gift_rent: "NFT gift ijarasi", username_rent: "Username ijarasi", number_rent: "Anonim raqam ijarasi", premium: "Telegram Premium", stars: "Telegram Stars" };
+  const svcL = { nft_gift: "NFT gift sotib olish", gift_rent: "NFT gift ijarasi", username_rent: "Username ijarasi", number_rent: "Anonim raqam ijarasi", premium: "Telegram Premium", stars: "Telegram Stars", cashout: "Giftni sotmang. Pul oling (pul berish)" };
   v.innerHTML = `<h1>Sozlamalar</h1><form id="sf">
     <div class="section"><h2>To'lov</h2><div class="form">
       <div class="field"><label>Karta raqami</label><input class="input" name="card_number" value="${esc(s.card_number)}"></div>
@@ -522,10 +523,10 @@ async function settings(v) {
     </div><p class="hint">Misol: P = 1.5 → ${esc(money((1.5 + s.rent_formula.add) * s.rent_formula.mult * s.rent_formula.rate))}</p></div>
     <div class="section"><h2>Bo'lib to'lash</h2><div class="form">
       <div class="field"><label>Bo'lib to'lash: 12 oylik ustama, % (oyiga = shu ÷ 12)</label><input class="input" name="inst_markup_year" value="${esc(s.inst_markup_year)}"></div>
-      <div class="field"><label>Lizing: 12 oylik ustama, %</label><input class="input" name="lease_markup_year" value="${esc(s.lease_markup_year ?? 20)}"></div>
+      <div class="field"><label>Lizing: 12 oylik ustama, %</label><input class="input" name="lease_markup_year" value="${esc(s.lease_markup_year ?? 100)}"></div>
       <div class="field"><label>O'z giftlarim: qo'shimcha, TON (narx = (bozordagi eng arzoni + shu) × kurs)</label><input class="input" name="own_add" value="${esc(s.own_add ?? 0.3)}"></div>
       <div class="field"><label>O'z giftlarim: TON → so'm kursi</label><input class="input" name="sale_rate" value="${esc(s.sale_rate)}"></div>
-    </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%. Lizing: 12 oy +${esc(s.lease_markup_year ?? 20)}%, 24 oy +${esc((s.lease_markup_year ?? 20) * 2)}%, 240 oy +${esc((s.lease_markup_year ?? 20) * 20)}%</p>
+    </div><p class="hint">Hozir: 3 oy +${esc(Math.round(s.inst_markup_year * 3 / 12 * 100) / 100)}%, 6 oy +${esc(Math.round(s.inst_markup_year * 6 / 12 * 100) / 100)}%, 12 oy +${esc(s.inst_markup_year)}%. Lizing: 12 oy +${esc(s.lease_markup_year ?? 100)}%, 24 oy +${esc((s.lease_markup_year ?? 100) * 2)}%, 240 oy +${esc((s.lease_markup_year ?? 100) * 20)}%</p>
       <h2 style="margin-top:8px">1-tur boshlang'ich to'lovi: (kunlik ijara × kun + qo'shimcha) × kurs × koeffitsiyent</h2><div class="form">
       <div class="field"><label>Kun</label><input class="input" name="df_days" value="${esc(s.down_formula.days)}"></div>
       <div class="field"><label>Qo'shimcha (TON)</label><input class="input" name="df_add" value="${esc(s.down_formula.add)}"></div>
