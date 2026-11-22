@@ -106,7 +106,7 @@ Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, 
 - Tepada 4 ta Stories-reklama (5 soniya, surib almashtiriladi): Ijara ("Kuniga X so'mdan", 1/7/30/180 kun narxlari), Lizing ("Oyiga X so'mdan"), Bo'lib to'lash ("Hozir oling, bir necha oyga bo'lib to'lang"), Pul olish ("Giftingizni sotmasdan, uning uchun pul oling"). Narxlar haqiqiy giftlarning eng arzonidan.
 - Shiorlar, "emotsiya" gaplari, qat'iy va'dalar (100%, "topib beramiz") yozilmaydi — egasi "crinj" deb hisoblaydi.
 - 5 ta usul alohida: Lizing, Bo'lib to'lash, Ijara, Naqd, Pul olish (aralashtirilmaydi).
-- "Biz haqimizda": bajarilgan buyurtmalar va mijozlar soni (bazadan + Sozlamalardagi bot tashqarisidagilar), 2026-yil maydan, kanal t.me/NAZAROVtggifts, sharhlar.
+- "Biz haqimizda": to'q yashil karta, orqada giftlar devori; "5 usul", "240 oygacha", Kanalimiz (t.me/NAZAROVtggifts). Buyurtma/mijoz soni, katalog soni va sharhlar ko'rsatilmaydi.
 
 ## Texnik eslatma
 - `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.

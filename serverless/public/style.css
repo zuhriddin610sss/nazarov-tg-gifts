@@ -579,3 +579,18 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .ab-l a{color:var(--sage);text-decoration:none}
 .ways2 .way:nth-child(5):last-child{grid-column:1/-1;flex-direction:row;align-items:center}
 .st-s .im.im2{right:56px;top:96px;width:96px;height:96px;transform:rotate(-10deg);opacity:.9}
+
+/* Biz haqimizda: to'q yashil premium karta, orqada giftlar devori */
+.about2{position:relative;margin-top:22px;border-radius:24px;overflow:hidden;color:#F4EFE4;background:linear-gradient(140deg,#1E3D2F,#0F2219)}
+.ab-wall{position:absolute;inset:-20px -30px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;transform:rotate(-8deg);opacity:.16;pointer-events:none}
+.ab-wall span{aspect-ratio:1;border-radius:16px;overflow:hidden;background:#24473A}
+.ab-wall img{width:100%;height:100%;object-fit:cover}
+.ab-in{position:relative;padding:22px 20px;display:grid;gap:16px;background:linear-gradient(180deg,rgba(15,34,25,.35),rgba(15,34,25,.75))}
+.about2 .ab-h{display:flex;align-items:center;gap:10px}.about2 .ab-h b{font-size:1.15rem;letter-spacing:-.01em}
+.ab-st2{display:grid;gap:12px}
+.ab-st2 div{display:flex;align-items:baseline;gap:10px}
+.ab-st2 b{font:800 2.3rem/1 Inter,system-ui,sans-serif;color:#E7CF95;letter-spacing:-.03em;min-width:64px}
+.ab-st2 small{font-size:.86rem;color:#D5DDD6;line-height:1.35}
+.ab-ch{justify-self:start;background:#E7CF95;color:#1E1A0E;font-weight:800;font-size:.88rem;padding:10px 14px;border-radius:12px;text-decoration:none}
+.ab-st2 div{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px}
+.ab-st2 b{min-width:0}

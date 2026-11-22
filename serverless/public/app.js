@@ -548,18 +548,12 @@ async function viewHome(v) {
       ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
         <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}
       ${svcs.length ? `<h2 class="h2x">${esc(t("other_title"))}</h2><div class="more2">${svcs.map(([k, href, title, sub]) => `<a href="${href}" data-svc="${k}"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</a>`).join("")}</div>` : ""}
-      <section class="about"><div class="ab-h"><img src="/assets/logo-mark.png" alt="" width="34" height="34"><b>NAZAROV TG Gifts</b></div>
-        <p>${esc(t("ab_d"))}</p>
-        ${ab ? `<div class="ab-st">${ab.orders >= 10 ? `<div><b>${esc(money(ab.orders))}</b><small>${esc(t("ab_orders"))}</small></div>` : ""}${ab.customers >= 10 ? `<div><b>${esc(money(ab.customers))}</b><small>${esc(t("ab_customers"))}</small></div>` : ""}${ab.since ? `<div><b>${esc(t("mon_" + (Number(ab.since.slice(5, 7)) - 1)))}</b><small>${esc(t("ab_since", { y: ab.since.slice(0, 4) }))}</small></div>` : ""}</div>` : ""}
-        <div id="abRv"></div>
-        <div class="ab-l">${ab && ab.channel ? `<a href="https://t.me/${esc(ab.channel)}" target="_blank" rel="noopener">${esc(t("ab_channel"))} ↗</a>` : ""}<a href="#help">${esc(t("ab_reviews"))} →</a></div></section>
+      <section class="about2"><div class="ab-wall" aria-hidden="true">${[PEPE, ...others.slice(0, 7).map((g) => pic(g))].map((x) => `<span>${x}</span>`).join("")}</div>
+        <div class="ab-in"><div class="ab-h"><img src="/assets/logo-mark.png" alt="" width="36" height="36"><b>NAZAROV TG Gifts</b></div>
+        <div class="ab-st2"><div><b>5</b><small>${esc(t("ab_ways"))}</small></div><div><b>240</b><small>${esc(t("ab_months"))}</small></div></div>
+        ${ab && ab.channel ? `<a class="ab-ch" href="https://t.me/${esc(ab.channel)}" target="_blank" rel="noopener">${esc(t("ab_channel"))} ↗</a>` : ""}</div></section>
       <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
     startStories(v);
-    if (!draw.rv) draw.rv = api("/api/reviews").catch(() => []);
-    draw.rv.then((rv) => {
-      const box = $("#abRv", v); if (!box || !rv || !rv.length) return;
-      box.innerHTML = rv.filter((r) => r.rating >= 4).slice(0, 2).map((r) => `<blockquote><span>${"★".repeat(r.rating)}</span>${esc(String(r.text).slice(0, 140))}<cite>— ${esc(r.name)}</cite></blockquote>`).join("");
-    });
     v.querySelectorAll("[data-gt]").forEach((a) => a.addEventListener("click", () => { S.giftsTab = a.dataset.gt; }));
     v.querySelectorAll(".more2 a[data-svc]").forEach((a) => a.addEventListener("click", () => {
       if (RENT_TAB[a.dataset.svc]) { S.giftsTab = "rent"; S.rentTab = RENT_TAB[a.dataset.svc]; }
