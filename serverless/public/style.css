@@ -596,3 +596,18 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .ab-st2 b{min-width:0}
 .st-lad span{background:none;border:0;padding:0}.st-lad span:last-child{background:none;border:0}
 .st-lad em{font-size:.78rem;color:#E7CF95}
+
+/* Giftlar sahifasi: Pul olish qatori va "Giftni tanlang" ko'rsatmasi */
+.cxs{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;border-radius:16px;text-decoration:none;color:#F4EFE4;background:linear-gradient(135deg,#1E3D2F,#132A1F)}
+.cxs .ic{flex:0 0 36px;height:36px;border-radius:11px;display:grid;place-items:center;background:rgba(231,207,149,.16)}
+.cxs .ic svg{width:20px;height:20px;fill:none;stroke:#E7CF95;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cxs b{display:block;font-size:.9rem}.cxs small{color:#C9D3CB;font-size:.76rem}
+.cxs .chev{margin-left:auto;color:#E7CF95;font-size:1.3rem}
+.pick-h{display:flex;align-items:center;font-weight:800;font-size:1rem;margin:18px 0 0}
+
+/* Gift sahifasi: "Oylik to'lovni hisoblash" tugmasi ekran pastida doim ko'rinadi (menyu ustida) */
+.cta2.one{position:fixed;left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:15;margin:0;padding:0;background:none;max-width:560px;margin-inline:auto}
+.cta2.one .btn{box-shadow:0 12px 26px -10px rgba(20,32,26,.55);animation:ctaIn .4s ease}
+@keyframes ctaIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.cta-sp{height:84px}
+.cta2 .s b#tot{font-size:1.05rem;line-height:1.2}

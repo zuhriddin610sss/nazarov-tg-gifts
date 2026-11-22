@@ -1128,7 +1128,7 @@ async function saleAttrs(name) {
   if (!c) return [];
   try { return (await api("/api/nft/collections/" + encodeURIComponent(c.address) + "/attributes")).attributes || []; } catch { return []; }
 }
-async function viewSale(v, head, bindTabs, mode) {
+async function viewSale(v, head, bindTabs, mode, tail = "") {
   S.sales ||= {};
   const st = S.sales[mode] ||= { mode, items: [], next: null, loaded: false, error: null, cols: null, f: {}, sort: "price asc", num: "", attrs: null, req: 0, own: null };
   // O'z mahsulotlarim (Reklama): shu to'lov turida sotib olish mumkin bo'lganlari, ro'yxat boshida
@@ -1137,7 +1137,6 @@ async function viewSale(v, head, bindTabs, mode) {
   const priceLbl = () => (st.f.min || st.f.max ? `${st.f.min ? money(st.f.min) : "0"} – ${st.f.max ? money(st.f.max) : "∞"}` : "");
   const reload = async () => { st.loaded = false; st.items = []; st.next = null; st.error = null; draw(); if (st.f.collection) { await loadSale(st); draw(); } };
   const searching = `<div class="spin"></div><p class="hint" style="text-align:center">${esc(t("sale_searching"))}</p>`;
-  const sellLink = `<a class="svc" href="#sell" style="margin-top:12px"><span class="svc-ic">🏷</span><span class="svc-t"><b>${esc(t("sell_link"))}</b><small>${esc(t("sell_link_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>`;
   const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
   const ownLine = (it) => buyPriceHtml(mode === "cash" ? it.cashPrice : it.salePrice, mode);
   const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null, mode === "lease" ? "our_lease" : mode === "inst" ? "our_inst" : "our_cash", mode === "cash");
@@ -1146,7 +1145,7 @@ async function viewSale(v, head, bindTabs, mode) {
     const q = String(st.colQ || "").trim().toLowerCase();
     let cols = (st.colList || []).filter((c) => !q || c.name.toLowerCase().includes(q));
     if (st.sort === "price desc") cols = [...cols].reverse();
-    v.innerHTML = head + sellLink + ownGrid() + `
+    v.innerHTML = head + ownGrid() + `
       <input class="input" id="cQ" placeholder="${esc(t("col_search_ph"))}" value="${esc(st.colQ || "")}" autocomplete="off" style="margin-top:12px">
       <div class="filters">${sortChip}</div>
       ${st.colErr ? `<p class="alert">${esc(st.colErr)}</p><button class="btn btn-ghost" id="retry" type="button">${esc(t("retry"))}</button>` : ""}
@@ -1154,7 +1153,7 @@ async function viewSale(v, head, bindTabs, mode) {
       ${st.colList && !cols.length && !st.own.length ? `<p class="empty">${esc(t(mode !== "cash" ? "buy_inst_empty" : "sale_empty"))}</p>` : ""}
       <div class="grid3">${cols.map((c) => `<button type="button" class="gcard" data-col="${esc(c.name)}">
         <span class="gimg">${imgTag("gifts", c.name + " #1")}</span>
-        <span class="gb"><b>${esc(c.name)}</b><span class="gp">${c.from ? buyPriceHtml(c.from, mode, true) : ""}</span></span></button>`).join("")}</div>`;
+        <span class="gb"><b>${esc(c.name)}</b><span class="gp">${c.from ? buyPriceHtml(c.from, mode, true) : ""}</span></span></button>`).join("")}</div>` + tail;
     bindTabs();
     v.querySelectorAll(".gcard[data-col]").forEach((c) => c.addEventListener("click", async () => {
       st.f = { collection: c.dataset.col }; st.num = ""; st.attrs = null; window.scrollTo(0, 0);
@@ -1182,7 +1181,7 @@ async function viewSale(v, head, bindTabs, mode) {
     const q = st.q ||= {};
     const fld = (k, label, val, disabled) => `<div class="field"><label>${esc(label)}</label>
       <button type="button" class="input pickbtn" data-q="${k}" ${disabled ? "disabled" : ""}>${esc(val || t(k === "collection" ? "find_pick" : "find_any"))}<span aria-hidden="true">⌄</span></button></div>`;
-    v.innerHTML = head + sellLink + ownGrid() + `
+    v.innerHTML = head + ownGrid() + `
       <section class="step findbox"><div class="step-h"><h2>${esc(t("find_title"))}</h2></div>
         ${fld("collection", t("find_gift"), q.collection)}
         <div class="row2">${fld("model", t("f_model"), q.model, !q.collection)}${fld("backdrop", t("f_backdrop"), q.backdrop, !q.collection)}</div>
@@ -1198,7 +1197,7 @@ async function viewSale(v, head, bindTabs, mode) {
           <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
             ${it.model ? `<small>${esc(it.model)}</small>` : ""}
             <span class="gp">${buyPriceHtml(it.price, "cash")}</span></span></button>`).join("")}</div>`
-        : `<p class="empty">${esc(t("find_none"))}</p>`) : ""}`;
+        : `<p class="empty">${esc(t("find_none"))}</p>`) : ""}` + tail;
     bindTabs(); bindOwn();
     const mx = $("#qMax", v); mx.addEventListener("input", () => { q.max = Number(mx.value) || null; });
     v.querySelectorAll(".pickbtn[data-q]").forEach((b) => b.addEventListener("click", async () => {
@@ -1254,7 +1253,7 @@ async function viewSale(v, head, bindTabs, mode) {
         <span class="gb"><b>${esc(it.name.replace(/\s*#\s*\d+$/, ""))}${it.num != null ? ` <small>#${esc(it.num)}</small>` : ""}</b>
           ${it.model ? `<small>${esc(it.model)}</small>` : ""}
           <span class="gp">${buyPriceHtml(it.price, mode)}</span></span></button>`).join("")}</div>
-      ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}`;
+      ${st.next != null && st.loaded ? `<button class="btn btn-ghost more" id="more" type="button">${esc(t("load_more"))}</button>` : ""}` + tail;
     bindTabs();
     v.querySelectorAll(".gcard[data-i]").forEach((c) => c.addEventListener("click", () => {
       S.salePick = { item: st.items[Number(c.dataset.i)], key: key(), pay: mode === "cash" ? "cash" : "installment", itype: mode === "lease" ? "lease" : null, mode };
@@ -1339,7 +1338,7 @@ function planEntryHtml(p, base) {
   const L = p.tab === "lease" ? ["pe_l3", "pe_l1", "pe_l2"] : ["pe_i1", "pe_i2", "pe_i3"];
   return `<div class="box pe pe-${p.tab}"><span class="pe-t">${HIC[p.tab]}${esc(t("tab_" + p.tab))}</span><span class="pe-k">${esc(t("per_month_up"))}</span><b class="pe-v">${m ? `${esc(money(m))} <em>${esc(t("som_from"))}</em>` : "—"}</b>
     <ul class="pe-l">${L.map(li).join("")}</ul></div>
-    <div class="cta2 one"><button class="btn btn-primary" id="go" type="button">${esc(t("calc_btn"))} →</button></div>`;
+    <div class="cta-sp"></div><div class="cta2 one"><button class="btn btn-primary" id="go" type="button">${esc(t("calc_btn"))} →</button></div>`;
 }
 function viewSaleItem(v) {
   const p = S.salePick;
@@ -1561,8 +1560,10 @@ async function viewGifts(v) {
     <div class="seg4" role="tablist" style="grid-template-columns:${all.map(([k]) => (k === "inst" ? "1.35fr" : k === "lease" ? ".9fr" : ".85fr")).join(" ")}">${all.map(([k, l]) => `<button type="button" role="tab" class="${tab === k ? "on" : ""}" data-gt="${k}">${esc(t(l))}</button>`).join("")}</div>`;
   const bindTop = () => v.querySelectorAll(".seg4 button[data-gt]").forEach((b) => (b.onclick = () => { S.giftsTab = b.dataset.gt; window.scrollTo(0, 0); render(); }));
   if (tab === "rent") return viewRent(v, head, bindTop);
-  const extra = tab === "inst" || tab === "lease" ? `<a class="svc" href="#nft" style="margin-top:12px"><span class="svc-ic">${HIC.cash.replace("<svg", '<svg fill="none" stroke="#1E3D2F" stroke-width="1.8"')}</span><span class="svc-t"><b>${esc(t("buy_custom"))}</b><small>${esc(t("buy_custom_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : "";
-  return viewSale(v, head + extra, bindTop, tab);
+  const tail = tab === "inst" || tab === "lease" ? `<a class="svc" href="#nft" style="margin-top:18px"><span class="svc-ic">${HIC.cash.replace("<svg", '<svg fill="none" stroke="#1E3D2F" stroke-width="1.8"')}</span><span class="svc-t"><b>${esc(t("buy_custom"))}</b><small>${esc(t("buy_custom_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : "";
+  const cxStrip = en.cashout !== false ? `<a class="cxs" href="#cashout"><span class="ic">${HIC.coin}</span><span><b>${esc(t("cxs_t"))}</b><small>${esc(t("cxs_d"))}</small></span><span class="chev" aria-hidden="true">›</span></a>` : "";
+  const hint = `<p class="pick-h"><span class="sn">1</span>${esc(t("pick_gift"))}</p>`;
+  return viewSale(v, head + cxStrip + hint, bindTop, tab, tail);
 }
 
 /** "Giftimni sotaman": havola va narx. Admin tasdiqlagach "Sotuvda" bo'limida chiqadi. */
@@ -1663,6 +1664,7 @@ function viewRentItem(v) {
   const f = p.formula;
   const price = (d) => itemPrice(it, f, d);
   const max = it.maxDays, min = it.minDays;
+  const so = avail.length > 1 ? 1 : 0; // tepada "1. To'lov turini tanlang" bo'lsa, qadamlar 2 dan boshlanadi
   const preset = [3, 7, 15, 30].filter((x) => x >= min && x < max);
   if (!preset.length || preset[0] > min) preset.unshift(min);
   if (!preset.includes(max)) preset.push(max);
@@ -1675,16 +1677,16 @@ function viewRentItem(v) {
     ? `<div class="upsell" id="ups">💡 ${esc(t("upsell", { n: max, d: money(bestPerDay(it, f)), tot: money(price(max)) }))}
         <button type="button" class="btn btn-ghost btn-sm" id="upsBtn">${esc(t("upsell_btn", { n: max }))}</button></div>` : "");
   v.innerHTML = title + `
-    <section class="step">${stepHead(1, t("rent_days"))}
+    <section class="step">${stepHead(1 + so, t("rent_days"))}
       <div class="chips">${preset.map((x) => `<button type="button" class="chip" data-d="${x}" aria-pressed="${p.days === x}">${esc(t("days_n", { n: x }))}${x === max && saving >= 1 ? ` <span class="save">−${saving}%</span>` : ""}</button>`).join("")}</div>
       <input class="input" id="days" type="number" inputmode="numeric" min="${min}" max="${max}" value="${esc(p.days)}">
       <p class="hint">${esc(t("days_range", { a: min, b: max }))}</p>
       <p class="hint" id="pdl">${esc(perDayLine(p.days))}</p>
       <div id="upsWrap">${upsell(p.days)}</div>
     </section>
-    ${payStep(2, p, ["plan2", "uzum"])}
-    <div class="cta">
-      <div class="sum"><span id="lbl">${esc(t("rent_total", { n: ok(p.days) ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(instCta(p)) : ok(p.days) ? esc(som(price(p.days))) : "—"}</b></div>
+    ${payStep(2 + so, p, ["plan2", "uzum"])}
+    <div class="cta2">
+      <div class="s"><span id="lbl">${esc(t("rent_total", { n: ok(p.days) ? p.days : "—" }))}</span><b id="tot">${p.pay === "installment" ? esc(instCta(p)) : ok(p.days) ? esc(som(price(p.days))) : "—"}</b></div>
       <button class="btn btn-primary" id="go" type="button" ${isReady() ? "" : "disabled"}>${esc(t("next"))}</button>
     </div>`;
   bindMode();
