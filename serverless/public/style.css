@@ -578,3 +578,4 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .ab-l{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:.86rem}
 .ab-l a{color:var(--sage);text-decoration:none}
 .ways2 .way:nth-child(5):last-child{grid-column:1/-1;flex-direction:row;align-items:center}
+.st-s .im.im2{right:56px;top:96px;width:96px;height:96px;transform:rotate(-10deg);opacity:.9}

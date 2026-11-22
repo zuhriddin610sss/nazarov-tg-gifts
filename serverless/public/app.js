@@ -516,13 +516,16 @@ async function viewHome(v) {
     const pic = (g) => (g ? (g.image ? `<img src="${esc(g.image)}" alt="">` : imgTag("gifts", g.name)) : "");
     const others = own.filter((x) => x.image);
     const minInst = buyable.length ? Math.min(...buyable.map((x) => minMonthly(x.salePrice))) : null;
+    // Lizing va bo'lib to'lash reklamasida — narxi ko'rsatilgan eng arzon giftning o'zi
+    const cheap = buyable.length ? buyable.reduce((a, b) => (b.salePrice < a.salePrice ? b : a)) : null;
+    const PEPE = `<img src="https://nft.fragment.com/gift/plushpepe-1.webp" alt="Plush Pepe">`;
     const slides = [
       en.gift_rent !== false && { k: "rent", href: "#gifts", gt: "rent", kick: t("tab_rent"), h: minRent ? t("st_day", { a: money(minRent) }) : t("st_rent_h0"), p: t("st_rent_p"),
         extra: ladder.length > 1 && ladder[0][1] > ladder[ladder.length - 1][1] ? `<div class="st-lad">${ladder.map(([d, x]) => `<span><em>${esc(t("days_n", { n: d }))}</em><b>${esc(money(x))}</b></span>`).join("")}</div>` : "",
         go: t("st_rent_go"), im: pic(rg || others[0]) },
-      en.nft_gift !== false && { k: "lease", href: "#gifts", gt: "lease", kick: t("tab_lease"), h: minLease ? t("st_month", { a: money(minLease) }) : t("tab_lease"), p: t("st_lease_p"), go: t("hx_go"), im: pic(hero) },
-      en.nft_gift !== false && { k: "inst", href: "#gifts", gt: "inst", kick: t("tab_inst"), h: minInst ? t("st_month", { a: money(minInst) }) : t("tab_inst"), p: t("st_inst_p"), go: t("hx_go"), im: pic(others[1] || hero) },
-      en.cashout !== false && { k: "cash", href: "#cashout", gt: "", kick: t("cx_short"), h: t("st_cash_h"), p: "", go: t("cx_btn"), im: pic(others[2] || others[0]), coin: true },
+      en.nft_gift !== false && { k: "lease", href: "#gifts", gt: "lease", kick: t("tab_lease"), h: minLease ? t("st_month", { a: money(minLease) }) : t("tab_lease"), p: t("st_lease_p"), go: t("hx_go"), im: pic(cheap) },
+      en.nft_gift !== false && { k: "inst", href: "#gifts", gt: "inst", kick: t("tab_inst"), h: minInst ? t("st_month", { a: money(minInst) }) : t("tab_inst"), p: t("st_inst_p"), go: t("hx_go"), im: pic(cheap) },
+      en.cashout !== false && { k: "cash", href: "#cashout", gt: "", kick: t("cx_short"), h: t("st_cash_h"), p: "", go: t("cx_btn"), im: PEPE, im2: pic(others[0]), coin: true },
     ].filter(Boolean);
     const ab = S.cfg && S.cfg.about;
     const way2 = (href, gt, ic, title, desc, main) => `<a class="way${main ? " main" : ""}" href="${href}"${gt ? ` data-gt="${gt}"` : ""}><span class="ic">${ic}</span><span><b>${title}</b><small>${esc(desc)}</small></span></a>`;
@@ -530,7 +533,7 @@ async function viewHome(v) {
       ${slides.length ? `<section class="st" id="st"><div class="st-bars">${slides.map(() => "<i><b></b></i>").join("")}</div>
         <div class="st-track">${slides.map((x) => `<a class="st-s st-${x.k}" href="${x.href}"${x.gt ? ` data-gt="${x.gt}"` : ""}>
           <span class="k">${esc(x.kick)}</span><h1>${esc(x.h)}</h1>${x.p ? `<p>${esc(x.p)}</p>` : ""}${x.extra || ""}
-          ${x.im ? `<span class="im">${x.im}${x.coin ? `<span class="cxm">+ ${esc(t("som"))}</span><em class="stay">${esc(t("cx_stays"))}</em>` : ""}</span>` : ""}
+          ${x.im2 ? `<span class="im im2">${x.im2}</span>` : ""}${x.im ? `<span class="im">${x.im}${x.coin ? `<span class="cxm">+ ${esc(t("som"))}</span><em class="stay">${esc(t("cx_stays"))}</em>` : ""}</span>` : ""}
           <span class="go">${esc(x.go)} →</span></a>`).join("")}</div></section>` : ""}
       <div class="trust"><div><b>${esc(t("trust_now_b"))}</b><small>${esc(t("trust_now"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>
       ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
