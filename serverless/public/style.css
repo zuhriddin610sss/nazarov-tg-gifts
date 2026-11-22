@@ -594,3 +594,5 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 .ab-ch{justify-self:start;background:#E7CF95;color:#1E1A0E;font-weight:800;font-size:.88rem;padding:10px 14px;border-radius:12px;text-decoration:none}
 .ab-st2 div{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px}
 .ab-st2 b{min-width:0}
+.st-lad span{background:none;border:0;padding:0}.st-lad span:last-child{background:none;border:0}
+.st-lad em{font-size:.78rem;color:#E7CF95}

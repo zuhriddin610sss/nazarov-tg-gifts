@@ -505,7 +505,9 @@ async function viewHome(v) {
     // Ijara: bizning giftlar + bozordagi ijara ro'yxati (birinchi sahifa) — eng arzoni
     const hr = S.homeRent && S.homeRent.items ? S.homeRent : { items: [], formula: null };
     const rentable = own.filter((x) => x.rent).map((it) => ({ it, f: null })).concat(hr.items.map((it) => ({ it, f: hr.formula })));
-    const ppdOf = (x) => bestPerDay(x.it, x.f);
+    // Kunlik narx 180 kunlik ijara bo'yicha (gift 180 kunga berilmasa — eng uzun muddati bo'yicha)
+    const d180 = (it) => Math.max(it.minDays || 1, Math.min(180, it.maxDays || 1));
+    const ppdOf = (x) => Math.ceil(itemPrice(x.it, x.f, d180(x.it)) / d180(x.it));
     const minRent = rentable.length ? Math.min(...rentable.map(ppdOf)) : null;
     const way = (tab, ic, title, desc, right, main) => `<a class="way${main ? " main" : ""}" href="#gifts" data-gt="${tab}"><span class="ic">${ic}</span>
       <span><b>${title}</b><small>${esc(desc)}</small></span>${right || ""}</a>`;
@@ -515,8 +517,6 @@ async function viewHome(v) {
     // Ijara: eng arzon ijaradagi gift va uning 1 / 7 / 30 / 180 kunlik kunlik narxlari
     const rgx = rentable.length ? rentable.reduce((a, b) => (ppdOf(b) < ppdOf(a) ? b : a)) : null;
     const rg = rgx && rgx.it;
-    const ladder = rg ? [...new Set([1, 7, 30, 180].filter((d) => d >= rg.minDays && d <= rg.maxDays).concat(rg.maxDays < 180 ? [rg.maxDays] : []))].sort((a, b) => a - b).slice(-4)
-      .map((d) => [d, Math.ceil(itemPrice(rg, rgx.f, d) / d)]) : [];
     const pic = (g) => (g ? (g.image ? `<img src="${esc(g.image)}" alt="">` : imgTag("gifts", g.name)) : "");
     const others = own.filter((x) => x.image);
     const minInst = buyable.length ? Math.min(...buyable.map((x) => minMonthly(x.salePrice))) : null;
@@ -525,7 +525,7 @@ async function viewHome(v) {
     const PEPE = `<img src="https://nft.fragment.com/gift/plushpepe-1.webp" alt="Plush Pepe">`;
     const slides = [
       en.gift_rent !== false && { k: "rent", href: "#gifts", gt: "rent", kick: t("tab_rent"), h: minRent ? t("st_day", { a: money(minRent) }) : t("st_rent_h0"), p: t("st_rent_p"),
-        extra: ladder.length > 1 && ladder[0][1] > ladder[ladder.length - 1][1] ? `<div class="st-lad">${ladder.map(([d, x]) => `<span><em>${esc(t("days_n", { n: d }))}</em><b>${esc(money(x))}</b></span>`).join("")}</div>` : "",
+        extra: rg ? `<div class="st-lad"><span><em>${esc(t("st_days_note", { n: d180(rg) }))}</em></span></div>` : "",
         go: t("st_rent_go"), im: pic(rg || others[0]) },
       en.nft_gift !== false && { k: "lease", href: "#gifts", gt: "lease", kick: t("tab_lease"), h: minLease ? t("st_month", { a: money(minLease) }) : t("tab_lease"), p: t("st_lease_p"), go: t("hx_go"), im: pic(cheap) },
       en.nft_gift !== false && { k: "inst", href: "#gifts", gt: "inst", kick: t("tab_inst"), h: minInst ? t("st_month", { a: money(minInst) }) : t("tab_inst"), p: t("st_inst_p"), go: t("hx_go"), im: pic(cheap) },
