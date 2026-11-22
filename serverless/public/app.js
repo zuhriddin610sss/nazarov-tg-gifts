@@ -502,17 +502,21 @@ async function viewHome(v) {
     const buyable = own.filter((x) => x.installment && x.salePrice > 0);
     const hero = buyable.find((x) => x.image) || buyable[0] || null;
     const minLease = buyable.length ? Math.min(...buyable.map((x) => leaseMin(x.salePrice))) : null;
-    const rentable = own.filter((x) => x.rent);
-    const minRent = rentable.length ? Math.min(...rentable.map((x) => bestPerDay(x, null))) : null;
+    // Ijara: bizning giftlar + bozordagi ijara ro'yxati (birinchi sahifa) — eng arzoni
+    const hr = S.homeRent && S.homeRent.items ? S.homeRent : { items: [], formula: null };
+    const rentable = own.filter((x) => x.rent).map((it) => ({ it, f: null })).concat(hr.items.map((it) => ({ it, f: hr.formula })));
+    const ppdOf = (x) => bestPerDay(x.it, x.f);
+    const minRent = rentable.length ? Math.min(...rentable.map(ppdOf)) : null;
     const way = (tab, ic, title, desc, right, main) => `<a class="way${main ? " main" : ""}" href="#gifts" data-gt="${tab}"><span class="ic">${ic}</span>
       <span><b>${title}</b><small>${esc(desc)}</small></span>${right || ""}</a>`;
     const rr = (lbl, val) => (val ? `<span class="r"><span>${esc(lbl)}</span><b>${esc(money(val))} ${esc(t("from_sfx"))}</b></span>` : "");
     const svcs = [["premium", "#premium", t("svc_premium"), ""], ["stars", "#stars", t("svc_stars"), ""],
       ["username_rent", "#gifts", t("svc_username_rent"), t("w_rent")], ["number_rent", "#gifts", t("svc_number_rent"), t("w_rent")], ["nft_gift", "#sell", t("sell_title"), ""]].filter(([k]) => en[k] !== false);
     // Ijara: eng arzon ijaradagi gift va uning 1 / 7 / 30 / 180 kunlik kunlik narxlari
-    const rg = rentable.length ? rentable.reduce((a, b) => (bestPerDay(b, null) < bestPerDay(a, null) ? b : a)) : null;
+    const rgx = rentable.length ? rentable.reduce((a, b) => (ppdOf(b) < ppdOf(a) ? b : a)) : null;
+    const rg = rgx && rgx.it;
     const ladder = rg ? [...new Set([1, 7, 30, 180].filter((d) => d >= rg.minDays && d <= rg.maxDays).concat(rg.maxDays < 180 ? [rg.maxDays] : []))].sort((a, b) => a - b).slice(-4)
-      .map((d) => [d, Math.ceil(itemPrice(rg, null, d) / d)]) : [];
+      .map((d) => [d, Math.ceil(itemPrice(rg, rgx.f, d) / d)]) : [];
     const pic = (g) => (g ? (g.image ? `<img src="${esc(g.image)}" alt="">` : imgTag("gifts", g.name)) : "");
     const others = own.filter((x) => x.image);
     const minInst = buyable.length ? Math.min(...buyable.map((x) => minMonthly(x.salePrice))) : null;
@@ -564,8 +568,10 @@ async function viewHome(v) {
     }));
   };
   draw(S.ownGifts || []);
+  const rentP = en.gift_rent !== false && !S.homeRent ? api("/api/rent/gifts?sort_by=price_per_day").then((r) => { S.homeRent = r; }).catch(() => { S.homeRent = { items: [], formula: null }; }) : null;
   const own = await ownGifts();
   if ((location.hash.slice(1) || "home") === "home") draw(own);
+  if (rentP) { await rentP; if ((location.hash.slice(1) || "home") === "home") draw(own); }
 }
 /** O'z giftini sotib olish sahifasini ochish (lizing / bo'lib to'lash / naqd). */
 function openOwnBuy(it, mode) {
