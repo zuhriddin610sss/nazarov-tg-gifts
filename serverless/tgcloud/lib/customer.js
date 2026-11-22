@@ -78,7 +78,11 @@ async function storeImage(base64, caption, withButtonsFor) {
 export const actions = {
   async config() {
     const s = await getSettings();
+    // "Biz haqimizda": bajarilgan buyurtmalar va mijozlar soni (bot tashqarisidagilar admin sozlamasidan qo'shiladi)
+    const ab = await get(`SELECT (SELECT COUNT(*) FROM orders WHERE status = 'completed') AS orders, (SELECT COUNT(*) FROM customers) AS customers`);
     return {
+      about: { orders: Number(ab.orders || 0) + Number(s.about_orders_extra || 0), customers: Number(ab.customers || 0) + Number(s.about_customers_extra || 0),
+        since: s.about_since || null, channel: s.about_channel || null },
       services: s.services_enabled, starsPrice: s.stars_price, starsMin: s.stars_min, premiumPrices: s.premium_prices,
       rentFormula: s.rent_formula, adminContact: s.admin_contact, marketapp: await marketappConfigured(),
       instMarkupYear: s.inst_markup_year,

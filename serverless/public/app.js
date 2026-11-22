@@ -466,7 +466,32 @@ const HIC = {
   inst: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="3"/><path d="M2 11h20M6 15h4"/></svg>',
   rent: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>',
   cash: '<svg viewBox="0 0 24 24"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18"/></svg>',
+  coin: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5V8M12 16v1.5"/></svg>',
 };
+/** Bosh sahifa reklamalari (Stories uslubi): har biri 5 soniya, bosib ushlasa to'xtaydi, surib almashtiriladi. */
+function startStories(v) {
+  const st = $("#st", v); if (!st) return;
+  const tr = $(".st-track", st), bars = [...st.querySelectorAll(".st-bars i")], n = bars.length;
+  let i = 0, sx = null, moved = false;
+  const go = (k) => {
+    i = (k + n) % n;
+    tr.style.transform = `translateX(${-i * 100}%)`;
+    bars.forEach((b, j) => { b.className = j < i ? "done" : ""; const f = b.firstChild; f.style.animation = "none"; void f.offsetWidth; f.style.animation = ""; });
+    bars[i].className = "on";
+  };
+  bars.forEach((b) => b.firstChild.addEventListener("animationend", () => { if (st.isConnected && b.className === "on") go(i + 1); }));
+  const pause = (on) => st.classList.toggle("paused", on);
+  st.addEventListener("pointerdown", (e) => { sx = e.clientX; moved = false; pause(true); });
+  st.addEventListener("pointermove", (e) => { if (sx != null && Math.abs(e.clientX - sx) > 12) moved = true; });
+  const up = (e) => {
+    pause(false);
+    if (sx != null && moved) { const dx = e.clientX - sx; if (Math.abs(dx) > 40) go(dx < 0 ? i + 1 : i - 1); }
+    sx = null;
+  };
+  st.addEventListener("pointerup", up); st.addEventListener("pointercancel", () => { pause(false); sx = null; });
+  st.addEventListener("click", (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+  go(0);
+}
 async function ownGifts() {
   if (!S.ownGifts) { try { S.ownGifts = (await api("/api/own/gifts")).map(normOwn); } catch { S.ownGifts = []; } }
   return S.ownGifts;
@@ -483,39 +508,55 @@ async function viewHome(v) {
       <span><b>${title}</b><small>${esc(desc)}</small></span>${right || ""}</a>`;
     const rr = (lbl, val) => (val ? `<span class="r"><span>${esc(lbl)}</span><b>${esc(money(val))} ${esc(t("from_sfx"))}</b></span>` : "");
     const svcs = [["premium", "#premium", t("svc_premium"), ""], ["stars", "#stars", t("svc_stars"), ""],
-      ["username_rent", "#gifts", t("svc_username_rent"), t("w_rent")], ["number_rent", "#gifts", t("svc_number_rent"), t("w_rent")]].filter(([k]) => en[k] !== false);
+      ["username_rent", "#gifts", t("svc_username_rent"), t("w_rent")], ["number_rent", "#gifts", t("svc_number_rent"), t("w_rent")], ["nft_gift", "#sell", t("sell_title"), ""]].filter(([k]) => en[k] !== false);
+    // Ijara: eng arzon ijaradagi gift va uning 1 / 7 / 30 / 180 kunlik kunlik narxlari
+    const rg = rentable.length ? rentable.reduce((a, b) => (bestPerDay(b, null) < bestPerDay(a, null) ? b : a)) : null;
+    const ladder = rg ? [...new Set([1, 7, 30, 180].filter((d) => d >= rg.minDays && d <= rg.maxDays).concat(rg.maxDays < 180 ? [rg.maxDays] : []))].sort((a, b) => a - b).slice(-4)
+      .map((d) => [d, Math.ceil(itemPrice(rg, null, d) / d)]) : [];
+    const pic = (g) => (g ? (g.image ? `<img src="${esc(g.image)}" alt="">` : imgTag("gifts", g.name)) : "");
+    const others = own.filter((x) => x.image);
+    const minInst = buyable.length ? Math.min(...buyable.map((x) => minMonthly(x.salePrice))) : null;
+    const slides = [
+      en.gift_rent !== false && { k: "rent", href: "#gifts", gt: "rent", kick: t("tab_rent"), h: minRent ? t("st_day", { a: money(minRent) }) : t("st_rent_h0"), p: t("st_rent_p"),
+        extra: ladder.length > 1 && ladder[0][1] > ladder[ladder.length - 1][1] ? `<div class="st-lad">${ladder.map(([d, x]) => `<span><em>${esc(t("days_n", { n: d }))}</em><b>${esc(money(x))}</b></span>`).join("")}</div>` : "",
+        go: t("st_rent_go"), im: pic(rg || others[0]) },
+      en.nft_gift !== false && { k: "lease", href: "#gifts", gt: "lease", kick: t("tab_lease"), h: minLease ? t("st_month", { a: money(minLease) }) : t("tab_lease"), p: t("st_lease_p"), go: t("hx_go"), im: pic(hero) },
+      en.nft_gift !== false && { k: "inst", href: "#gifts", gt: "inst", kick: t("tab_inst"), h: minInst ? t("st_month", { a: money(minInst) }) : t("tab_inst"), p: t("st_inst_p"), go: t("hx_go"), im: pic(others[1] || hero) },
+      en.cashout !== false && { k: "cash", href: "#cashout", gt: "", kick: t("cx_short"), h: t("st_cash_h"), p: "", go: t("cx_btn"), im: pic(others[2] || others[0]), coin: true },
+    ].filter(Boolean);
+    const ab = S.cfg && S.cfg.about;
+    const way2 = (href, gt, ic, title, desc, main) => `<a class="way${main ? " main" : ""}" href="${href}"${gt ? ` data-gt="${gt}"` : ""}><span class="ic">${ic}</span><span><b>${title}</b><small>${esc(desc)}</small></span></a>`;
     v.innerHTML = `${SILVER_DEFS}
-      ${en.nft_gift !== false ? `<a class="hx" href="#gifts" data-gt="lease"><span class="k">${esc(t("hx_k"))}</span>
-        <h1>${esc(t("hx_t1"))} <span>${esc(t("hx_t2"))}</span>${esc(t("hx_t3"))}</h1>
-        <p>${esc(t("hx_p"))}</p>
-        ${hero ? `<span class="im">${hero.image ? `<img src="${esc(hero.image)}" alt="">` : imgTag("gifts", hero.name)}</span>` : ""}
-        <span class="go">${esc(t("hx_go"))} →</span>
-        ${minLease ? `<div class="pr">${esc(t("per_month"))}<b>${esc(money(minLease))} ${esc(t("som_from"))}</b></div>` : ""}</a>
-      <div class="trust"><div><b>${esc(t("trust_now_b"))}</b><small>${esc(t("trust_now"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>` : ""}
+      ${slides.length ? `<section class="st" id="st"><div class="st-bars">${slides.map(() => "<i><b></b></i>").join("")}</div>
+        <div class="st-track">${slides.map((x) => `<a class="st-s st-${x.k}" href="${x.href}"${x.gt ? ` data-gt="${x.gt}"` : ""}>
+          <span class="k">${esc(x.kick)}</span><h1>${esc(x.h)}</h1>${x.p ? `<p>${esc(x.p)}</p>` : ""}${x.extra || ""}
+          ${x.im ? `<span class="im">${x.im}${x.coin ? `<span class="cxm">+ ${esc(t("som"))}</span><em class="stay">${esc(t("cx_stays"))}</em>` : ""}</span>` : ""}
+          <span class="go">${esc(x.go)} →</span></a>`).join("")}</div></section>` : ""}
+      <div class="trust"><div><b>${esc(t("trust_now_b"))}</b><small>${esc(t("trust_now"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>
       ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
       <h2 class="h2x">${esc(t("ways_title"))}</h2>
       <div class="ways2">
-      ${en.nft_gift !== false ? way("lease", HIC.lease, esc(t("w_lease")), t("w_lease_d"), rr(t("per_month"), minLease), true) : ""}
-      ${en.nft_gift !== false ? way("inst", HIC.inst, esc(t("w_inst")), t("w_inst_d"), "") : ""}
-      ${en.gift_rent !== false ? way("rent", HIC.rent, esc(t("w_rent")), t("w_rent_d"), rr(t("per_day"), minRent)) : ""}
-      ${en.nft_gift !== false ? way("cash", HIC.cash, esc(t("w_cash")), t("w_cash_d"), "") : ""}
+      ${en.nft_gift !== false ? way2("#gifts", "lease", HIC.lease, esc(t("w_lease")), t("w_lease_d"), true) : ""}
+      ${en.nft_gift !== false ? way2("#gifts", "inst", HIC.inst, esc(t("w_inst")), t("w_inst_d")) : ""}
+      ${en.gift_rent !== false ? way2("#gifts", "rent", HIC.rent, esc(t("w_rent")), t("w_rent_d")) : ""}
+      ${en.nft_gift !== false ? way2("#gifts", "cash", HIC.cash, esc(t("w_cash")), t("w_cash_d")) : ""}
+      ${en.cashout !== false ? way2("#cashout", "", HIC.coin, esc(t("cx_short")), t("w_cx_d")) : ""}
       </div>
-      ${en.cashout !== false ? (() => {
-        const g = own.find((x) => x.image && x !== hero) || hero;
-        const pic = g && g.image ? `<img src="${esc(g.image)}" alt="">` : HIC.lease;
-        return `<a class="cxc" href="#cashout"><span class="k">${esc(t("cx_k"))}</span>
-          <div class="cxg"><ul class="cxl"><li class="no"><i>✕</i>${esc(t("cx_l1"))}</li><li class="no"><i>✕</i>${esc(t("cx_l2"))}</li><li class="yes"><i>✓</i>${esc(t("cx_l3"))}</li></ul>
-            <span class="cxa"><span class="cxp">${pic}<em>${esc(t("cx_stays"))}</em></span><span class="cxm">+ ${esc(t("som"))}</span></span></div>
-          <small>${esc(t("cx_d"))}</small><span class="go">${esc(t("cx_btn"))} <span aria-hidden="true">→</span></span></a>`;
-      })() : ""}
       ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
         <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}
-      <h2 class="h2x">${esc(t("how_title"))}</h2>
-      <div class="how"><div><i>01</i><span><b>${esc(t("how1"))}</b><small>${esc(t("how1d"))}</small></span></div>
-        <div><i>02</i><span><b>${esc(t("how2"))}</b><small>${esc(t("how2d"))}</small></span></div>
-        <div><i>03</i><span><b>${esc(t("how3"))}</b><small>${esc(t("how3d"))}</small></span></div></div>
       ${svcs.length ? `<h2 class="h2x">${esc(t("other_title"))}</h2><div class="more2">${svcs.map(([k, href, title, sub]) => `<a href="${href}" data-svc="${k}"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</a>`).join("")}</div>` : ""}
+      <section class="about"><div class="ab-h"><img src="/assets/logo-mark.png" alt="" width="34" height="34"><b>NAZAROV TG Gifts</b></div>
+        <p>${esc(t("ab_d"))}</p>
+        ${ab ? `<div class="ab-st">${ab.orders >= 10 ? `<div><b>${esc(money(ab.orders))}</b><small>${esc(t("ab_orders"))}</small></div>` : ""}${ab.customers >= 10 ? `<div><b>${esc(money(ab.customers))}</b><small>${esc(t("ab_customers"))}</small></div>` : ""}${ab.since ? `<div><b>${esc(t("mon_" + (Number(ab.since.slice(5, 7)) - 1)))}</b><small>${esc(t("ab_since", { y: ab.since.slice(0, 4) }))}</small></div>` : ""}</div>` : ""}
+        <div id="abRv"></div>
+        <div class="ab-l">${ab && ab.channel ? `<a href="https://t.me/${esc(ab.channel)}" target="_blank" rel="noopener">${esc(t("ab_channel"))} ↗</a>` : ""}<a href="#help">${esc(t("ab_reviews"))} →</a></div></section>
       <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
+    startStories(v);
+    if (!draw.rv) draw.rv = api("/api/reviews").catch(() => []);
+    draw.rv.then((rv) => {
+      const box = $("#abRv", v); if (!box || !rv || !rv.length) return;
+      box.innerHTML = rv.filter((r) => r.rating >= 4).slice(0, 2).map((r) => `<blockquote><span>${"★".repeat(r.rating)}</span>${esc(String(r.text).slice(0, 140))}<cite>— ${esc(r.name)}</cite></blockquote>`).join("");
+    });
     v.querySelectorAll("[data-gt]").forEach((a) => a.addEventListener("click", () => { S.giftsTab = a.dataset.gt; }));
     v.querySelectorAll(".more2 a[data-svc]").forEach((a) => a.addEventListener("click", () => {
       if (RENT_TAB[a.dataset.svc]) { S.giftsTab = "rent"; S.rentTab = RENT_TAB[a.dataset.svc]; }

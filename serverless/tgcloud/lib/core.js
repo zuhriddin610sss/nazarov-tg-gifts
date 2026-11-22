@@ -127,6 +127,10 @@ export const DEFAULT_SETTINGS = {
   inst_markup_year: 100,
   lease_markup_year: 100,
   cashout_pct: 80,
+  about_since: '2026-05',
+  about_channel: 'NAZAROVtggifts',
+  about_orders_extra: 0,
+  about_customers_extra: 0,
   cashout_max: 50000000,
   // 1-tur boshlang'ich to'lovi: (Marketapp kunlik ijara × days + add) × rate × mult
   down_formula: { days: 45, add: 0.1, rate: 17000, mult: 3 },
