@@ -525,7 +525,7 @@ async function viewHome(v) {
     const PEPE = `<img src="https://nft.fragment.com/gift/plushpepe-1.webp" alt="Plush Pepe">`;
     const slides = [
       en.gift_rent !== false && { k: "rent", href: "#gifts", gt: "rent", kick: t("tab_rent"), h: minRent ? t("st_day", { a: money(minRent) }) : t("st_rent_h0"), p: t("st_rent_p"),
-        extra: rg ? `<div class="st-lad"><span><em>${esc(t("st_days_note", { n: d180(rg) }))}</em></span></div>` : "",
+        extra: "",
         go: t("st_rent_go"), im: pic(rg || others[0]) },
       en.nft_gift !== false && { k: "lease", href: "#gifts", gt: "lease", kick: t("tab_lease"), h: minLease ? t("st_month", { a: money(minLease) }) : t("tab_lease"), p: t("st_lease_p"), go: t("hx_go"), im: pic(cheap) },
       en.nft_gift !== false && { k: "inst", href: "#gifts", gt: "inst", kick: t("tab_inst"), h: minInst ? t("st_month", { a: money(minInst) }) : t("tab_inst"), p: t("st_inst_p"), go: t("hx_go"), im: pic(cheap) },
