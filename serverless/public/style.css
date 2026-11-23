@@ -611,3 +611,6 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 @keyframes ctaIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 .cta-sp{height:84px}
 .cta2 .s b#tot{font-size:1.05rem;line-height:1.2}
+/* Telefon: bosish tez va aniq bo'lsin */
+a,button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ways2 .way:active,.ptc:active,.cxs:active{transform:scale(.98)}

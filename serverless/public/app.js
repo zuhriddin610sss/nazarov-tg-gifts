@@ -2,7 +2,13 @@
 (() => {
 "use strict";
 const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); }
+if (tg) {
+  tg.ready(); tg.expand();
+  // Telegram'ning "pastga surib yopish" imo-ishorasi bosishlarni ushlab qolmasin (tugmalar bosilmay qolardi)
+  try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (_) { /* eski Telegram */ }
+}
+// Telegram ilovani "#tgWebAppData=…" bilan ochadi: bu bosh sahifa (aks holda "Orqaga" chiqib qolardi)
+if (/^#?tgWebApp/.test(location.hash)) { try { history.replaceState(null, "", location.pathname + location.search + "#home"); } catch (_) { /* eski brauzer */ } }
 
 const LANGS = ["uz", "ru", "en", "zh"];
 const LOCALE = { uz: "uz-UZ", ru: "ru-RU", en: "en-US", zh: "zh-CN" };
