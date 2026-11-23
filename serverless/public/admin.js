@@ -640,6 +640,13 @@ const downSel = (name, cur) => `<select class="input" name="${name}">${[["exact"
   .map(([k, l]) => `<option value="${k}" ${(DOWNB[cur] ? cur : "exact") === k ? "selected" : ""}>${l}</option>`).join("")}</select>`;
 const OLDSRC = (v) => { v = String(v || "manual_som"); if (v === "manual_som" || v === "manual_ton") return v; if (v === "best") return "sat_model_backdrop"; const b = v.replace(/^(portals_|sat_)/, ""); return ["model_backdrop", "model", "backdrop"].includes(b) ? "sat_" + b : "manual_som"; };
 const RENTB = { model_backdrop: "model + fon", model: "model", backdrop: "fon" };
+/** Narx tanlangan usuldan kengrog'idan olingan bo'lsa (masalan model + fon so'ralgan, faqat model bo'yicha topilgan) — ogohlantirish. */
+const BYRANK = { sat_model_backdrop: 3, sat_model: 2, sat_backdrop: 1 };
+const weakBy = (p) => {
+  const want = OLDSRC(p.price_source), got = p.quote && p.quote.by;
+  return BYRANK[want] && BYRANK[got] && BYRANK[got] < BYRANK[want]
+    ? `Diqqat: ${BYL[want].replace("barcha bozorlar: ", "")} bo'yicha sotuvda topilmadi, narx ${BYL[got].replace("barcha bozorlar: ", "")} bo'yicha olindi. Narx past bo'lishi mumkin — tekshiring.` : "";
+};
 const BYERR = { no_collection: "kolleksiya Marketapp'da topilmadi", error: "Marketapp xato berdi (Jurnallarga qarang)", paid: "Marketapp sotuv narxlari faqat pullik tarifda, Portals yoki qo'lda narxni tanlang" };
 // ---------- Mijozlar e'lonlari ("Giftimni sotaman") ----------
 const LST = { pending: "Tasdiq kutmoqda", active: "Sotuvda", sold: "Sotildi", hidden: "Yashirilgan / rad etilgan" };
@@ -687,7 +694,7 @@ async function own(v) {
       <td>${p.rent_enabled ? (p.rentAuto ? `${esc(money(p.rentAuto.perDay))}/kun dan<br><small class="hint">avto: ${esc(RENTB[p.rent_by] || "")} · 1 kun ${esc(money(p.rentAuto.day1))}</small>`
         : p.rent_price ? `${esc(money(p.rent_price))}/kun${p.rent_by !== "manual" ? `<br><small class="hint">qo'lda (Marketapp ijarasida topilmadi)</small>` : ""}` : `<span class="over">ijara narxi topilmadi</span>`)
         + `<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
-      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}

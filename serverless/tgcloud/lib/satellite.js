@@ -133,8 +133,8 @@ export async function satMarket(f = {}) {
   // Hamma bozorlardan bir vaqtda (har birining o'z navbati bor). 6 soniyada javob bermagani kutilmaydi.
   const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false }), ms) : r({ ok: false })));
   const res = await Promise.all(markets.map((m) => Promise.race([searchMarket(m, colName, f).catch(() => ({ ok: false })), timeout(6000)])));
-  let items = [], okAny = false;
-  for (const r of res) if (r.ok) { okAny = true; items = items.concat(r.items); }
+  let items = [], okAny = false, failed = 0;
+  for (const r of res) if (r.ok) { okAny = true; items = items.concat(r.items); } else failed++;
   if (!okAny) return null;
   // Kolleksiya filtrsiz ochilganda: uning barcha bozorlardagi eng arzonini eslab qolamiz ("… so'mdan" uchun)
   if (colName !== 'all-collections' && !f.model && !f.backdrop && !f.symbol && f.num == null && items.length) {
@@ -143,7 +143,8 @@ export async function satMarket(f = {}) {
   // Bitta gift bir nechta bozorda bo'lsa — eng arzoni qoladi
   const best = new Map();
   for (const it of items) { const k = it.name + '#' + it.num; if (!best.has(k) || it.ton < best.get(k).ton) best.set(k, it); }
-  return { items: [...best.values()].sort((a, b) => a.ton - b.ton) };
+  // partial: kamida bitta bozor javob bermadi (natija to'liq emas)
+  return { items: [...best.values()].sort((a, b) => a.ton - b.ton), partial: failed > 0 };
 }
 
 /**
@@ -156,7 +157,10 @@ export async function satFloor(attrs) {
   if (!r) return { status: 'error' };
   const low = (x) => String(x || '').trim().toLowerCase();
   const it = r.items.find((x) => (!attrs.model || low(x.model) === low(attrs.model)) && (!attrs.backdrop || low(x.backdrop) === low(attrs.backdrop)));
-  return it ? { status: 'ok', ton: it.ton, label: `${MARKET_NAME[it.market] || it.market}: ${it.name} #${it.num}` } : { status: 'none' };
+  if (it) return { status: 'ok', ton: it.ton, label: `${MARKET_NAME[it.market] || it.market}: ${it.name} #${it.num}` };
+  // Bozorlardan biri javob bermagan bo'lsa "yo'q" deb bo'lmaydi: u yerda aynan shu gift bo'lishi mumkin.
+  // Aks holda keyingi (kengroq, arzonroq) usulga o'tib, gift arzon baholanib qoladi — narx o'zgarmaydi.
+  return r.partial ? { status: 'error' } : { status: 'none' };
 }
 
 /** Buyurtma paytida: shu gift hali shu bozorda sotuvdami va narxi qancha (keshsiz). null — sotuvda yo'q. */
