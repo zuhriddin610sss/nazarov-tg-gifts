@@ -68,12 +68,12 @@ const STATUS = { pending: "To'lanmagan", queued: 'Navbatda', completed: 'Amalga 
 const som = (tiyin) => (tiyin == null ? '' : Number(tiyin) / 100);
 
 /**
- * Kunlik Excel hisobot: har kuni (Toshkent vaqti 09:00 dan keyin) adminlarga.
+ * Kunlik Excel hisobot: har kuni (Toshkent vaqti 06:00 dan keyin) adminlarga.
  * Varaqlar: Xulosa, Kecha (buyurtmalar), Lizing va bo'lib to'lash (to'liq jadval), Mening mahsulotlarim, Barcha buyurtmalar.
  */
 export async function sendDailyReport(now = nowMs(), force = false) {
   const local = new Date(now + 5 * 3600000);
-  if (!force && local.getUTCHours() < 9) return 0;
+  if (!force && local.getUTCHours() < 6) return 0;
   const to = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - 5 * 3600000, from = to - DAY;
   const label = tashkentDay(from);
   if (!force && !(await claim('daily:' + label))) return 0;
@@ -100,7 +100,7 @@ export async function sendDailyReport(now = nowMs(), force = false) {
   const rentInc = await ownRentIncome();
   const own = (await all('SELECT * FROM own_products ORDER BY position, id DESC')).map((p, k) => ({
     "№": k + 1, "Sotib olingan sana": p.bought_at ? p.bought_at.split('-').reverse().join('.') : '', "Sotib olingan narxi": som(p.bought_price),
-    "Mahsulot": p.name, "Model": p.model || '', "Fon": p.backdrop || '', "Qilingan daromad (ijaradan)": som(rentInc[p.id] || 0), "Holat": p.visible ? "Ko'rinadi" : 'Yashirin' }));
+    "Mahsulot": p.name, "Model": p.model || '', "Fon": p.backdrop || '', "Qilingan daromad": som(rentInc[p.id] || 0), "Holat": p.visible ? "Ko'rinadi" : 'Yashirin' }));
   const file = buildXlsx([{ name: 'Xulosa', rows: summary }, { name: 'Kecha', rows: day.map(oRow) },
     { name: "Lizing va bo'lib to'lash", rows: agRows }, { name: 'Mening mahsulotlarim', rows: own }, { name: 'Barcha buyurtmalar', rows: orders.map(oRow) }]);
   const caption = `📊 Kunlik hisobot: ${label}\nBuyurtmalar: ${ok.length} · Tushum: ${money(income / 100)} so'm\nFaol shartnomalar: ${active.length} · Qolgan qarz: ${money(sum(active, 'debt'))} so'm`;

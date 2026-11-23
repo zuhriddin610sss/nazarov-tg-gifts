@@ -329,12 +329,24 @@ export async function leaveReview(customerId, publicId, rating, text) {
 const monthDiff = (a, b) => { const x = ymd(a), y = ymd(b); return (y.getUTCFullYear() - x.getUTCFullYear()) * 12 + (y.getUTCMonth() - x.getUTCMonth()); };
 const ddmmyyyy = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('.') : '');
 
-/** Bizning giftlarimizning ijaradan tushgan puli (bajarilgan ijara buyurtmalari), { ownId: tiyin }. */
+/**
+ * Bizning giftlarimiz olib kelgan hamma pul, { ownId: tiyin }:
+ * bajarilgan naqd buyurtmalar (ijara, sotuv) + lizing / bo'lib to'lash shartnomalari bo'yicha to'langani
+ * (boshlang'ich va oylik to'lovlar — mijoz keyin to'lamay qo'ygan bo'lsa ham, to'langani kiradi).
+ */
 export async function ownRentIncome() {
-  const rows = await all(`SELECT details, COALESCE(paid_amount, price, 0) AS amt FROM orders
-      WHERE status = 'completed' AND service IN ('gift_rent','username_rent','number_rent') AND details LIKE '%"own":%'`);
   const m = {};
-  for (const r of rows) { const d = JSON.parse(r.details || '{}'); if (d.own) m[d.own] = (m[d.own] || 0) + Number(r.amt || 0); }
+  const add = (id, v) => { if (id) m[id] = (m[id] || 0) + Number(v || 0); };
+  const orders = await all(`SELECT details, COALESCE(paid_amount, price, 0) AS amt FROM orders
+      WHERE status = 'completed' AND payment_method = 'cash' AND details LIKE '%"own":%'`);
+  for (const r of orders) add(Number(JSON.parse(r.details || '{}').own) || null, r.amt);
+  const ags = await all(`SELECT a.own_id, a.down_payment, o.details,
+        COALESCE((SELECT SUM(amount) FROM inst_payments p WHERE p.agreement_id = a.id), 0) AS paid_sum
+      FROM agreements a LEFT JOIN orders o ON o.id = a.order_id`);
+  for (const a of ags) {
+    const id = Number(a.own_id) || (a.details ? Number(JSON.parse(a.details || '{}').own) || null : null);
+    add(id, Number(a.down_payment || 0) + Number(a.paid_sum || 0));
+  }
   return m;
 }
 
@@ -364,7 +376,7 @@ export async function agreementReport(today = new Date()) {
       profitTotal: bought != null ? S(s.total - bought) : null,
       down: S(a.down_payment), credit: S(s.total - Number(a.down_payment)), debt: S(s.remaining),
       months, monthlyProfit: S(a.monthly_profit), monthly: S(a.monthly_payment), monthsLeft: s.remaining > 0 && Number(a.monthly_payment) > 0 ? Math.ceil(s.remaining / Number(a.monthly_payment)) : 0,
-      finalDate: ddmmyyyy(a.final_date), paid: S(s.paid), allIncome: S(s.paid + (ownId && rent[ownId] ? rent[ownId] : 0)),
+      finalDate: ddmmyyyy(a.final_date), paid: S(s.paid), allIncome: S(ownId && rent[ownId] != null ? rent[ownId] : s.paid),
     };
   });
 }

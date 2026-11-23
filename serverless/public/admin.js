@@ -216,7 +216,7 @@ async function dashboard(v) {
       <p class="hint">Buyurtmalar (tanlangan sanalar bo'yicha), bo'lib to'lashlar va mijozlar bitta Excel faylga yoziladi. Fayl shu botdagi chatingizga yuboriladi.</p>
       <div class="row2"><input class="input" type="date" id="xFrom" value="${esc(monthStart())}"><input class="input" type="date" id="xTo" value="${esc(todayStr())}"></div>
       <button class="btn btn-primary btn-sm" id="xls" type="button">⬇ Excel</button>
-      <p class="hint" style="margin-top:10px">Har kuni soat 9:00 dan keyin kunlik Excel hisobot botga o'zi keladi: kechagi buyurtmalar, lizing va bo'lib to'lash to'liq jadvali, mahsulotlar.</p>
+      <p class="hint" style="margin-top:10px">Har kuni soat 6:00 dan keyin kunlik Excel hisobot botga o'zi keladi: kechagi buyurtmalar, lizing va bo'lib to'lash to'liq jadvali, mahsulotlar.</p>
       <button class="btn btn-ghost btn-sm" id="weekly" type="button">Hisobotni hozir olish</button></div>
     <div class="section"><h2>Eslatmalar</h2><p class="hint">Ijara va oylik to'lov eslatmalari bot faol bo'lganda o'zi yuboriladi. Hozir tekshirish uchun bosing.</p>
       <button class="btn btn-ghost btn-sm" id="runJobs" type="button">Eslatmalarni hozir yuborish</button></div>
@@ -698,7 +698,7 @@ async function own(v) {
     <div class="acts" style="margin-bottom:12px"><button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi mahsulot</button>
       <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button></div>
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
-      <div class="stat"><small>Ijaradan qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
+      <div class="stat"><small>Qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Sotib olingan</th><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
     ${rows.map((p, k) => `<tr><td>${k + 1}</td><td>${p.bought_at ? esc(p.bought_at.split("-").reverse().join(".")) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>

@@ -482,8 +482,8 @@ test("kunlik Excel hisobot: ertasi kuni 09:00 dan keyin bir marta, .xlsx fayl (l
   // Buyurtmaning ertasi kuni, Toshkent vaqti
   const d = new Date(created + 5 * 3600000); const mon = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 5 * 3600000 + 86400000;
   sent.length = 0;
-  assert.equal(await sendWeeklyReport(mon + 8 * 3600000), 0); // 08:00 — hali erta
-  assert.equal(await sendWeeklyReport(mon + 10 * 3600000), 1);
+  assert.equal(await sendWeeklyReport(mon + 5 * 3600000), 0); // 05:00 — hali erta
+  assert.equal(await sendWeeklyReport(mon + 6.5 * 3600000), 1);
   assert.equal(await sendWeeklyReport(mon + 11 * 3600000), 0); // ikkinchi marta yo'q
   const doc = sent.find((m) => m.method === 'sendDocument');
   assert.ok(doc, 'fayl yuborilmadi');
@@ -784,4 +784,20 @@ test("To'liq jadval: foydalar, kredit, qolgan qarz, gift olib kelgan hamma pul",
   assert.deepEqual([row.boughtPrice, row.cashPrice, row.profitCash, row.profitInst, row.profitTotal, row.down, row.credit, row.paid, row.debt, row.months, row.monthsLeft, row.monthlyProfit, row.finalDate, row.soldAt, row.username],
     [1000000, 1500000, 500000, 900000, 1400000, 400000, 2000000, 1000000, 1400000, 10, 7, 50000, '10.11.2026', '10.01.2026', '@ali_r']);
   assert.equal(row.allIncome, 1000000);
+});
+
+test("Qilingan daromad: bizning gift lizingga sotilib, mijoz to'lamay qo'ysa ham to'langani kiradi", async () => {
+  await withPhone();
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Income Gift #5', inst_enabled: true, price_source: 'manual_som', price_manual: 1000000, bought_at: '2026-01-01', bought_price: 600000 });
+  const own = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Income Gift #5');
+  assert.equal(own.bought_price, 600000);
+  const r = await app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', months: 10, downPayment: 100000, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  await admin({ action: 'saveInstallment', orderId: o.id, productName: o.title, installmentType: 'lease', totalPrice: 1500000, downPayment: 100000, monthlyPayment: 140000, startDate: '2026-02-01', finalDate: '2026-12-01' });
+  const ag = (await admin({ action: 'installments', status: 'active' })).find((a) => a.order_id === o.id);
+  await admin({ action: 'addInstallmentPayment', id: ag.id, amount: 140000, idempotencyKey: key() });
+  const own2 = (await admin({ action: 'ownProducts' })).find((x) => x.id === own.id);
+  assert.equal(own2.earned, 240000);
+  const row = (await admin({ action: 'installmentReport' })).find((x) => x.id === ag.id);
+  assert.deepEqual([row.boughtPrice, row.cashPrice, row.allIncome], [600000, 1000000, 240000]);
 });
