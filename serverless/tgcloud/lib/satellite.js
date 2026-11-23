@@ -169,6 +169,31 @@ export async function satFloor(attrs) {
   return r.partial ? { status: 'error' } : { status: 'none' };
 }
 
+/**
+ * Admin uchun tekshiruv: har bir bozor va har bir qidiruv (model + fon, model, fon) nima qaytardi.
+ * Keshsiz. Qatorlar: "MRKT · model: 23 ta, aynan mos: 30.6 TON" yoki "MRKT · model: javob yo'q (503)".
+ */
+export async function satDebug(attrs) {
+  const col = await satCollection(attrs.collection);
+  if (col === undefined) return ["Gift Satellite: kolleksiyalar ro'yxati kelmadi (kalit yoki internet)"];
+  if (!col) return [`Gift Satellite: "${attrs.collection}" kolleksiyasi topilmadi`];
+  const low = (x) => String(x || '').trim().toLowerCase();
+  const qs = [['model + fon', { model: attrs.model, backdrop: attrs.backdrop }], ['model', { model: attrs.model }], ['fon', { backdrop: attrs.backdrop }]]
+    .filter(([, q]) => (q.model || q.backdrop) && (!('backdrop' in q) || q.backdrop) && (!('model' in q) || q.model));
+  const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false, to: true }), ms) : r({ ok: false })));
+  const out = [];
+  for (const [label, q] of qs) {
+    const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q, { fresh: true }).catch(() => ({ ok: false })), timeout(8000)])));
+    res.forEach((r, k) => {
+      const name = MARKET_NAME[MARKETS[k]];
+      if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (8 soniyada kelmadi)' : ''}`); return; }
+      const ex = r.items.filter((x) => (!attrs.model || low(x.model) === low(attrs.model)) && (!attrs.backdrop || low(x.backdrop) === low(attrs.backdrop))).sort((a, b) => a.ton - b.ton)[0];
+      out.push(`${name} · ${label}: ${r.items.length} ta${ex ? `, aynan mos: ${ex.ton} TON (#${ex.num})` : ''}`);
+    });
+  }
+  return out;
+}
+
 /** Buyurtma paytida: shu gift hali shu bozorda sotuvdami va narxi qancha (keshsiz). null — sotuvda yo'q. */
 export async function satSaleItem(id) {
   const m = /^gs(\d):([^:]+):(.+)$/.exec(String(id));

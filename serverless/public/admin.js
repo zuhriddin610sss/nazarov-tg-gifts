@@ -717,7 +717,16 @@ async function own(v) {
   };
   v.querySelectorAll("[data-rf]").forEach((b) => (b.onclick = async () => {
     b.disabled = true; b.textContent = "Tekshirilmoqda…";
-    try { const r = await call("refreshOwnPrice", { id: Number(b.dataset.rf) }); toast(r.price ? `Yangi narx: ${money(r.price)}${r.marketPriceTon ? " (" + r.marketPriceTon + " TON)" : ""}` : "Bozorda topilmadi yoki javob yo'q — eski narx qoldi"); render(); }
+    try {
+      const r = await call("refreshOwnPrice", { id: Number(b.dataset.rf), debug: true });
+      sheet(`<h2>Narx tekshiruvi</h2>
+        <p>${r.kept ? "⚠️ <b>Bozorlardan biri javob bermadi — eski narx qoldi.</b>" : "✅ Narx yangilandi."}</p>
+        <div class="kv"><span>Narx</span><b>${r.price ? esc(money(r.price)) : "—"}</b><span>Asos</span><b>${esc(BYL[r.by] || r.by || "—")}</b>
+          <span>Manba</span><b>${esc(r.src || "—")}${r.marketPriceTon ? ", " + esc(r.marketPriceTon) + " TON" : ""}</b></div>
+        ${r.debug ? `<h3 style="margin-top:12px">Bozorlar javobi</h3><div class="det">${esc(r.debug.join("\n"))}</div>` : ""}
+        <button class="btn btn-primary" type="button" id="dbgOk">Yopish</button>`);
+      $("#dbgOk").onclick = () => { closeSheet(); render(); };
+    }
     catch (e) { b.disabled = false; b.textContent = "Narxni yangilash"; toast(e.message); }
   }));
   v.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
