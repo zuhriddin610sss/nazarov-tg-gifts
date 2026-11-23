@@ -687,7 +687,8 @@ async function own(v) {
   const rows = await api("/api/admin/own");
   v.innerHTML = `<h1>Mening mahsulotlarim</h1>
     <p class="hint" style="margin-bottom:12px">Bu mahsulotlar mijozga <b>"Reklama"</b> yorlig'i bilan har doim birinchi ko'rinadi: qaysi filtr tanlansa ham.</p>
-    <button class="btn btn-primary btn-sm" id="new" type="button" style="margin-bottom:12px">+ Yangi mahsulot</button>
+    <div class="acts" style="margin-bottom:12px"><button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi mahsulot</button>
+      <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button></div>
     <div class="tbl-wrap"><table><thead><tr><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Holat</th><th></th></tr></thead><tbody>
     ${rows.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>
@@ -702,6 +703,18 @@ async function own(v) {
     </tbody></table></div>`;
   $("#new").onclick = () => ownForm({});
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
+  // Hammasi: bittadan ketma-ket (bozorlarni bir vaqtda ko'p so'rov bilan band qilmaslik uchun), jarayon tugmada ko'rinadi
+  $("#rfAll").onclick = async (e) => {
+    const b = e.currentTarget, ids = rows.filter((p) => p.inst_enabled && p.kind === "gifts").map((p) => p.id);
+    if (!ids.length) return toast("Bo'lib to'lashga qo'yilgan gift yo'q");
+    b.disabled = true; let ok = 0, bad = 0;
+    for (let k = 0; k < ids.length; k++) {
+      b.textContent = `Tekshirilmoqda… ${k + 1} / ${ids.length}`;
+      try { const r = await call("refreshOwnPrice", { id: ids[k] }); if (r.price) ok++; else bad++; } catch (_) { bad++; }
+    }
+    toast(`Yangilandi: ${ok} ta${bad ? `, topilmadi yoki javob yo'q: ${bad} ta (eski narx qoldi)` : ""}`);
+    render();
+  };
   v.querySelectorAll("[data-rf]").forEach((b) => (b.onclick = async () => {
     b.disabled = true; b.textContent = "Tekshirilmoqda…";
     try { const r = await call("refreshOwnPrice", { id: Number(b.dataset.rf) }); toast(r.price ? `Yangi narx: ${money(r.price)}${r.marketPriceTon ? " (" + r.marketPriceTon + " TON)" : ""}` : "Bozorda topilmadi yoki javob yo'q — eski narx qoldi"); render(); }
