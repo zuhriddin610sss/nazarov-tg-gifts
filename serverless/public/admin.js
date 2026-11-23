@@ -647,6 +647,8 @@ const DOWNB = { exact: "aynan shu gift", model_backdrop: "model + fon", model: "
 const downSel = (name, cur) => `<select class="input" name="${name}">${[["exact", "Aynan shu giftning ijarasi"], ["model_backdrop", "Model + fon: eng arzon ijara"], ["model", "Model: eng arzon ijara"], ["backdrop", "Fon: eng arzon ijara"]]
   .map(([k, l]) => `<option value="${k}" ${(DOWNB[cur] ? cur : "exact") === k ? "selected" : ""}>${l}</option>`).join("")}</select>`;
 const OLDSRC = (v) => { v = String(v || "manual_som"); if (v === "manual_som" || v === "manual_ton") return v; if (v === "best") return "sat_model_backdrop"; const b = v.replace(/^(portals_|sat_)/, ""); return ["model_backdrop", "model", "backdrop"].includes(b) ? "sat_" + b : "manual_som"; };
+/** Oxirgi narx yangilash muvaffaqiyatsiz bo'lgan (eski narx qolgan) bozor narxli gift. */
+const failedPrice = (p) => p.kind === "gifts" && p.inst_enabled && Number(p.mk_checked_at) === 1;
 const RENTB = { model_backdrop: "model + fon", model: "model", backdrop: "fon" };
 /** Narx tanlangan usuldan kengrog'idan olingan bo'lsa (masalan model + fon so'ralgan, faqat model bo'yicha topilgan) — ogohlantirish. */
 const BYRANK = { sat_model_backdrop: 3, sat_model: 2, sat_backdrop: 1 };
@@ -700,12 +702,12 @@ async function own(v) {
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
       <div class="stat"><small>Qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Sotib olingan</th><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
-    ${rows.map((p, k) => `<tr><td>${k + 1}</td><td>${p.bought_at ? esc(p.bought_at.split("-").reverse().join(".")) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
+    ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(p.bought_at.split("-").reverse().join(".")) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>
       <td>${p.rent_enabled ? (p.rentAuto ? `${esc(money(p.rentAuto.perDay))}/kun dan<br><small class="hint">avto: ${esc(RENTB[p.rent_by] || "")} · 1 kun ${esc(money(p.rentAuto.day1))}</small>`
         : p.rent_price ? `${esc(money(p.rent_price))}/kun${p.rent_by !== "manual" ? `<br><small class="hint">qo'lda (Marketapp ijarasida topilmadi)</small>` : ""}` : `<span class="over">ijara narxi topilmadi</span>`)
         + `<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
-      <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${failedPrice(p) ? `<span class="over">⚠️ Oxirgi yangilashda narx olinmadi — eski narx</span><br>` : ""}${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
       <td class="num">${p.earned ? esc(money(p.earned)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
@@ -718,13 +720,19 @@ async function own(v) {
   $("#rfAll").onclick = async (e) => {
     const b = e.currentTarget, ids = rows.filter((p) => p.inst_enabled && p.kind === "gifts").map((p) => p.id);
     if (!ids.length) return toast("Bo'lib to'lashga qo'yilgan gift yo'q");
-    b.disabled = true; let ok = 0, bad = 0;
+    b.disabled = true; let ok = 0; const bad = [];
     for (let k = 0; k < ids.length; k++) {
       b.textContent = `Tekshirilmoqda… ${k + 1} / ${ids.length}`;
-      try { const r = await call("refreshOwnPrice", { id: ids[k] }); if (r.price) ok++; else bad++; } catch (_) { bad++; }
+      const name = (rows.find((p) => p.id === ids[k]) || {}).name || "#" + ids[k];
+      try { const r = await call("refreshOwnPrice", { id: ids[k] }); if (r.price && !r.kept) ok++; else bad.push(name); } catch (_) { bad.push(name); }
     }
-    toast(`Yangilandi: ${ok} ta${bad ? `, topilmadi yoki javob yo'q: ${bad} ta (eski narx qoldi)` : ""}`);
-    render();
+    if (!bad.length) { toast(`Hammasi yangilandi: ${ok} ta`); render(); return; }
+    sheet(`<h2>Natija</h2><p>✅ Yangilandi: <b>${ok} ta</b></p>
+      <p>⚠️ Yangilanmadi — eski narx qoldi: <b>${bad.length} ta</b></p>
+      <div class="det">${esc(bad.join("\n"))}</div>
+      <p class="hint">Bularning qatorida "Narxni yangilash"ni bosing — sababi ko'rinadi. Ro'yxatda ham ular ⚠️ belgisi bilan ajratilgan.</p>
+      <button class="btn btn-primary" type="button" id="rfOk">Yopish</button>`);
+    $("#rfOk").onclick = () => { closeSheet(); render(); };
   };
   v.querySelectorAll("[data-rf]").forEach((b) => (b.onclick = async () => {
     b.disabled = true; b.textContent = "Tekshirilmoqda…";
