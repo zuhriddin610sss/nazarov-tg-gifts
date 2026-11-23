@@ -1,125 +1,98 @@
 # Claude uchun tayyor prompt
 
-Bot o'chib ketsa yoki yangisini ochish kerak bo'lsa, quyidagi matnni **to'liq nusxalab** Claude'ga yuboring.
+Botga biror narsa bo'lsa (o'chib qolsa, xato bersa, yangi bot ochish kerak bo'lsa), quyidagi chiziqdan pastdagi matnni **to'liq nusxalab** Claude'ga yuboring. Oxiridagi "Hozir mendan nima kerak" qismiga muammongizni yozing.
 
 ---
 
-Salom! Men NAZAROVtggifts degan Telegram sovg'alar biznesim uchun bot va Mini App'ni qayta ishga tushirmoqchiman. Kod tayyor, GitHub'da turibdi:
+Salom! Mening NAZAROVtggifts degan Telegram giftlar biznesim bor: bot, Mini App va admin panel. Kod GitHub'da:
 https://github.com/zuhriddin610sss/nazarov-tg-gifts
 
-Kod `serverless/` papkasida. Ichida:
-- `tgcloud/lib`, `tgcloud/handlers`, `tgcloud/endpoints`: botning server kodi;
-- `public`: Mini App sahifalari va admin panel.
+Kod `serverless/` papkasida:
+- `tgcloud/lib`, `tgcloud/handlers`, `tgcloud/endpoints` — server kodi;
+- `public` — Mini App (`index.html`, `app.js`, `i18n.js`, `style.css`) va admin panel (`admin.html`, `admin.js`);
+- `test/` — testlar (`npm test`), `test/dev-server.mjs` — kompyuterda sinash uchun.
 
-Yo'riqnoma `QAYTA_QURISH.md` faylida. Iltimos, avval repozitoriyni ko'rib chiq, keyin menga yordam ber.
+Iltimos, avval repozitoriyni va shu faylni (`PROMPT.md`) o'qib chiq, keyin yordam ber.
 
 ## Men haqimda va qanday ishlashim kerak
-- Men dasturchi emasman. O'zbek tilida, juda oddiy tushuntir.
-- Har safar **faqat bitta qadam** yoki **bitta buyruq** ber, men "bo'ldi" deb yozganimdan keyin keyingisini ber. Uzun matn yozma.
-- Men Windows noutbukda **PowerShell** ishlataman, telefonda esa Telegram.
-- Buyruqlarni `npm.cmd` va `npx.cmd` ko'rinishida yoz (`npm` emas).
-- Tokenlarni (bot kaliti, CLI kaliti, Marketapp tokeni) **hech qachon chatga so'rama**. Ularni faqat terminalga yoki admin panelga qo'yaman.
-- Kod yozishdan oldin nima o'zgarishini qisqa aytib ber. Men "qil" desam, keyin qil.
-- Men xatolarni bittalab yuboraman. Sen ularni ro'yxatga yozib bor, "to'g'rila" deganimda hammasini birdaniga tuzat.
+- Men dasturchi emasman. **O'zbek tilida, qisqa va juda oddiy** tushuntir. Uzun matn yozma.
+- Kod yozishdan oldin nima o'zgarishini qisqa ayt. Men **"qil"** desam, keyin qil. "Kod yozma" desam — yozma.
+- Men xatolarni rasm bilan yuboraman. Bir nechta bo'lsa ro'yxat qilib, "qil" deganimda hammasini tuzat.
+- O'zgarishni o'zing sinab ko'r (testlar + telefon o'lchamidagi skrinshot), keyin GitHub'ga (main) yukla va menga yangilash buyruqlarini ber.
+- Tokenlar/kalitlarni (bot, CLI, Marketapp, Portals, Gift Satellite) **hech qachon chatga so'rama**. Ular faqat admin panel → Sozlamalarda yoki terminalda.
+- Gift Satellite'da `/user/buy` (xarid) **hech qachon chaqirilmaydi** — faqat narx o'qish.
 
-## Platforma
-- Bot **Telegram BotFather Serverless** (tgcloud) da ishlaydi.
-- Kod `@tgcloud/cli` orqali yuklanadi: `npx.cmd tgcloud login`, keyin `npx.cmd tgcloud push tgcloud/lib tgcloud/handlers tgcloud/endpoints public --force`.
-- Mening botim: app9267870642 (Mini App: https://app9267870642.tgcloud.ai/).
-- `tgcloud/lib/config.js` ichida mening Telegram ID'im (`ADMIN_IDS = [8644718235]`) va Mini App manzili (`https://app<raqam>.tgcloud.ai/`) bo'ladi. Raqam CLI kalitining boshida turadi (`app1234567890:...`).
-- Kodni yangilash tartibi:
-  1. GitHub'dan zip yuklab olinadi (`Invoke-WebRequest ... -OutFile bot.zip`).
-  2. Zip ochiladi (`Expand-Archive bot.zip . -Force`).
-  3. `config.js` yoziladi (`Set-Content`).
-  4. `push` qilinadi.
+## Platforma va yangilash
+- Bot **Telegram BotFather Serverless** (tgcloud) da: app9267870642, Mini App: https://app9267870642.tgcloud.ai/
+- Men Windows'da **PowerShell** ishlataman. Botni yangilash buyruqlari (hammasi birga nusxalanadi, oxirida yana Enter):
 
-## Oldin uchragan muammolar (takrorlanmasin)
-- `npx` **"Need to install tgcloud... Ok to proceed?"** desa, men noto'g'ri papkadaman yoki `npm.cmd install` qilinmagan. **`n` bosish kerak**, hech qachon `y` emas.
-- Serverless'da import nomlari `'lib/core'` ko'rinishida bo'lishi kerak (`../lib/core.js` emas).
-- Serverless `db.run` bilan bajariladigan, hech narsani o'zgartirmaydigan `CREATE ... IF NOT EXISTS` so'rovini "o'qish" deb hisoblab, xato beradi ("Write query looks like a read one"). Sxema kodi mavjud jadvallarni qayta yaratmasligi kerak.
-- Baza yangilanganda eski ma'lumotlar (mijozlar, balanslar, buyurtmalar) **o'chmasligi** shart: faqat yangi ustun yoki jadval qo'shiladi.
-- Admin panelda xato xabari oyna ustida ko'rinishi kerak.
+```
+cd C:\Users\user\Downloads
+Remove-Item nazarov-tg-gifts-main, bot.zip -Recurse -Force -ErrorAction SilentlyContinue
+Invoke-WebRequest https://github.com/zuhriddin610sss/nazarov-tg-gifts/archive/refs/heads/main.zip -OutFile bot.zip
+Expand-Archive bot.zip . -Force
+cd C:\Users\user\Downloads\nazarov-tg-gifts-main\serverless
+Set-Content tgcloud\lib\config.js "export const ADMIN_IDS = [8644718235];`nexport const MINI_APP_URL = 'https://app9267870642.tgcloud.ai/';"
+npm.cmd install
+npx.cmd tgcloud login
+npx.cmd tgcloud push tgcloud/lib tgcloud/handlers tgcloud/endpoints public --force
+```
 
-## Biznes qoidalari (kodda bor, o'zgartirma)
-**Ilova tuzilishi**
-- Pastki menyu: Asosiy · Ijara · Sotib olish · Xaridlarim · Balans.
-- Bosh sahifa: brend kartochkasi ("NFT giftlar bo'lib to'lashga va rent (ijara)ga"), keyin xizmatlar: NFT bo'lib to'lash, ijara, NFT gift sotib olish, Premium, Stars, username va +888 ijarasi.
-- Ilovada "sovg'a" o'rniga "gift" so'zi. Mijozga bozor nomlari (Portals, MRKT va h.k.) hech qayerda ko'rinmaydi, faqat adminga.
-- Kartochkalarda narx turi yoziladi: "💎 Sotib olish" yoki "⏳ Ijara".
-- O'z giftlarim "⭐ Bizning giftlarimiz · ijaraga / bo'lib to'lashga / naqd sotuvda" blokida, oltin "Reklama" yorlig'i bilan, gorizontal qatorda.
+- Yangi bot ochilsa: `config.js` dagi `app<raqam>` CLI kalitining boshidagi raqam bo'ladi.
 
-**Ijara**
-- Bozor giftlari (Marketapp): (Marketapp narxi + 0,15) × 2 × 19 000 so'm, yuqoriga yaxlitlanadi. Kartochkada "… so'm / kun dan" (eng uzoq muddat bo'yicha).
-- O'z giftlarim (avto tanlansa): Marketapp ijarasidagi model + fon / model / fon eng arzoni bo'yicha (P + 0,15) × 3 × 19 000; topilmasa qo'lda kunlik narx.
-- Ijara bo'limida faqat ijaraga beriladigan o'z giftlarim chiqadi.
+## Takrorlanmasin (oldin bo'lgan xatolar)
+- `npx` "Ok to proceed?" desa — noto'g'ri papka yoki `npm.cmd install` qilinmagan. **`n` bosiladi**.
+- Import nomlari `'lib/core'` ko'rinishida (`../lib/core.js` emas).
+- Baza yangilanganda eski ma'lumotlar o'chmasligi shart: faqat yangi ustun/jadval qo'shiladi.
+- `public/index.html` va `admin.html` dagi `?v=...` har yangilanishda o'zgartiriladi (aks holda Telegram eski nusxani ko'rsatadi).
+- Bosh sahifa ma'lumot kelganda **butunlay qayta chizilmaydi** (tugmalar bosilmay qolardi) — faqat reklamalar va tavsiyalar yangilanadi.
+- Telegram'ning "pastga surib yopish" o'chirilgan (`disableVerticalSwipes`) — aks holda bosishlar yo'qoladi. Ochilishdagi `#tgWebAppData` bosh sahifa deb olinadi.
+- Gift Satellite: kolleksiya nomi eski kolleksiyalarda probelsiz (`PlushPepe`), yangilarida probel bilan (`Jingle Bells`) — bot ikkalasini sinaydi va eslab qoladi. Getgems qidiruvi 404 bersa e'tiborga olinmaydi.
+- Bozorlardan biri javob bermasa, narx **o'zgarmaydi** (kengroq, arzonroq usulga tushib ketmaydi). Model + fon uchun uch xil qidiruv (birga, faqat model, faqat fon) va aynan mosi tanlanadi.
 
-**Sotib olish**
-- Avval "Nimani?": NFT gift, Premium, Stars (o'z username/+888 bo'lsa ular ham).
-- NFT gift → "Bo'lib to'lab" yoki "Naqd":
-  - Bo'lib to'lab: avval kolleksiyalar (rasm, nom, "oyiga ≈ … so'mdan"), bosilganda giftlar (narx, model, fon, belgi filtrlari, raqam qidiruvi). Faqat admin chegarasidan ("… so'mgacha") arzon giftlar. To'liq narx ko'rsatilmaydi, faqat "Oyiga ≈ …" (240 oyga hisob).
-  - Naqd: katalog yo'q. Mijoz talab kiritadi (gift turi, model, fon, belgi, byudjet), "Topish" → eng arzon 5 ta mos gift.
-- Bozor giftlari narxi: (bozordagi narx + qo'shimcha) × 17 000; qo'shimcha sozlamalarda (hozir 0,6).
-- O'z giftlarim narxi: (barcha bozorlardagi model + fon / model / fon eng arzoni + 0,3) × 17 000; topilmasa qo'lda narx. Butun kolleksiyaning eng arzoniga tushilmaydi.
-- Buyurtmada narx qayta tekshiriladi; gift sotilgan bo'lsa yoki narx o'zgarsa, mijozga aytiladi. Giftni admin qo'lda sotib oladi.
-- "Giftimni sotaman": egasi havola va narxni yozadi, admin "E'lonlar"da tasdiqlaydi. Sotilsa, adminga sotuvchining username'i keladi. Pulni admin o'zi hal qiladi.
+## Biznes qoidalari (o'zgartirma)
+**Umumiy**
+- Pastki menyu: Asosiy | Giftlar | Xaridlarim | Balans. Giftlar bo'limlari: Lizing | Bo'lib to'lash | Ijara | Naqd.
+- 5 ta usul alohida, aralashtirilmaydi: Lizing, Bo'lib to'lash, Ijara, Naqd (sotib olish), Pul olish.
+- "Sovg'a" emas — **"gift"**. Mijozga bozor nomlari (Portals, MRKT…) ko'rinmaydi, faqat adminga.
+- **"0%", "Foizsiz", "ustamasiz"** hech qayerda yozilmaydi (ustama bor). "Qarz", "kredit", "garov/zalog" so'zlari ishlatilmaydi.
+- Shiorlar, "emotsiya" gaplari, qat'iy va'dalar ("100%", "topib beramiz") yozilmaydi — egasi "crinj" deydi. Faktlar va narxlar yetarli.
 
-**Bo'lib to'lash**
-- Turlari: 1-tur, Boshlang'ich to'lovsiz, Uzum Nasiya. Muddat 1–240 oy (barabanda), Uzum'da 3 · 6 · 12 oy.
-- Ustama: oyiga 100% ÷ 12, boshlang'ich to'lov ayrilgan qolgan summaga.
-- Mijozga faqat boshlang'ich to'lov va taxminiy oylik to'lov ko'rsatiladi. Pastki yozuv nimani tanlash kerakligini aytadi.
-- 1-tur boshlang'ich to'lovi: (Marketapp 45 kunlik ijara narxi + 0,1) × 17 000 × 3. Qaysi ijaradan (aynan gift / model + fon / model / fon) admin tanlaydi. Topilmasa admin yozgan summa, u ham bo'lmasa "admin aytadi".
-- Oylik to'lov eslatmalari bor.
+**Narxlar (so'm, yuqoriga yaxlitlanadi)**
+- Bozor giftlarini sotish: (bozor narxi + 0,6) × 17 000.
+- O'z giftlarim: (barcha bozorlarda tanlangan usul — model + fon / model / fon — eng arzoni + 0,3) × 17 000; topilmasa qo'lda narx.
+- Ijara (bozor): (Marketapp narxi + 0,15) × 2 × 19 000. O'z giftlarim avto: × 3.
+- Bo'lib to'lash ustamasi: yiliga 100% (oyiga ÷12). Lizing ustamasi alohida sozlama (standart yiliga 100%).
+- 1-tur boshlang'ich to'lovi: (Marketapp 45 kunlik ijara + 0,1) × 17 000 × 3; topilmasa admin yozgan summa.
 
-**Boshqa xizmatlar**
-- Stars: 240 so'm, kamida 50 ta.
-- Premium: 1 oy 42 000; 3 oy 171 600; 6 oy 231 000; 12 oy akkauntga kirib 297 000; 12 oy kirmasdan 418 000. 1 oy va "12 oy kirib"da "Kimga?" so'ralmaydi.
+**Lizing va bo'lib to'lash**
+- Muddat 1–240 oy (baraban), Uzum Nasiya 3 · 6 · 12 oy. Bo'lib to'lash turlari: Oddiy (boshlang'ich ixtiyoriy), 1-tur (belgilangan boshlang'ich), Uzum Nasiya (20 yoshdan, Uzum Nasiya yoki Uzum Bank'da hisob kerak).
+- Gift darhol mijozning Telegramida. To'lov to'xtasa gift olib qo'yiladi, pul qaytarilmaydi.
+- To'lov kuni = xarid kuni. Mijozga umumiy/qolgan qarz ko'rsatilmaydi — faqat keyingi to'lov, progress va oxirgi sana.
 
-**Admin**
-- Hamma buyurtma navbatga tushadi, qo'lda bajariladi. Balansni faqat admin to'ldiradi. Referal va 2FA yo'q.
-- Har dushanba 09:00 dan keyin o'tgan hafta Excel hisoboti botga keladi.
-- Bot buyruqlari: gift havolasi yoki `/narx Nomi | Model | Fon` → narxlar va 1-tur to'lovi; `/hisob narx oy boshlang'ich` → kalkulyator.
+**Pul olish — "Giftingizni sotmasdan, uning uchun pul oling"**
+- Mijoz gift havolasi, summa va muddatni yozadi. Gift qiymatining 80% gacha, eng ko'pi 50 mln (Sozlamalarda). Summani admin tasdiqlaydi. Oylik to'lov berilgan puldan, lizing ustamasi bilan. Admin: "Pul berildi — shartnoma tuzish".
 
-**Tashqi API'lar** (kalitlar faqat admin panel → Sozlamalarda, chatga hech qachon yozilmaydi)
-- Gift Satellite (gift-satellite.dev/api, `Authorization: Token <kalit>`): 5 bozor (Telegram Market, Portals, Tonnel, MRKT, Getgems) narxlari. Faqat o'qish; `/user/buy` hech qachon chaqirilmaydi. Kolleksiya nomi probelsiz (`BallsIceCream`).
-- Portals Partner API (portal-market.com/partners, `Authorization: partners <kalit>`): zaxira, sekundiga 1 ta so'rov.
-- Marketapp: faqat ijara (bepul). Sotuv narxlari (onsale) pullik — 402.
+**Ekranlar (mijoz adashmasin)**
+- Bosh sahifa: tepada 4 ta Stories-reklama (5 soniya): Ijara ("Kuniga X so'mdan" — bizning va bozordagi giftlarning 180 kunlik ijaradagi eng arzon kunlik narxi), Lizing ("Oyiga X so'mdan"), Bo'lib to'lash ("Hozir oling, bir necha oyga bo'lib to'lang"), Pul olish (Plush Pepe rasmi bilan). Keyin: ishonch qatori, 5 ta usul tugmasi, "Tavsiya etamiz" (bitta-bitta aylanadi), Boshqa xizmatlar (Premium, Stars, Username, Raqam, Giftimni sotaman), "Biz haqimizda" (5 usul, 240 oy, kanal t.me/NAZAROVtggifts).
+- Giftlar sahifasi: "Pul oling" qatori, "① Giftni tanlang", giftlar, eng pastda "Ro'yxatda yo'qmi?".
+- Gift sahifasi: "① To'lov turini tanlang" kartalari, katta "Oyiga X so'mdan", ekran pastida doim ko'rinadigan "Oylik to'lovni hisoblash →".
+- Hisob sahifasi: raqamlangan qadamlar (tur → necha oyga → boshlang'ich to'lov), har bir tur haqida 3 qator va taqqoslash jadvali, "Ariza yuborish".
 
-**Lizing**
-- Lizing ustamasi alohida: Sozlamalar → "Lizing: 12 oylik ustama" (standart 20%/yil). Mijozga "0%" ham, "Foizsiz" ham yozilmaydi. 1–240 oy, 2 turi: boshlang'ich to'lovsiz va boshlang'ich to'lovli (mijoz summani o'zi yozadi). Muddat barabanda tanlanadi.
-- Gift darhol mijozga beriladi. To'lov to'xtasa gift qaytarib olinadi, to'langan pul qaytarilmaydi (bo'lib to'lashda ham). Zalog haqida botda yozilmaydi.
-- To'lov kuni = xarid kuni, mijoz tanlay olmaydi. Mijozga umumiy/qolgan qarz ko'rsatilmaydi — faqat keyingi to'lov, progress va oxirgi sana.
-- Bo'lib to'lashda "0% boshlang'ich" deb halol yoziladi.
+**Admin panel**
+- Bosh sahifa: "Bugungi ishlar" (kechikkan va yaqin to'lovlar, navbat, cheklar), shartnoma kalkulyatori.
+- Mening mahsulotlarim: "Narxni yangilash" (tekshiruv oynasi — har bir bozor javobi) va "Hammasining narxini yangilash".
+- Jurnallar: bozor xatolari (masalan Portals `PARTNER_INVALID_KEY` — kalitni yangilash kerak).
 
-**"Giftni sotmang. Ijaraga bermang. Pul oling."** (pul berish)
-- Mijoz gift havolasi (t.me/nft/…), kerakli summa va muddatni (1–240 oy) yozadi; bozor narxi avtomatik qidirilmaydi. Gift qiymatining 80% igacha, summani admin tasdiqlaydi.
-- Oylik to'lov mijozga berilgan puldan, lizing ustamasi bilan (yiliga 100%). Gift mijozning Telegramida qoladi; to'lov to'xtasa olib qo'yiladi.
-- Buyurtma: service nft_gift, installment_type cashout. Admin: "Pul berildi — shartnoma tuzish". Sozlamalarda yoqib-o'chiriladi.
-- "Qarz", "kredit", "garov" so'zlari ishlatilmaydi.
+**Boshqa**
+- Stars: 240 so'm, kamida 50. Premium narxlari Sozlamalarda.
+- Hamma buyurtma navbatga tushadi va qo'lda bajariladi. Balansni faqat admin to'ldiradi.
+- Bot buyruqlari: gift havolasi yoki `/narx Nomi | Model | Fon`; `/hisob narx oy boshlang'ich`.
 
-**Soddalik (mijoz adashmasin)**
-- Gift sahifasi: bo'limlar + katta "Oyiga X so'mdan" + bitta tugma "Oylik to'lovni hisoblash". Variant kartalari yo'q.
-- Hisob sahifasi: (bo'lib to'lashda tur: Oddiy / 1-tur / Uzum) → 1. Necha oyga → 2. Boshlang'ich to'lov → "Ariza yuborish".
-- "0%", "Foizsiz", "ustamasiz" hech qayerda yozilmaydi (ustama bor).
-- Pul olish: foiz (80%) va eng ko'p summa (50 mln) Sozlamalarda.
-
-**Bosh sahifa**
-- Tepada 4 ta Stories-reklama (5 soniya, surib almashtiriladi): Ijara ("Kuniga X so'mdan", 1/7/30/180 kun narxlari), Lizing ("Oyiga X so'mdan"), Bo'lib to'lash ("Hozir oling, bir necha oyga bo'lib to'lang"), Pul olish ("Giftingizni sotmasdan, uning uchun pul oling"). Narxlar haqiqiy giftlarning eng arzonidan.
-- Shiorlar, "emotsiya" gaplari, qat'iy va'dalar (100%, "topib beramiz") yozilmaydi — egasi "crinj" deb hisoblaydi.
-- 5 ta usul alohida: Lizing, Bo'lib to'lash, Ijara, Naqd, Pul olish (aralashtirilmaydi).
-- "Biz haqimizda": to'q yashil karta, orqada giftlar devori; "5 usul", "240 oygacha", Kanalimiz (t.me/NAZAROVtggifts). Buyurtma/mijoz soni, katalog soni va sharhlar ko'rsatilmaydi.
-
-## Texnik eslatma
-- `public/index.html` va `public/admin.html` dagi `?v=...` raqamini har yangilanishda o'zgartiring, aks holda Telegram eski nusxani ko'rsatadi.
-
-## Dizayn va brend
-- Mini App: och "elegant" uslub — krem fon #F6F2EA, oq kartalar, to'q yashil #1E3D2F, oltin #B48A3E aksent, Inter shrift. Emoji/multik uslub yo'q. Admin panel to'q fonda qoladi.
-- Pastki menyu: Asosiy | Giftlar | Xaridlarim | Balans. Giftlar bo'limlari: Lizing | Bo'lib to'lash | Ijara | Naqd ("Oyma-oy" demang).
-- "Bizning giftlarimiz" — bitta-bitta aylanib turadigan karusel (4 soniya), tartibi admin "Tartib" bo'yicha. Gift sahifasida rasm to'liq (kvadrat) ko'rinadi.
-- "Boshqa xizmatlar" (Premium, Stars) da narx yozilmaydi.
-- Uslub: jiddiy, hashamatli, lekin do'stona (Mercedes, Rolex, Patek Philippe kabi). Bachkana bo'lmasin.
-- Reklamada asosiy xizmatlar: NFT sovg'alar bo'lib to'lashga va rent (ijara)ga.
-- Murojaat uchun: @NAZAROVtggiftsAPP.
-- Pastda bilinar-bilinmas: "Sizga eng yaxshi mulk bo'lishi mumkin bo'lgan sovg'alarni taklif qilamiz."
+## Dizayn
+- Och "elegant" uslub: krem fon #F6F2EA, oq kartalar, to'q yashil #1E3D2F, oltin #B48A3E, Inter shrift. Admin panel ham shu uslubda.
+- Jiddiy, hashamatli, lekin tushunarli. Multik/bachkana uslub yo'q.
+- Murojaat: @NAZAROVtggiftsAPP.
 
 ## Hozir mendan nima kerak
-[Bu yerga yozing: masalan, "Bot o'chib ketdi, yangi bot ochdim, boshidan o'rnatishga yordam ber" yoki "Mana bu xatoni tuzat: ..."]
+[Bu yerga yozing: masalan, "Bot o'chib ketdi, yangi bot ochdim, boshidan o'rnatishga yordam ber" yoki "Mana bu xatoni tuzat: …" (rasm bilan)]
