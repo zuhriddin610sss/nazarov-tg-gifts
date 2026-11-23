@@ -726,3 +726,33 @@ test("Pul olish (gift sotilmaydi): havola + summa + muddat, oylik lizing ustamas
   await assert.rejects(app({ action: 'createOrder', service: 'cashout', giftLink: 'https://t.me/nft/SnoopDogg-1203', amount: 800000, months: 12, paymentMethod: 'installment', idempotencyKey: key() }), /SERVICE_DISABLED/);
   await admin({ action: 'saveSettings', ...st });
 });
+
+test("Narx: model + fon birlashgan filtrda chiqmasa ham, faqat model qidiruvidan aynan shu fon topiladi; bozor javob bermasa arzonroqqa tushmaydi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), satelliteKey: 'K' });
+  await core.run("DELETE FROM portals_cache WHERE k LIKE 'gs:%'");
+  let mrktDown = false;
+  setFetch(async (url) => {
+    const u = decodeURIComponent(String(url));
+    let body = [];
+    if (u.includes('/gift/collections')) body = [{ name: 'JingleBells' }];
+    else if (u.includes('/search/')) {
+      if (mrktDown && u.includes('/search/mrkt/')) return { ok: false, status: 503, text: async () => '{}' };
+      const both = u.includes('models=') && u.includes('backdrops=');
+      const L = (m, slug, model, bd, ton) => ({ market: m, slug, giftId: slug, collectionName: 'JingleBells', modelName: model, backdropName: bd, normalizedPrice: ton });
+      if (u.includes('/search/portals/') && u.includes('models=Polynesia') && !both) body = [L('portals', 'JingleBells-91329', 'Polynesia', 'Black', 12.9)];
+      // birlashgan filtr MRKT'da natija bermaydi, faqat model bo'yicha esa aynan shu fon bor
+      if (u.includes('/search/mrkt/') && !both && u.includes('models=Polynesia')) body = [L('mrkt', 'JingleBells-10665', 'Polynesia', 'Onyx Black', 30.6)];
+    }
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  const r = await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Jingle Bells #89238', model: 'Polynesia', backdrop: 'Onyx Black', inst_enabled: true, price_source: 'sat_model_backdrop' });
+  const id = r.id ?? (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Jingle Bells #89238').id;
+  const q = await admin({ action: 'refreshOwnPrice', id });
+  assert.equal(q.marketPriceTon, 30.6);
+  assert.equal(q.by, 'sat_model_backdrop');
+  // MRKT javob bermasa: model + fon "topilmadi" deyilmaydi, narx o'zgarmaydi (12.9 ga tushmaydi)
+  mrktDown = true;
+  await core.run("DELETE FROM portals_cache WHERE k LIKE 'gs:s:%'");
+  const q2 = await admin({ action: 'refreshOwnPrice', id });
+  assert.equal(q2.marketPriceTon, 30.6);
+});

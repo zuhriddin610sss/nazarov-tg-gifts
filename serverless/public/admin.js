@@ -697,10 +697,16 @@ async function own(v) {
       <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
+        ${p.inst_enabled && p.kind === "gifts" ? `<button class="btn btn-ghost btn-sm" data-rf="${p.id}" type="button">Narxni yangilash</button>` : ""}
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}
     </tbody></table></div>`;
   $("#new").onclick = () => ownForm({});
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
+  v.querySelectorAll("[data-rf]").forEach((b) => (b.onclick = async () => {
+    b.disabled = true; b.textContent = "Tekshirilmoqda…";
+    try { const r = await call("refreshOwnPrice", { id: Number(b.dataset.rf) }); toast(r.price ? `Yangi narx: ${money(r.price)}${r.marketPriceTon ? " (" + r.marketPriceTon + " TON)" : ""}` : "Bozorda topilmadi yoki javob yo'q — eski narx qoldi"); render(); }
+    catch (e) { b.disabled = false; b.textContent = "Narxni yangilash"; toast(e.message); }
+  }));
   v.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Rostdan o'chirilsinmi?"; return; }
     try { await api("/api/admin/own/" + b.dataset.del, { method: "DELETE" }); toast("O'chirildi"); render(); } catch (e) { toast(e.message); }

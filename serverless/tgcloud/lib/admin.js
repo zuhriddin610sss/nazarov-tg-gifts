@@ -272,6 +272,14 @@ export const actions = {
   },
 
   // ---------- O'z mahsulotlari ("Reklama") ----------
+  /** Bitta mahsulot narxini hozir bozorlardan qayta olish (30 daqiqa kutmasdan). */
+  async refreshOwnPrice(i) {
+    const p = await get('SELECT * FROM own_products WHERE id = :id', { id: int(i.id, { min: 1 }) });
+    if (!p) throw fail('NOT_FOUND');
+    const q = await ownSaleQuote(p, await getSettings(), { fresh: true });
+    return { price: q.price, by: q.by, src: q.src, marketPriceTon: q.marketPriceTon };
+  },
+
   async ownProducts() {
     const rows = await all('SELECT * FROM own_products ORDER BY position, id DESC');
     const s = await getSettings();

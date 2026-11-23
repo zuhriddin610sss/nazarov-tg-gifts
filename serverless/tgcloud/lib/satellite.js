@@ -153,9 +153,15 @@ export async function satMarket(f = {}) {
  */
 export async function satFloor(attrs) {
   if (!attrs.model && !attrs.backdrop) return { status: 'none' };
-  const r = await satMarket({ collection: attrs.collection, model: attrs.model, backdrop: attrs.backdrop });
-  if (!r) return { status: 'error' };
   const low = (x) => String(x || '').trim().toLowerCase();
+  // Model + fon: bozorning birlashgan filtri ba'zan aynan shu giftni qaytarmaydi. Shuning uchun uch xil qidiramiz
+  // (model + fon, faqat model, faqat fon) va natijalardan aynan model + fon mos kelganini o'zimiz ajratamiz.
+  const qs = attrs.model && attrs.backdrop
+    ? [{ model: attrs.model, backdrop: attrs.backdrop }, { model: attrs.model }, { backdrop: attrs.backdrop }]
+    : [{ model: attrs.model || null, backdrop: attrs.backdrop || null }];
+  const rs = await Promise.all(qs.map((q) => satMarket({ collection: attrs.collection, ...q }).catch(() => null)));
+  if (rs.every((x) => !x)) return { status: 'error' };
+  const r = { items: rs.filter(Boolean).flatMap((x) => x.items).sort((a, b) => a.ton - b.ton), partial: rs.some((x) => !x || x.partial) };
   const it = r.items.find((x) => (!attrs.model || low(x.model) === low(attrs.model)) && (!attrs.backdrop || low(x.backdrop) === low(attrs.backdrop)));
   if (it) return { status: 'ok', ton: it.ton, label: `${MARKET_NAME[it.market] || it.market}: ${it.name} #${it.num}` };
   // Bozorlardan biri javob bermagan bo'lsa "yo'q" deb bo'lmaydi: u yerda aynan shu gift bo'lishi mumkin.
