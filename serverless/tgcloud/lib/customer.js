@@ -8,7 +8,7 @@ import { notifyNewOrder, receiptButtons, notifyNewListing } from 'lib/notify';
 import { attrsFromTelegram } from 'lib/admintools';
 import { decode, imageType } from 'lib/b64';
 import { fmt } from 'lib/core';
-import { ownSaleQuote, monthlyPayment, markupFor, giftDown1, ownRentPpd, ownRentFormula } from 'lib/calc';
+import { ownSaleQuote, refreshOneStale, monthlyPayment, markupFor, giftDown1, ownRentPpd, ownRentFormula } from 'lib/calc';
 import { portalsConfigured, portalsMarket, portalsSaleItem, portalsCollectionNames, portalsCollectionFloors } from 'lib/portals';
 import { satelliteConfigured, satMarket, satSaleItem, satCollectionNames, satCachedFloors, normName, MARKET_NAME } from 'lib/satellite';
 
@@ -125,9 +125,10 @@ export const actions = {
     const rows = await all(`SELECT * FROM own_products WHERE visible = 1 AND (:k IS NULL OR kind = :k) ORDER BY position, id DESC LIMIT 100`, { k: kind });
     const s = await getSettings();
     const out = [];
+    await refreshOneStale(rows, s);
     for (const p of rows) {
-      const o = ownOut(p, await ownRentPpd(p), s);
-      if (p.inst_enabled) { const q = await ownSaleQuote(p, s); o.salePrice = q.price; o.down1 = q.down1; }
+      const o = ownOut(p, await ownRentPpd(p, { cached: true }), s);
+      if (p.inst_enabled) { const q = await ownSaleQuote(p, s, { cached: true }); o.salePrice = q.price; o.down1 = q.down1; }
       out.push(o);
     }
     return out;

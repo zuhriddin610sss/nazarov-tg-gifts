@@ -127,14 +127,14 @@ async function marketFloor(a) {
  * O'z mahsulotining sotuv narxi va 1-tur boshlang'ich to'lovi (so'm). Bozor ma'lumoti 30 daqiqa saqlanadi.
  * Narx = (bozordagi eng arzoni + own_add) × sale_rate. Topilmasa — admin qo'lda yozgan narx.
  */
-export async function ownSaleQuote(p, s, { fresh = false } = {}) {
+export async function ownSaleQuote(p, s, { fresh = false, cached = false } = {}) {
   const attrs = { model: p.model, backdrop: p.backdrop, symbol: p.symbol };
   const src = priceSource(p.price_source);
   // Zanjir: tanlangan usulda topilmasa kengroq usul. Butun kolleksiyaning eng arzoniga tushilmaydi.
   const CHAIN = { model_backdrop: ['model_backdrop', 'model', 'backdrop'], model: ['model', 'backdrop'], backdrop: ['backdrop'] };
   const usesMarketPrice = src.startsWith('sat_');
   let mkPrice = p.mk_price_ton, mkPpd = p.mk_ppd_nano, mkBy = p.mk_by || null, mkSrc = p.mk_src || null;
-  const stale = !p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000;
+  const stale = !cached && (!p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000);
   // Marketapp: faqat ijara narxi (1-tur formulasi uchun) — bepul tarifda ishlaydi
   if ((stale || fresh) && p.kind === 'gifts' && (await marketappConfigured())) {
     let col = p.collection_address;
@@ -193,10 +193,33 @@ export const RENT_BASES = ['model_backdrop', 'model', 'backdrop'];
  * O'z giftining ijara narxi uchun Marketapp'dagi kunlik narx (nanoTON, matn) — admin tanlagan usulda
  * (model + fon / model / fon bo'yicha eng arzon ijara). 30 daqiqa saqlanadi. Topilmasa null (qo'lda narx olinadi).
  */
-export async function ownRentPpd(p, { fresh = false } = {}) {
+/**
+ * Ro'yxatlar (mijoz ilovasi, admin panel) bozorlarni kutmasin: har bir ochilishda faqat ENG ESKI bitta mahsulot
+ * narxi yangilanadi, qolganlari saqlangan narx bilan ko'rsatiladi. Aks holda 18 ta gift × 5 bozor — server vaqti tugaydi.
+ */
+export async function refreshOneStale(rows, s) {
+  if (!rows.length) return;
+  await refreshOneRent(rows);
+  const old = (p) => (p.kind === 'gifts' && p.inst_enabled ? Number(p.mk_checked_at || 0) : Infinity);
+  const p = rows.reduce((a, b) => (old(b) < old(a) ? b : a), rows[0]);
+  if (!p || old(p) === Infinity || (p.mk_checked_at && nowMs() - old(p) < 30 * 60000)) return;
+  try { await ownSaleQuote(p, s); } catch (e) { await logError('narx', `${p.name}: ${e && e.message}`); }
+  const r = await get('SELECT * FROM own_products WHERE id = :id', { id: p.id });
+  if (r) Object.assign(p, r);
+}
+async function refreshOneRent(rows) {
+  const old = (p) => (p.kind === 'gifts' && p.rent_enabled && RENT_BASES.includes(p.rent_by) ? Number(p.rent_checked_at || 0) : Infinity);
+  const p = rows.reduce((a, b) => (old(b) < old(a) ? b : a), rows[0]);
+  if (!p || old(p) === Infinity || nowMs() - old(p) < 30 * 60000) return;
+  await ownRentPpd(p);
+  const r = await get('SELECT * FROM own_products WHERE id = :id', { id: p.id });
+  if (r) Object.assign(p, r);
+}
+
+export async function ownRentPpd(p, { fresh = false, cached = false } = {}) {
   if (!RENT_BASES.includes(p.rent_by) || !p.rent_enabled || p.kind !== 'gifts') return null;
   const stale = !p.rent_checked_at || nowMs() - Number(p.rent_checked_at) > 30 * 60000;
-  if (!stale && !fresh) return p.rent_ppd_nano || null;
+  if (cached || (!stale && !fresh)) return p.rent_ppd_nano || null;
   if (!(await marketappConfigured())) return p.rent_ppd_nano || null;
   let ppd = p.rent_ppd_nano || null;
   try {

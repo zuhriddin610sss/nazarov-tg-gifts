@@ -4,7 +4,7 @@ import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSe
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
-import { ownSaleQuote, monthlyPayment, markupFor, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
+import { ownSaleQuote, refreshOneStale, monthlyPayment, markupFor, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
 import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
 import { satDebug, satelliteConfigured } from 'lib/satellite';
 import { splitGiftName } from 'lib/calc';
@@ -292,10 +292,11 @@ export const actions = {
     const rows = await all('SELECT * FROM own_products ORDER BY position, id DESC');
     const s = await getSettings();
     const out = [];
+    await refreshOneStale(rows, s);
     for (const p of rows) {
-      const q = p.inst_enabled ? await ownSaleQuote(p, s) : { price: null, down1: null, marketPriceTon: null };
+      const q = p.inst_enabled ? await ownSaleQuote(p, s, { cached: true }) : { price: null, down1: null, marketPriceTon: null };
       // Avtomatik ijara: eng uzoq muddatda kuniga tushadigan narx (so'm)
-      const ppd = p.rent_enabled ? await ownRentPpd(p) : null;
+      const ppd = p.rent_enabled ? await ownRentPpd(p, { cached: true }) : null;
       const rentAuto = ppd ? { perDay: Math.ceil(rentPriceTiyin(rentTotalTon(ppd, p.rent_max), ownRentFormula(s)) / 100 / p.rent_max),
         day1: Math.ceil(rentPriceTiyin(rentTotalTon(ppd, 1), ownRentFormula(s)) / 100), ppdTon: Number(ppd) / 1e9 } : null;
       out.push({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price), price_manual: som(p.price_manual), down_manual: som(p.down_manual),
