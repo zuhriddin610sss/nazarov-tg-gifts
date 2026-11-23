@@ -7,7 +7,7 @@
 <title>Admin · NAZAROVtggifts</title>
 <link rel="icon" href="/assets/logo-mark.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/style.css?v=20261123p">
+<link rel="stylesheet" href="/style.css?v=20261123q">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body{padding-bottom:24px}
@@ -30,6 +30,16 @@ body.lt .stat.liab{border-color:#E3D3AE;background:#FFFBF2}
 .todo .ic.red{background:#F7E4DE;color:#A2462F}.todo .ic.gold{background:#F6EBD3;color:#8A6A2A}
 .todo .tx{flex:1;min-width:0}.todo .tx b{display:block}.todo .tx small{color:var(--muted)}
 .todo .am{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.of2 .sec2{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:1rem}
+.of2 .sn2{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#1E3D2F;color:#F3E3B5;font-size:.75rem;font-weight:800}
+.of2 .grp{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;background:var(--card-2);border-radius:12px;padding:12px}
+.of2 .grp[hidden]{display:none}
+.of2 .tgs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tg2{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;background:var(--card)}
+.tg2 input{width:20px;height:20px;margin-top:2px;accent-color:#1E3D2F}
+.tg2 b{display:block}.tg2 small{color:var(--muted);font-size:.78rem}
+.tg2:has(input:checked){border-color:#1E3D2F;background:#FBF8F0}
+.more3 summary{cursor:pointer;font-weight:700;color:var(--muted)}
 .calc{background:var(--card-2);border-radius:12px;padding:12px;display:grid;gap:10px}
 .calc .row3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
 @media (max-width:520px){.calc .row3{grid-template-columns:1fr 1fr}.calc .row3 button{grid-column:1/-1}}
@@ -96,6 +106,6 @@ tr:last-child td{border-bottom:0}
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet" style="max-height:90vh;overflow:auto"></div></div>
-<script src="/admin.js?v=20261123p"></script>
+<script src="/admin.js?v=20261123q"></script>
 </body>
 </html>

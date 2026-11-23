@@ -697,22 +697,21 @@ async function own(v) {
   const rows = await api("/api/admin/own");
   v.innerHTML = `<h1>Mening mahsulotlarim</h1>
     <p class="hint" style="margin-bottom:12px">Bu mahsulotlar mijozga <b>"Reklama"</b> yorlig'i bilan har doim birinchi ko'rinadi: qaysi filtr tanlansa ham.</p>
-    <div class="acts" style="margin-bottom:12px"><button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi mahsulot</button>
+    <div class="acts" style="margin-bottom:12px"><button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi gift</button>
       <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button></div>
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
       <div class="stat"><small>Qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
-    <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Sotib olingan</th><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Siz sotib olgan</th><th>Gift</th><th>Ijara</th><th>Lizing / bo'lib to'lash narxi</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
     ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(p.bought_at.split("-").reverse().join(".")) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
-      <td>${esc(KIND[p.kind])}</td>
       <td>${p.rent_enabled ? (p.rentAuto ? `${esc(money(p.rentAuto.perDay))}/kun dan<br><small class="hint">avto: ${esc(RENTB[p.rent_by] || "")} · 1 kun ${esc(money(p.rentAuto.day1))}</small>`
         : p.rent_price ? `${esc(money(p.rent_price))}/kun${p.rent_by !== "manual" ? `<br><small class="hint">qo'lda (Marketapp ijarasida topilmadi)</small>` : ""}` : `<span class="over">ijara narxi topilmadi</span>`)
         + `<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
-      <td>${failedPrice(p) ? `<span class="over">⚠️ Oxirgi yangilashda narx olinmadi — eski narx</span><br>` : ""}${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td>${failedPrice(p) ? `<span class="over">⚠️ Oxirgi yangilashda narx olinmadi — eski narx</span><br>` : ""}${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td>
       <td class="num">${p.earned ? esc(money(p.earned)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
         ${p.inst_enabled && p.kind === "gifts" ? `<button class="btn btn-ghost btn-sm" data-rf="${p.id}" type="button">Narxni yangilash</button>` : ""}
-        <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="10" class="empty">Hali mahsulot yo'q</td></tr>`}
+        <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="8" class="empty">Hali gift yo'q</td></tr>`}
     </tbody></table></div>`;
   $("#new").onclick = () => ownForm({});
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
@@ -756,38 +755,56 @@ async function own(v) {
 }
 function ownForm(p) {
   const edit = Boolean(p.id);
-  const ck = (name, on, label) => `<label class="chip"><input type="checkbox" name="${name}" ${on ? "checked" : ""}> ${label}</label>`;
-  sheet(`<h2>${edit ? "Mahsulotni tahrirlash" : "Yangi mahsulot"}</h2>
-    <form class="form" id="of">
-      <div class="field"><label>Turi</label><select class="input" name="kind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="field"><label>Nomi</label><input class="input" name="name" id="ofName" required value="${esc(p.name || "")}" placeholder="Plush Pepe #123 yoki @nazarov yoki +888 0123 4567"></div>
-      <div class="field full"><label>Gift havolasi yoki rasm havolasi (ixtiyoriy). Masalan: t.me/nft/TrappedHeart-19604. Bo'sh qolsa, rasm nomidan olinadi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url" placeholder="t.me/nft/TrappedHeart-19604"></div>
-      <div class="field"><label>Model (ixtiyoriy)</label><input class="input" name="model" value="${esc(p.model || "")}"></div>
-      <div class="field"><label>Fon (ixtiyoriy)</label><input class="input" name="backdrop" value="${esc(p.backdrop || "")}"></div>
-      <div class="field"><label>Belgi (ixtiyoriy)</label><input class="input" name="symbol" value="${esc(p.symbol || "")}"></div>
-      <div class="field full"><label>Mijoz nima qila oladi?</label>
-        <div class="acts">${ck("rent_enabled", p.rent_enabled, "Ijaraga olish")}${ck("inst_enabled", p.inst_enabled, "Bo'lib to'lab sotib olish")}${ck("cash_enabled", p.cash_enabled, "Naqd sotib olish")}</div></div>
-      <div class="field full"><label>Ijara narxi qanday hisoblansin?</label><select class="input" name="rent_by">${[["manual", "Qo'lda: kunlik narx"], ["model_backdrop", "Avto: Marketapp ijarasi, model + fon eng arzoni"], ["model", "Avto: Marketapp ijarasi, model eng arzoni"], ["backdrop", "Avto: Marketapp ijarasi, fon eng arzoni"]]
-        .map(([k, l]) => `<option value="${k}" ${(p.rent_by || "manual") === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="field"><label>Ijara: kunlik narx, so'm (qo'lda tanlansa yoki avto topilmasa)</label><input class="input" name="rent_price" inputmode="decimal" value="${esc(p.rent_price ? Number(p.rent_price) : "")}"></div>
-      <div class="field"><label>Ijara: eng kam kun</label><input class="input" name="rent_min" inputmode="numeric" value="${esc(p.rent_min || 1)}"></div>
-      <div class="field"><label>Ijara: eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 30)}"></div>
-      <div class="field"><label>Naqd sotuv narxi (so'm)</label><input class="input" name="cash_price" inputmode="decimal" value="${esc(p.cash_price ? Number(p.cash_price) : "")}"></div>
-      <div class="field full"><label>Bo'lib to'lash uchun narx qayerdan olinsin?</label>
-        <select class="input" name="price_source">${[["sat_model_backdrop", "Barcha bozorlar: model + fon eng arzoni"], ["sat_model", "Barcha bozorlar: model eng arzoni"], ["sat_backdrop", "Barcha bozorlar: fon eng arzoni"], ["manual_ton", "Qo'lda, TON'da × kurs"], ["manual_som", "Qo'lda, so'mda"]]
-          .map(([k, l]) => `<option value="${k}" ${OLDSRC(p.price_source) === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="field"><label>Narx, TON (qo'lda TON tanlansa yoki bozorda topilmasa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
-      <div class="field"><label>Narx, so'm (qo'lda so'm tanlansa yoki bozorda topilmasa)</label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>
-      <div class="field full"><label>1-tur formulasi qaysi ijara narxidan olinsin? (Marketapp, 45 kunlik)</label>${downSel("down_by", p.down_mode)}</div>
-      <div class="field full"><label>1-tur boshlang'ich to'lovi, so'm (formula topilmasa). Tanlangan usulda Marketapp ijarasida topilmasa, shu summa olinadi</label><input class="input" name="down_manual" inputmode="decimal" value="${esc(p.down_manual != null ? Number(p.down_manual) : "")}"></div>
-      ${p.quote ? `<p class="hint full">Hozirgi hisob: narx ${p.quote.price ? esc(money(p.quote.price)) : "topilmadi"}${p.quote.src ? ` (${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""})` : p.quote.marketPriceTon ? ` (${esc(p.quote.marketPriceTon)} TON)` : ""} · 1-tur boshlang'ich to'lovi ${p.quote.down1 != null ? esc(money(p.quote.down1)) + (p.quote.down1By === "formula" ? ` (formula: ${esc(DOWNB[p.quote.down1Base] || "")} bo'yicha)` : " (qo'lda, ijarada yo'q)") : "topilmadi: pastga summani yozing"}</p>` : ""}
-      <div class="field"><label>Sotib olingan sana</label><input class="input" type="date" name="bought_at" value="${esc(p.bought_at || "")}"></div>
-      <div class="field"><label>Sotib olingan narxi (so'm)</label><input class="input" name="bought_price" inputmode="decimal" value="${esc(p.bought_price ?? "")}"></div>
-      <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
-      <div class="field"><label>Holat</label><select class="input" name="visible"><option value="1" ${p.visible !== false ? "selected" : ""}>Ko'rinadi</option><option value="0" ${p.visible === false ? "selected" : ""}>Yashirin (sotilgan)</option></select></div>
+  const sel = (name, opts, cur) => `<select class="input" name="${name}">${opts.map(([k, l]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+  const tog = (name, on, title, sub) => `<label class="tg2"><input type="checkbox" name="${name}" ${on ? "checked" : ""}><span><b>${title}</b><small>${sub}</small></span></label>`;
+  const isNew = !edit;
+  sheet(`<h2>${edit ? "Giftni tahrirlash" : "Yangi gift"}</h2>
+    <form class="form of2" id="of">
+      <div class="full sec2"><span class="sn2">1</span><b>Gift</b></div>
+      <div class="field full"><label>Gift havolasi</label><input class="input" name="image" value="${esc(p.image || "")}" inputmode="url" placeholder="t.me/nft/SnoopDogg-216164"><small class="hint">Telegram'da giftni oching → ⋯ → «Havolani nusxalash». Nomi o'zi yoziladi.</small></div>
+      <div class="field full"><label>Nomi</label><input class="input" name="name" id="ofName" required value="${esc(p.name || "")}" placeholder="Snoop Dogg #216164"></div>
+      <div class="field"><label>Model</label><input class="input" name="model" value="${esc(p.model || "")}" placeholder="Bow Wizzle"></div>
+      <div class="field"><label>Fon</label><input class="input" name="backdrop" value="${esc(p.backdrop || "")}" placeholder="Steel Grey"></div>
+
+      <div class="full sec2"><span class="sn2">2</span><b>Siz qachon va qanchaga sotib oldingiz?</b></div>
+      <div class="field"><label>Sana</label><input class="input" type="date" name="bought_at" value="${esc(p.bought_at || "")}"></div>
+      <div class="field"><label>Narx, so'm</label><input class="input" name="bought_price" inputmode="decimal" value="${esc(p.bought_price ?? "")}" placeholder="1 000 000"></div>
+
+      <div class="full sec2"><span class="sn2">3</span><b>Mijozga qanday beriladi?</b></div>
+      <div class="full tgs">${tog("inst_enabled", isNew || p.inst_enabled, "Lizing va bo'lib to'lash", "Narx bozordan o'zi olinadi")}${tog("rent_enabled", p.rent_enabled, "Ijara", "Kunlab beriladi")}</div>
+      <div class="full grp" id="gInst">
+        <div class="field"><label>Narx qanday olinsin?</label>${sel("price_source", [["sat_model_backdrop", "Bozordan: shu model + fon (tavsiya)"], ["sat_model", "Bozordan: shu model"], ["sat_backdrop", "Bozordan: shu fon"], ["manual_som", "O'zim yozaman (so'm)"]], ["manual_ton"].includes(OLDSRC(p.price_source)) ? "manual_som" : (edit ? OLDSRC(p.price_source) : "sat_model_backdrop"))}</div>
+        <div class="field" id="fMan"><label>Narx, so'm <small class="hint">(bozorda topilmasa ham shu olinadi)</small></label><input class="input" name="price_manual" inputmode="decimal" value="${esc(p.price_manual ? Number(p.price_manual) : "")}"></div>
+        ${p.quote && p.quote.price ? `<p class="hint full" style="margin:0">Hozirgi narx: <b>${esc(money(p.quote.price))}</b>${p.quote.src ? ` · ${esc(p.quote.src)}` : ""}</p>` : ""}
+      </div>
+      <div class="full grp" id="gRent">
+        <div class="field"><label>Ijara narxi</label>${sel("rent_by", [["model_backdrop", "Avto: shu model + fon"], ["model", "Avto: shu model"], ["backdrop", "Avto: shu fon"], ["manual", "O'zim yozaman (kunlik)"]], p.rent_by || (edit ? "manual" : "model_backdrop"))}</div>
+        <div class="field" id="fRentP"><label>Kunlik narx, so'm</label><input class="input" name="rent_price" inputmode="decimal" value="${esc(p.rent_price ? Number(p.rent_price) : "")}"></div>
+        <div class="field"><label>Eng kam kun</label><input class="input" name="rent_min" inputmode="numeric" value="${esc(p.rent_min || 1)}"></div>
+        <div class="field"><label>Eng ko'p kun</label><input class="input" name="rent_max" inputmode="numeric" value="${esc(p.rent_max || 180)}"></div>
+      </div>
+
+      <div class="field full"><label>Mijozga ko'rinsinmi?</label>${sel("visible", [["1", "Ha, ko'rinadi"], ["0", "Yo'q, yashirin (masalan sotilgan)"]], p.visible === false ? "0" : "1")}</div>
+
+      <details class="full more3"><summary>Qo'shimcha sozlamalar</summary><div class="form" style="margin-top:10px">
+        <div class="field"><label>Turi</label>${sel("kind", Object.entries(KIND), p.kind || "gifts")}</div>
+        <div class="field"><label>Belgi</label><input class="input" name="symbol" value="${esc(p.symbol || "")}"></div>
+        <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
+        <div class="field"><label>Narx, TON (bozorda topilmasa)</label><input class="input" name="price_ton" inputmode="decimal" value="${esc(p.price_ton || "")}"></div>
+        <div class="field full"><label>1-tur boshlang'ich to'lovi qaysi ijaradan (Marketapp, 45 kun)</label>${downSel("down_by", p.down_mode)}</div>
+        <div class="field full"><label>1-tur boshlang'ich to'lovi, so'm (formula topilmasa)</label><input class="input" name="down_manual" inputmode="decimal" value="${esc(p.down_manual != null ? Number(p.down_manual) : "")}"></div>
+      </div></details>
       <p class="alert full" id="ofErr" hidden></p>
       <button class="btn btn-primary full" type="submit">Saqlash</button>
     </form>`);
+  // Tanlovga qarab kerakli qismlar ko'rinadi
+  const F = $("#of");
+  const sync = () => {
+    $("#gInst").hidden = !F.inst_enabled.checked;
+    $("#gRent").hidden = !F.rent_enabled.checked;
+    $("#fRentP").hidden = F.rent_by.value !== "manual";
+  };
+  F.addEventListener("change", sync); sync();
   // Gift havolasi qo'yilsa, nomi o'zi to'ldiriladi: TrappedHeart-19604 -> "Trapped Heart #19604"
   $("#of [name=image]").addEventListener("input", (e) => {
     const m = /t\.me\/nft\/([A-Za-z0-9]+)-(\d+)/i.exec(e.target.value);
@@ -802,20 +819,20 @@ function ownForm(p) {
       kind: f.get("kind"), name: String(f.get("name")).trim(), image: String(f.get("image") || "").trim() || null,
       model: String(f.get("model") || "").trim() || null, backdrop: String(f.get("backdrop") || "").trim() || null, symbol: String(f.get("symbol") || "").trim() || null,
       rent_enabled: f.get("rent_enabled") === "on", rent_price: n("rent_price"), rent_by: f.get("rent_by"), rent_min: n("rent_min"), rent_max: n("rent_max"),
-      inst_enabled: f.get("inst_enabled") === "on", cash_enabled: f.get("cash_enabled") === "on", cash_price: n("cash_price"),
+      inst_enabled: f.get("inst_enabled") === "on", cash_enabled: false, cash_price: null,
       position: n("position"), visible: f.get("visible") === "1",
       price_source: f.get("price_source"), price_ton: Number(String(f.get("price_ton") || "").replace(",", ".")) || null, price_manual: n("price_manual") || null,
       down_manual: n("down_manual") || null, down_by: f.get("down_by"),
       bought_at: f.get("bought_at") || null, bought_price: n("bought_price") || null,
     };
-    if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) {
-      const box = $("#ofErr"); const m = "Kamida bittasini belgilang: Ijaraga olish, Bo'lib to'lab sotib olish yoki Naqd sotib olish";
+    if (!body.rent_enabled && !body.inst_enabled) {
+      const box = $("#ofErr"); const m = "3-qadamda kamida bittasini belgilang: Lizing va bo'lib to'lash yoki Ijara";
       box.textContent = m; box.hidden = false; box.scrollIntoView({ block: "center" }); return toast(m);
     }
     try { await api("/api/admin/own" + (edit ? "/" + p.id : ""), { body }); closeSheet(); toast("Saqlandi"); render(); }
     catch (er) {
       const F = { name: "Nomi", image: "Rasm havolasi (https:// bilan boshlanishi kerak)", rent_price: "Ijara: kunlik narx", rent_min: "Ijara: eng kam kun",
-        rent_max: "Ijara: eng ko'p kun (eng kam kundan kichik bo'lmasin)", cash_price: "Naqd sotuv narxi", modes: "Mijoz nima qila oladi", kind: "Turi" };
+        rent_max: "Ijara: eng ko'p kun (eng kam kundan kichik bo'lmasin)", modes: "Mijozga qanday beriladi", kind: "Turi", price_manual: "Narx, so'm", bought_price: "Sotib olingan narx", bought_at: "Sotib olingan sana" };
       const field = er.code === "VALIDATION" && er.extra && er.extra.field;
       const msg = field ? "Shu maydonni tekshiring: " + (F[field] || field) : (er.message || "Xato") + " (Jurnallar bo'limida batafsil)";
       const box = $("#ofErr"); if (box) { box.textContent = msg; box.hidden = false; box.scrollIntoView({ block: "center" }); }
