@@ -65,6 +65,53 @@ export const actions = {
     return { ok: true };
   },
 
+  /**
+   * Bir nechta buyurtmani o'chirish (tanlanganlar yoki hammasi). Navbatdagisi avval bekor qilinadi (pul mijoz balansiga qaytadi).
+   * O'chirilmaydi: bajarilgan va pul yechilgan buyurtma, shartnomasi bor buyurtma — ular "skipped"da qaytadi.
+   */
+  async deleteOrders(i, admin) {
+    const ids = (Array.isArray(i.ids) ? i.ids : []).map((x) => int(x, { min: 1 })).slice(0, 1000);
+    let done = 0; const skipped = [];
+    for (const id of ids) {
+      let o = await get('SELECT * FROM orders WHERE id = :id', { id });
+      if (!o) continue;
+      if (await get('SELECT id FROM agreements WHERE order_id = :id', { id })) { skipped.push(o.public_id + ' (shartnomasi bor)'); continue; }
+      if (o.status === 'queued' && Number(o.paid_amount || 0) > 0) {
+        try { await closeOrder(id, 'cancelled', admin, "Test: o'chirish uchun bekor qilindi"); } catch (e) { skipped.push(o.public_id); continue; }
+        o = await get('SELECT * FROM orders WHERE id = :id', { id });
+      }
+      if (Number(o.paid_amount || 0) - Number(o.refunded || 0) > 0) { skipped.push(o.public_id + ' (bajarilgan, pul yechilgan)'); continue; }
+      await run('DELETE FROM orders WHERE id = :id', { id });
+      done++;
+    }
+    await audit(admin, 'order.delete.bulk', String(done));
+    return { done, skipped };
+  },
+  /** Bir nechta shartnomani (to'lovlari bilan) o'chirish. Balansdan to'langan to'lovi borlari qoladi. */
+  async deleteAgreements(i, admin) {
+    const ids = (Array.isArray(i.ids) ? i.ids : []).map((x) => int(x, { min: 1 })).slice(0, 1000);
+    let done = 0; const skipped = [];
+    for (const id of ids) {
+      const a = await get('SELECT product_name FROM agreements WHERE id = :id', { id });
+      if (!a) continue;
+      const bal = await get("SELECT COUNT(*) AS n FROM inst_payments WHERE agreement_id = :id AND source = 'balance'", { id });
+      if (Number(bal.n)) { skipped.push(a.product_name + " (balansdan to'lovi bor)"); continue; }
+      await run('DELETE FROM inst_payments WHERE agreement_id = :id', { id });
+      await run('DELETE FROM agreements WHERE id = :id', { id });
+      done++;
+    }
+    await audit(admin, 'installment.delete.bulk', String(done));
+    return { done, skipped };
+  },
+  /** Shartnomaning qo'lda kiritilgan hamma to'lovlarini o'chirish. */
+  async deleteAllInstPayments(i, admin) {
+    const id = int(i.id, { min: 1 });
+    const r = await run("DELETE FROM inst_payments WHERE agreement_id = :id AND source = 'manual'", { id });
+    await run("UPDATE agreements SET status = 'active' WHERE id = :id", { id });
+    await audit(admin, 'installment.payment.delete.all', String(id));
+    return { done: r.rowsAffected };
+  },
+
   /** Bosh sahifadagi pul hisoblagichlarini nolga tushirish (test pullari). Ma'lumot o'chirilmaydi: shu paytdan keyingilar hisoblanadi. */
   async resetStats(_i, admin) {
     const m = await get('SELECT COALESCE(MAX(id), 0) AS p, (SELECT COALESCE(MAX(id), 0) FROM agreements) AS a FROM inst_payments');

@@ -128,6 +128,31 @@ function loadXlsx() {
     document.head.appendChild(sc);
   });
 }
+/**
+ * Jadvalda belgilash: har qatorda katakcha, sarlavhada "hammasi", tepada "Tanlanganlarni o'chirish".
+ * onDelete(ids) — server natijasi { done, skipped }.
+ */
+function bindBulk(v, label, onDelete) {
+  const boxes = () => [...v.querySelectorAll("input.ck[data-id]")];
+  const btn = $("#bulkDel", v), all = $("#ckAll", v);
+  const upd = () => { const n = boxes().filter((b) => b.checked).length; btn.hidden = !n; btn.textContent = `🗑 Tanlanganlarni o'chirish (${n})`; delete btn.dataset.sure; };
+  v.querySelectorAll("input.ck").forEach((b) => b.addEventListener("click", (e) => e.stopPropagation()));
+  boxes().forEach((b) => b.addEventListener("change", upd));
+  if (all) all.addEventListener("change", () => { boxes().forEach((b) => (b.checked = all.checked)); upd(); });
+  btn.onclick = async () => {
+    const ids = boxes().filter((b) => b.checked).map((b) => Number(b.dataset.id));
+    if (!btn.dataset.sure) { btn.dataset.sure = "1"; btn.textContent = `Rostdan ${ids.length} ta ${label} o'chirilsinmi? Yana bosing`; return; }
+    btn.disabled = true;
+    try {
+      const r = await onDelete(ids);
+      if (r.skipped && r.skipped.length) {
+        sheet(`<h2>Natija</h2><p>✅ O'chirildi: <b>${r.done} ta</b></p><p>⚠️ O'chirilmadi: <b>${r.skipped.length} ta</b></p><div class="det">${esc(r.skipped.join("\n"))}</div>
+          <button class="btn btn-primary" type="button" id="bOk">Yopish</button>`);
+        $("#bOk").onclick = () => { closeSheet(); render(); };
+      } else { toast(`O'chirildi: ${r.done} ta`); render(); }
+    } catch (e) { btn.disabled = false; toast(e.message); }
+  };
+}
 /** "2026-08-24T20:20" -> "20:20 24.08.2026" */
 const dtx = (v) => { const d = String(v).slice(0, 10).split("-").reverse().join("."); const t = String(v).slice(11, 16); return t ? `${t} ${d}` : d; };
 /** Excel oxiridagi "Jami" qatori. */
@@ -342,11 +367,14 @@ async function orders(v) {
       <input class="input" type="date" name="from" value="${esc(f.from || "")}"><input class="input" type="date" name="to" value="${esc(f.to || "")}">
       <button class="btn btn-primary btn-sm" type="submit">Qidirish</button>
     </form>
-    <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Holat</th><th>Mahsulot</th><th>Xizmat</th><th>To'lov</th><th>Narx</th><th>Mijoz</th><th>Sana</th></tr></thead><tbody>
-    ${rows.map((r) => `<tr data-o="${r.id}" style="cursor:pointer"><td><code>${esc(r.public_id)}</code></td><td><span class="badge b-${r.status}">${esc(ST[r.status])}${r.position ? " #" + r.position : ""}</span></td>
+    <button class="btn btn-ghost btn-sm" id="bulkDel" type="button" hidden style="color:var(--bad);margin-bottom:10px"></button>
+    <div class="tbl-wrap"><table><thead><tr><th><input type="checkbox" class="ck" id="ckAll" title="Hammasini tanlash"></th><th>ID</th><th>Holat</th><th>Mahsulot</th><th>Xizmat</th><th>To'lov</th><th>Narx</th><th>Mijoz</th><th>Sana</th></tr></thead><tbody>
+    ${rows.map((r) => `<tr data-o="${r.id}" style="cursor:pointer"><td><input type="checkbox" class="ck" data-id="${r.id}"></td><td><code>${esc(r.public_id)}</code></td><td><span class="badge b-${r.status}">${esc(ST[r.status])}${r.position ? " #" + r.position : ""}</span></td>
       <td>${esc(r.title)}</td><td>${esc(SVC[r.service])}</td><td>${r.payment_method === "cash" ? "Naqd" : "Bo'lib"}</td><td class="num">${esc(money(r.price))}</td>
-      <td>${r.customer_username ? "@" + esc(r.customer_username) : "—"}</td><td>${esc(dt(r.created_at))}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">Topilmadi</td></tr>`}
-    </tbody></table></div>`;
+      <td>${r.customer_username ? "@" + esc(r.customer_username) : "—"}</td><td>${esc(dt(r.created_at))}</td></tr>`).join("") || `<tr><td colspan="9" class="empty">Topilmadi</td></tr>`}
+    </tbody></table></div>
+    <p class="hint" style="margin-top:8px">Test buyurtmalarni o'chirish: katakchalarni belgilang (sarlavhadagisi — hammasi). Navbatdagi buyurtma avval bekor qilinadi, pul mijoz balansiga qaytadi.</p>`;
+  bindBulk(v, "buyurtma", (ids) => call("deleteOrders", { ids }));
   $("#flt").onsubmit = (e) => { e.preventDefault(); orders.f = Object.fromEntries(new FormData(e.target)); render(); };
   v.querySelectorAll("[data-o]").forEach((tr) => (tr.onclick = () => openOrder(tr.dataset.o)));
 }
@@ -424,18 +452,20 @@ async function installments(v) {
       <button class="btn btn-ghost btn-sm" id="legacy" type="button">+ Eski shartnoma</button>
       <button class="btn btn-ghost btn-sm" id="fullRep" type="button">📊 To'liq jadval</button>
     </div>
-    <div class="tbl-wrap"><table><thead><tr><th>Mijoz</th><th>Mahsulot</th><th>Umumiy</th><th>To'langan</th><th>Qarz</th><th>Oylik</th><th>Boshlanish</th><th>Oxirgi</th><th>Keyingi to'lov</th><th></th></tr></thead><tbody>
-    ${rows.map((a) => `<tr><td>${esc(a.client_name || "")} ${a.cust_username || a.client_username ? "@" + esc(a.cust_username || a.client_username) : ""}<br><small class="hint">${esc(a.cust_phone || a.client_phone || "")}${a.legacy ? " · eski" : ""}${a.order_public_id ? " · " + esc(a.order_public_id) : ""}</small></td>
+    <button class="btn btn-ghost btn-sm" id="bulkDel" type="button" hidden style="color:var(--bad);margin-bottom:10px"></button>
+    <div class="tbl-wrap"><table><thead><tr><th><input type="checkbox" class="ck" id="ckAll" title="Hammasini tanlash"></th><th>Mijoz</th><th>Mahsulot</th><th>Umumiy</th><th>To'langan</th><th>Qarz</th><th>Oylik</th><th>Boshlanish</th><th>Oxirgi</th><th>Keyingi to'lov</th><th></th></tr></thead><tbody>
+    ${rows.map((a) => `<tr><td><input type="checkbox" class="ck" data-id="${a.id}"></td><td>${esc(a.client_name || "")} ${a.cust_username || a.client_username ? "@" + esc(a.cust_username || a.client_username) : ""}<br><small class="hint">${esc(a.cust_phone || a.client_phone || "")}${a.legacy ? " · eski" : ""}${a.order_public_id ? " · " + esc(a.order_public_id) : ""}</small></td>
       <td>${esc(a.product_name)}<br><small class="hint">${esc(IT[a.installment_type] || a.installment_type || "")}</small></td>
       <td class="num">${esc(money(a.summary.total))}</td><td class="num">${esc(money(a.summary.paid))}</td><td class="num">${esc(money(a.summary.remaining))}</td>
       <td class="num">${esc(money(a.monthly_payment))}</td><td>${esc(day(a.start_date))}</td><td>${esc(day(a.final_date))}</td>
       <td>${a.summary.overdue ? `<span class="over">Kechikkan: ${esc(money(a.summary.overdueAmount))}</span>` : esc(a.summary.nextDueDate || "—")}</td>
-      <td><div class="acts"><button class="btn btn-primary btn-sm" data-pay="${a.id}" type="button">To'lov</button><button class="btn btn-ghost btn-sm" data-ed="${a.id}" type="button">Tahrir</button><button class="btn btn-ghost btn-sm" data-h="${a.id}" type="button">Tarix</button></div></td></tr>`).join("") || `<tr><td colspan="10" class="empty">Shartnoma yo'q</td></tr>`}
+      <td><div class="acts"><button class="btn btn-primary btn-sm" data-pay="${a.id}" type="button">To'lov</button><button class="btn btn-ghost btn-sm" data-ed="${a.id}" type="button">Tahrir</button><button class="btn btn-ghost btn-sm" data-h="${a.id}" type="button">Tarix</button></div></td></tr>`).join("") || `<tr><td colspan="11" class="empty">Shartnoma yo'q</td></tr>`}
     </tbody></table></div>`;
   $("#flt").onsubmit = (e) => { e.preventDefault(); installments.f = Object.fromEntries(new FormData(e.target)); render(); };
   $("#new").onclick = () => agreementForm({});
   $("#legacy").onclick = () => agreementForm({ legacy: true });
   $("#fullRep").onclick = () => { location.hash = "report"; };
+  bindBulk(v, "shartnoma", (ids) => call("deleteAgreements", { ids }));
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => agreementForm(rows.find((a) => String(a.id) === b.dataset.ed))));
   v.querySelectorAll("[data-h]").forEach((b) => (b.onclick = async () => {
     const hist = async () => {
@@ -444,7 +474,12 @@ async function installments(v) {
         ${p.map((x) => `<div class="hrow"><span>${esc(dt(x.paid_at))} · <b>${esc(money(x.amount))}</b> · ${x.source === "balance" ? "balansdan" : "qo'lda"}${x.note ? " · " + esc(x.note) : ""}</span>
           ${x.source === "manual" ? `<button class="btn btn-ghost btn-sm" data-dp="${x.id}" type="button">O'chirish</button>` : ""}</div>`).join("") || `<p class="hint">To'lov yo'q</p>`}
         <p class="hint">Test uchun kiritilgan to'lovni o'chirsangiz, qarz va hisobotlar o'zi qayta hisoblanadi.</p>
-        <button class="btn btn-ghost btn-sm" type="button" id="delAg" style="color:var(--bad)">Shartnomani butunlay o'chirish</button>`);
+        <div class="acts">${p.some((x) => x.source === "manual") ? `<button class="btn btn-ghost btn-sm" type="button" id="delAllP" style="color:var(--bad)">Hamma to'lovlarni o'chirish</button>` : ""}
+        <button class="btn btn-ghost btn-sm" type="button" id="delAg" style="color:var(--bad)">Shartnomani butunlay o'chirish</button></div>`);
+      const dap = $("#delAllP"); if (dap) dap.onclick = async () => {
+        if (!dap.dataset.sure) { dap.dataset.sure = "1"; dap.textContent = "Rostdan hammasi o'chirilsinmi? Yana bosing"; return; }
+        try { const r = await call("deleteAllInstPayments", { id: Number(b.dataset.h) }); toast(`O'chirildi: ${r.done} ta`); hist(); } catch (er) { toast(er.message); }
+      };
       $("#sheet").querySelectorAll("[data-dp]").forEach((d) => (d.onclick = async () => {
         if (!d.dataset.sure) { d.dataset.sure = "1"; d.textContent = "Rostdanmi?"; return; }
         try { await call("deleteInstPayment", { id: Number(d.dataset.dp) }); toast("To'lov o'chirildi"); hist(); } catch (er) { toast(er.message); }

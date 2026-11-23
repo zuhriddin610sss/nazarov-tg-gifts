@@ -820,3 +820,18 @@ test("Test ma'lumotlarini o'chirish: to'lov, shartnoma, buyurtma; summalarni 0 q
   const s = await admin({ action: 'stats' });
   assert.deepEqual([s.revenue, s.installments.collected], [0, 0]);
 });
+
+test("Bir nechta / hammasini o'chirish: buyurtmalar (navbatdagisi bekor qilinib, pul qaytadi), shartnomalar, to'lovlar", async () => {
+  await withPhone(); await topup(100000);
+  const a = await app({ action: 'createOrder', service: 'stars', quantity: 50, recipient: { self: true }, paymentMethod: 'cash', idempotencyKey: key() });
+  const b = await app({ action: 'createOrder', service: 'cashout', giftLink: 'https://t.me/nft/SnoopDogg-2', amount: 100000, months: 3, paymentMethod: 'installment', idempotencyKey: key() });
+  const ids = [];
+  for (const p of [a.publicId, b.publicId]) ids.push((await admin({ action: 'orders', search: p }))[0].id);
+  const r = await admin({ action: 'deleteOrders', ids });
+  assert.deepEqual([r.done, r.skipped.length], [2, 0]);
+  const ag1 = await admin({ action: 'saveInstallment', legacy: true, productName: 'B1', totalPrice: 100000, monthlyPayment: 10000, startDate: '2026-01-01', finalDate: '2026-10-01', alreadyPaid: 20000 });
+  const ag2 = await admin({ action: 'saveInstallment', legacy: true, productName: 'B2', totalPrice: 100000, monthlyPayment: 10000, startDate: '2026-01-01', finalDate: '2026-10-01' });
+  await admin({ action: 'addInstallmentPayment', id: ag2.id, amount: 5000, idempotencyKey: key() });
+  assert.equal((await admin({ action: 'deleteAllInstPayments', id: ag2.id })).done, 1);
+  assert.equal((await admin({ action: 'deleteAgreements', ids: [ag1.id, ag2.id] })).done, 2);
+});
