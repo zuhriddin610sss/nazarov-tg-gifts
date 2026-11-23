@@ -13,7 +13,14 @@ export async function satelliteConfigured() {
 
 // Serverless muhitida setTimeout bo'lmasligi mumkin: unda kutish soat bo'yicha (qisqa, 2 soniyagacha)
 const HAS_TIMER = typeof setTimeout === 'function';
-const sleep = (ms) => (HAS_TIMER ? new Promise((r) => setTimeout(r, ms)) : (async () => { const end = Date.now() + Math.min(ms, 2000); while (Date.now() < end) await Promise.resolve(); })());
+let deadline = 0;
+/** Bitta so'rov (masalan "Narxni yangilash") uchun vaqt chegarasi: undan keyin bozorlarga so'rov yuborilmaydi (server vaqti tugamasin). */
+export function satBudget(ms) { deadline = ms ? Date.now() + ms : 0; }
+const sleep = (ms) => {
+  const left = deadline ? Math.max(0, deadline - Date.now()) : ms;
+  const t = Math.min(ms, left, 1500);
+  return HAS_TIMER ? new Promise((r) => setTimeout(r, t)) : (async () => { const end = Date.now() + t; while (Date.now() < end) await Promise.resolve(); })();
+};
 /** Vaqt chegarasi: taymer bo'lmasa — chegarasiz kutiladi (avval darhol "javob yo'q" qaytib, Gift Satellite hech ishlamay qolardi). */
 const withTimeout = (p, ms, onTimeout) => (HAS_TIMER ? Promise.race([p, new Promise((r) => setTimeout(() => r(onTimeout), ms))]) : p);
 
@@ -45,6 +52,7 @@ async function request(lane, path, query) {
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt) await sleep((last.status === 429 ? 1200 : 600) + Math.floor(Math.random() * 300));
     await slot(lane);
+    if (deadline && Date.now() > deadline) return { ok: false, status: 0, text: 'vaqt tugadi' };
     try {
       const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `Token ${key}` } });
       last = { ok: res.ok, status: res.status, text: await res.text() };
@@ -187,7 +195,7 @@ export async function satFloor(attrs) {
   // Model + fon: bozorning birlashgan filtri ba'zan aynan shu giftni qaytarmaydi. Shuning uchun uch xil qidiramiz
   // (model + fon, faqat model, faqat fon) va natijalardan aynan model + fon mos kelganini o'zimiz ajratamiz.
   const qs = attrs.model && attrs.backdrop
-    ? [{ model: attrs.model, backdrop: attrs.backdrop }, { model: attrs.model }, { backdrop: attrs.backdrop }]
+    ? [{ model: attrs.model }, { backdrop: attrs.backdrop }]
     : [{ model: attrs.model || null, backdrop: attrs.backdrop || null }];
   const rs = await Promise.all(qs.map((q) => satMarket({ collection: attrs.collection, ...q }).catch(() => null)));
   if (rs.every((x) => !x)) return { status: 'error' };

@@ -2,7 +2,7 @@
 import { get, run, nowMs, logError } from 'lib/core';
 import { giftsOnSaleFloor, listRent, giftCollections, marketappConfigured, floorInfo } from 'lib/marketapp';
 import { portalsFloor, portalsConfigured } from 'lib/portals';
-import { satFloor, satelliteConfigured } from 'lib/satellite';
+import { satFloor, satelliteConfigured, satBudget } from 'lib/satellite';
 
 /** Ustama foizi: oy soni × (yillik ustama / 12). 3 oy -> 25, 6 oy -> 50, 12 oy -> 100. */
 export function markupPercent(months, s) {
@@ -161,7 +161,8 @@ export async function ownSaleQuote(p, s, { fresh = false, cached = false } = {})
       mkPrice = nPrice; mkBy = nBy; mkSrc = nSrc;
       await run('UPDATE own_products SET mk_price_ton = :pt, mk_by = :by, mk_src = :sl, mk_checked_at = :t WHERE id = :id', { pt: mkPrice ?? null, by: mkBy, sl: mkSrc, t: nowMs(), id: p.id });
     } else {
-      await run('UPDATE own_products SET mk_checked_at = NULL WHERE id = :id', { id: p.id });
+      // 1 = "oxirgi urinish muvaffaqiyatsiz": ro'yxatlar qayta-qayta urinmaydi, admin tugmasi bilan yangilanadi
+      await run('UPDATE own_products SET mk_checked_at = 1 WHERE id = :id', { id: p.id });
     }
   } else if ((stale || fresh) && p.kind === 'gifts') {
     await run('UPDATE own_products SET mk_checked_at = :t WHERE id = :id', { t: nowMs(), id: p.id });
@@ -199,10 +200,14 @@ export const RENT_BASES = ['model_backdrop', 'model', 'backdrop'];
  */
 export async function refreshOneStale(rows, s) {
   if (!rows.length) return;
+  satBudget(6000);
+  try { await refreshOneStale2(rows, s); } finally { satBudget(0); }
+}
+async function refreshOneStale2(rows, s) {
   await refreshOneRent(rows);
   const old = (p) => (p.kind === 'gifts' && p.inst_enabled ? Number(p.mk_checked_at || 0) : Infinity);
   const p = rows.reduce((a, b) => (old(b) < old(a) ? b : a), rows[0]);
-  if (!p || old(p) === Infinity || (p.mk_checked_at && nowMs() - old(p) < 30 * 60000)) return;
+  if (!p || old(p) !== 0) return; // faqat hali tekshirilmagani (yangi yoki tahrirlangan)
   try { await ownSaleQuote(p, s); } catch (e) { await logError('narx', `${p.name}: ${e && e.message}`); }
   const r = await get('SELECT * FROM own_products WHERE id = :id', { id: p.id });
   if (r) Object.assign(p, r);
@@ -210,7 +215,7 @@ export async function refreshOneStale(rows, s) {
 async function refreshOneRent(rows) {
   const old = (p) => (p.kind === 'gifts' && p.rent_enabled && RENT_BASES.includes(p.rent_by) ? Number(p.rent_checked_at || 0) : Infinity);
   const p = rows.reduce((a, b) => (old(b) < old(a) ? b : a), rows[0]);
-  if (!p || old(p) === Infinity || nowMs() - old(p) < 30 * 60000) return;
+  if (!p || old(p) !== 0) return; // faqat hali tekshirilmagani (yangi yoki tahrirlangan)
   await ownRentPpd(p);
   const r = await get('SELECT * FROM own_products WHERE id = :id', { id: p.id });
   if (r) Object.assign(p, r);

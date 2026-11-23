@@ -6,7 +6,7 @@ import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
 import { ownSaleQuote, refreshOneStale, monthlyPayment, markupFor, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
 import { rentTotalTon, rentPriceTiyin } from 'lib/pricing';
-import { satDebug, satelliteConfigured } from 'lib/satellite';
+import { satDebug, satelliteConfigured, satBudget } from 'lib/satellite';
 import { splitGiftName } from 'lib/calc';
 import { send } from 'lib/notify';
 import { money, t } from 'lib/texts';
@@ -280,12 +280,14 @@ export const actions = {
     const p = await get('SELECT * FROM own_products WHERE id = :id', { id: int(i.id, { min: 1 }) });
     if (!p) throw fail('NOT_FOUND');
     const before = p.mk_price_ton;
-    const q = await ownSaleQuote(p, await getSettings(), { fresh: true });
+    satBudget(9000);
+    let q;
+    try { q = await ownSaleQuote(p, await getSettings(), { fresh: true }); } finally { satBudget(0); }
     const after = await get('SELECT mk_checked_at FROM own_products WHERE id = :id', { id: p.id });
     // Tekshiruv: har bir bozor nima qaytardi (faqat "Narxni yangilash" bittalab bosilganda)
     const debug = i.debug && p.kind === 'gifts' && (p.model || p.backdrop) && (await satelliteConfigured())
       ? await satDebug({ collection: splitGiftName(p.name).collection, model: p.model, backdrop: p.backdrop }) : null;
-    return { price: q.price, by: q.by, src: q.src, marketPriceTon: q.marketPriceTon, kept: !after || !after.mk_checked_at, before, debug, build: BUILD };
+    return { price: q.price, by: q.by, src: q.src, marketPriceTon: q.marketPriceTon, kept: !after || Number(after.mk_checked_at) <= 1, before, debug, build: BUILD };
   },
 
   async ownProducts() {
