@@ -127,7 +127,7 @@ async function marketFloor(a) {
  * O'z mahsulotining sotuv narxi va 1-tur boshlang'ich to'lovi (so'm). Bozor ma'lumoti 30 daqiqa saqlanadi.
  * Narx = (bozordagi eng arzoni + own_add) × sale_rate. Topilmasa — admin qo'lda yozgan narx.
  */
-export async function ownSaleQuote(p, s, { fresh = false, cached = false } = {}) {
+export async function ownSaleQuote(p, s, { fresh = false, cached = false, noRent = false } = {}) {
   const attrs = { model: p.model, backdrop: p.backdrop, symbol: p.symbol };
   const src = priceSource(p.price_source);
   // Zanjir: tanlangan usulda topilmasa kengroq usul. Butun kolleksiyaning eng arzoniga tushilmaydi.
@@ -136,7 +136,7 @@ export async function ownSaleQuote(p, s, { fresh = false, cached = false } = {})
   let mkPrice = p.mk_price_ton, mkPpd = p.mk_ppd_nano, mkBy = p.mk_by || null, mkSrc = p.mk_src || null;
   const stale = !cached && (!p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000);
   // Marketapp: faqat ijara narxi (1-tur formulasi uchun) — bepul tarifda ishlaydi
-  if ((stale || fresh) && p.kind === 'gifts' && (await marketappConfigured())) {
+  if (!noRent && (stale || fresh) && p.kind === 'gifts' && (await marketappConfigured())) {
     let col = p.collection_address;
     try {
       if (!col) { const c = await collectionByName(splitGiftName(p.name).collection); col = c ? c.address : null; }

@@ -282,7 +282,7 @@ export const actions = {
     const before = p.mk_price_ton;
     satBudget(9000);
     let q;
-    try { q = await ownSaleQuote(p, await getSettings(), { fresh: true }); } finally { satBudget(0); }
+    try { q = await ownSaleQuote({ ...p, kind: p.kind, collection_address: p.collection_address }, await getSettings(), { fresh: true, noRent: true }); } finally { satBudget(0); }
     const after = await get('SELECT mk_checked_at FROM own_products WHERE id = :id', { id: p.id });
     // Tekshiruv: har bir bozor nima qaytardi (faqat "Narxni yangilash" bittalab bosilganda)
     const debug = i.debug && p.kind === 'gifts' && (p.model || p.backdrop) && (await satelliteConfigured())

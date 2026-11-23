@@ -110,7 +110,7 @@ export const fmt = (tiyin) => groupNum(toSom(tiyin)) + " so'm";
 
 // ---------- sozlamalar ----------
 /** Server kodi versiyasi (admin panelda ko'rinadi — yangilash o'tganini tekshirish uchun). */
-export const BUILD = '2026-11-23l';
+export const BUILD = '2026-11-23m';
 
 export const DEFAULT_SETTINGS = {
   card_number: '',
