@@ -470,7 +470,8 @@ const HIC = {
 };
 /** Bosh sahifa reklamalari (Stories uslubi): har biri 5 soniya, bosib ushlasa to'xtaydi, surib almashtiriladi. */
 function startStories(v) {
-  const st = $("#st", v); if (!st) return;
+  const st = $("#st", v); if (!st || st.dataset.on) return;
+  st.dataset.on = "1";
   const tr = $(".st-track", st), bars = [...st.querySelectorAll(".st-bars i")], n = bars.length;
   let i = 0, sx = null, moved = false;
   const go = (k) => {
@@ -533,12 +534,12 @@ async function viewHome(v) {
     ].filter(Boolean);
     const ab = S.cfg && S.cfg.about;
     const way2 = (href, gt, ic, title, desc, main) => `<a class="way${main ? " main" : ""}" href="${href}"${gt ? ` data-gt="${gt}"` : ""}><span class="ic">${ic}</span><span><b>${title}</b><small>${esc(desc)}</small></span></a>`;
-    v.innerHTML = `${SILVER_DEFS}
-      ${slides.length ? `<section class="st" id="st"><div class="st-bars">${slides.map(() => "<i><b></b></i>").join("")}</div>
+    const html = `${SILVER_DEFS}
+      <div id="hSt">${slides.length ? `<section class="st" id="st"><div class="st-bars">${slides.map(() => "<i><b></b></i>").join("")}</div>
         <div class="st-track">${slides.map((x) => `<a class="st-s st-${x.k}" href="${x.href}"${x.gt ? ` data-gt="${x.gt}"` : ""}>
           <span class="k">${esc(x.kick)}</span><h1>${esc(x.h)}</h1>${x.p ? `<p>${esc(x.p)}</p>` : ""}${x.extra || ""}
           ${x.im2 ? `<span class="im im2">${x.im2}</span>` : ""}${x.im ? `<span class="im">${x.im}${x.coin ? `<span class="cxm">+ ${esc(t("som"))}</span><em class="stay">${esc(t("cx_stays"))}</em>` : ""}</span>` : ""}
-          <span class="go">${esc(x.go)} →</span></a>`).join("")}</div></section>` : ""}
+          <span class="go">${esc(x.go)} →</span></a>`).join("")}</div></section>` : ""}</div>
       <div class="trust"><div><b>${esc(t("trust_now_b"))}</b><small>${esc(t("trust_now"))}</small></div><div><b>240</b><small>${esc(t("trust_240"))}</small></div><div><b>${esc(t("trust_som_b"))}</b><small>${esc(t("trust_som"))}</small></div></div>
       ${S.me ? `<a class="balrow" href="#balance"><span>${esc(t("balance_short"))}</span><b>${esc(som(S.me.balance))}</b></a>` : ""}
       <h2 class="h2x">${esc(t("ways_title"))}</h2>
@@ -549,20 +550,30 @@ async function viewHome(v) {
       ${en.nft_gift !== false ? way2("#gifts", "cash", HIC.cash, esc(t("w_cash")), t("w_cash_d")) : ""}
       ${en.cashout !== false ? way2("#cashout", "", HIC.coin, esc(t("cx_short")), t("w_cx_d")) : ""}
       </div>
-      ${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
-        <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}
+      <div id="hRec">${buyable.length ? `<div class="sect-h" style="padding-top:18px"><h2 class="h2x" style="margin:0">${esc(t("rec_title"))}</h2><a class="link" href="#gifts" data-gt="lease">${esc(t("see_all"))}</a></div>
+        <div class="strip own-strip feat">${buyable.map((it) => giftCard("gifts", { ...it, rent: false, buyLine: buyPriceHtml(it.salePrice, "lease") }, null)).join("")}</div>${featNav(buyable.length)}` : ""}</div>
       ${svcs.length ? `<h2 class="h2x">${esc(t("other_title"))}</h2><div class="more2">${svcs.map(([k, href, title, sub]) => `<a href="${href}" data-svc="${k}"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</a>`).join("")}</div>` : ""}
-      <section class="about2"><div class="ab-wall" aria-hidden="true">${[PEPE, ...others.slice(0, 7).map((g) => pic(g))].map((x) => `<span>${x}</span>`).join("")}</div>
+      <section class="about2"><div class="ab-wall" id="hWall" aria-hidden="true">${[PEPE, ...others.slice(0, 7).map((g) => pic(g))].map((x) => `<span>${x}</span>`).join("")}</div>
         <div class="ab-in"><div class="ab-h"><img src="/assets/logo-mark.png" alt="" width="36" height="36"><b>NAZAROV TG Gifts</b></div>
         <div class="ab-st2"><div><b>5</b><small>${esc(t("ab_ways"))}</small></div><div><b>240</b><small>${esc(t("ab_months"))}</small></div></div>
         ${ab && ab.channel ? `<a class="ab-ch" href="https://t.me/${esc(ab.channel)}" target="_blank" rel="noopener">${esc(t("ab_channel"))} ↗</a>` : ""}</div></section>
       <p class="help"><a class="help-link" href="#help">${esc(t("help_link"))}</a></p>`;
+    // Ma'lumot kelgach butun sahifa qayta chizilmaydi (aks holda mijoz bosgan tugma "yo'qolib" qoladi):
+    // faqat reklamalar, "Tavsiya etamiz" va giftlar devori yangilanadi.
+    const parts = ["hSt", "hRec", "hWall"];
+    const fresh = !$("#hSt", v) || v.dataset.lang !== S.lang;
+    if (fresh) { v.innerHTML = html; v.dataset.lang = S.lang; }
+    else {
+      const tmp = document.createElement("div"); tmp.innerHTML = html;
+      parts.forEach((id) => { const a = $("#" + id, v), b = $("#" + id, tmp); if (a && b && a.innerHTML !== b.innerHTML) a.replaceWith(b); });
+    }
     startStories(v);
-    v.querySelectorAll("[data-gt]").forEach((a) => a.addEventListener("click", () => { S.giftsTab = a.dataset.gt; }));
-    v.querySelectorAll(".more2 a[data-svc]").forEach((a) => a.addEventListener("click", () => {
+    const once = (el, fn) => { if (!el.dataset.on) { el.dataset.on = "1"; el.addEventListener("click", fn); } };
+    v.querySelectorAll("[data-gt]").forEach((a) => once(a, () => { S.giftsTab = a.dataset.gt; }));
+    v.querySelectorAll(".more2 a[data-svc]").forEach((a) => once(a, () => {
       if (RENT_TAB[a.dataset.svc]) { S.giftsTab = "rent"; S.rentTab = RENT_TAB[a.dataset.svc]; }
     }));
-    v.querySelectorAll(".own-strip .gcard[data-a]").forEach((c) => c.addEventListener("click", () => {
+    v.querySelectorAll(".own-strip .gcard[data-a]").forEach((c) => once(c, () => {
       const it = own.find((x) => x.address === c.dataset.a);
       if (it) openOwnBuy(it, "lease");
     }));
