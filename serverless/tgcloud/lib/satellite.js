@@ -123,7 +123,11 @@ async function searchMarket(market, colName, f, { fresh = false } = {}) {
     return c ? { ok: true, items: c.v } : { ok: false, status: r.status, text: String(r.text || '').slice(0, 120) };
   }
   let items;
-  try { const d = JSON.parse(r.text); items = (Array.isArray(d) ? d : []).map(listingOut).filter((x) => x.ton); } catch (e) { return c ? { ok: true, items: c.v } : { ok: false }; }
+  try { const d = JSON.parse(r.text); items = (Array.isArray(d) ? d : []).map(listingOut).filter((x) => x.ton); }
+  catch (e) {
+    await logError('satellite', `JSON emas /search/${market}/${colName}: ${String(r.text).slice(0, 200)}`);
+    return c ? { ok: true, items: c.v } : { ok: false, status: r.status, text: 'JSON emas: ' + String(r.text).slice(0, 80) };
+  }
   await cachePut(k, items);
   return { ok: true, items };
 }
@@ -194,7 +198,7 @@ export async function satDebug(attrs) {
   const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false, to: true }), ms) : r({ ok: false })));
   const out = [`Qidiruv: ${col} · model: ${attrs.model || '—'} · fon: ${attrs.backdrop || '—'}`];
   for (const [label, q] of qs) {
-    const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q, { fresh: true }).catch(() => ({ ok: false })), timeout(8000)])));
+    const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q, { fresh: true }).catch((e) => ({ ok: false, status: 'kod', text: String(e && (e.stack || e.message)).slice(0, 160) })), timeout(8000)])));
     res.forEach((r, k) => {
       const name = MARKET_NAME[MARKETS[k]];
       if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (8 soniyada kelmadi)' : r.status != null ? ` (xato ${r.status}${r.text ? ': ' + r.text : ''})` : ''}`); return; }
