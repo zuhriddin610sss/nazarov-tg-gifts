@@ -747,7 +747,8 @@ test("Narx: model + fon birlashgan filtrda chiqmasa ham, faqat model qidiruvidan
   });
   const r = await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Jingle Bells #89238', model: 'Polynesia', backdrop: 'Onyx Black', inst_enabled: true, price_source: 'sat_model_backdrop' });
   const id = r.id ?? (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Jingle Bells #89238').id;
-  const q = await admin({ action: 'refreshOwnPrice', id });
+  const q = await admin({ action: 'refreshOwnPrice', id, debug: true });
+  assert.ok(q.debug.some((x) => /MRKT · model: 1 ta, aynan mos: 30.6 TON/.test(x)));
   assert.equal(q.marketPriceTon, 30.6);
   assert.equal(q.by, 'sat_model_backdrop');
   // MRKT javob bermasa: model + fon "topilmadi" deyilmaydi, narx o'zgarmaydi (12.9 ga tushmaydi)

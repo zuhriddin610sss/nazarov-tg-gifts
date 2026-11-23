@@ -109,7 +109,7 @@ async function searchMarket(market, colName, f, { fresh = false } = {}) {
   const r = await request(market, `/search/${market}/${encodeURIComponent(colSlug(colName))}`, q);
   if (!r.ok) {
     await logError('satellite', `${r.status} /search/${market}/${colName}: ${String(r.text).slice(0, 200)}`);
-    return c ? { ok: true, items: c.v } : { ok: false };
+    return c ? { ok: true, items: c.v } : { ok: false, status: r.status, text: String(r.text || '').slice(0, 120) };
   }
   let items;
   try { const d = JSON.parse(r.text); items = (Array.isArray(d) ? d : []).map(listingOut).filter((x) => x.ton); } catch (e) { return c ? { ok: true, items: c.v } : { ok: false }; }
@@ -181,12 +181,12 @@ export async function satDebug(attrs) {
   const qs = [['model + fon', { model: attrs.model, backdrop: attrs.backdrop }], ['model', { model: attrs.model }], ['fon', { backdrop: attrs.backdrop }]]
     .filter(([, q]) => (q.model || q.backdrop) && (!('backdrop' in q) || q.backdrop) && (!('model' in q) || q.model));
   const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false, to: true }), ms) : r({ ok: false })));
-  const out = [];
+  const out = [`Qidiruv: ${col} · model: ${attrs.model || '—'} · fon: ${attrs.backdrop || '—'}`];
   for (const [label, q] of qs) {
     const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q, { fresh: true }).catch(() => ({ ok: false })), timeout(8000)])));
     res.forEach((r, k) => {
       const name = MARKET_NAME[MARKETS[k]];
-      if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (8 soniyada kelmadi)' : ''}`); return; }
+      if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (8 soniyada kelmadi)' : r.status != null ? ` (xato ${r.status}${r.text ? ': ' + r.text : ''})` : ''}`); return; }
       const ex = r.items.filter((x) => (!attrs.model || low(x.model) === low(attrs.model)) && (!attrs.backdrop || low(x.backdrop) === low(attrs.backdrop))).sort((a, b) => a.ton - b.ton)[0];
       out.push(`${name} · ${label}: ${r.items.length} ta${ex ? `, aynan mos: ${ex.ton} TON (#${ex.num})` : ''}`);
     });
