@@ -9,7 +9,7 @@ export async function portalsConfigured() {
   return Boolean(await getSecret('portals_key'));
 }
 
-const sleep = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(r, ms) : r()));
+const sleep = (ms) => (typeof setTimeout === 'function' ? new Promise((r) => setTimeout(r, ms)) : (async () => { const end = Date.now() + Math.min(ms, 2000); while (Date.now() < end) await Promise.resolve(); })());
 const GAP = 1100;        // so'rovlar orasidagi eng kam vaqt (ms)
 const MAX_WAIT = 8000;   // navbatda ko'pi bilan shuncha kutiladi
 

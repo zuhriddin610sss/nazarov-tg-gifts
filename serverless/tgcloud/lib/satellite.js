@@ -11,7 +11,11 @@ export async function satelliteConfigured() {
   return Boolean(await getSecret('satellite_key'));
 }
 
-const sleep = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(r, ms) : r()));
+// Serverless muhitida setTimeout bo'lmasligi mumkin: unda kutish soat bo'yicha (qisqa, 2 soniyagacha)
+const HAS_TIMER = typeof setTimeout === 'function';
+const sleep = (ms) => (HAS_TIMER ? new Promise((r) => setTimeout(r, ms)) : (async () => { const end = Date.now() + Math.min(ms, 2000); while (Date.now() < end) await Promise.resolve(); })());
+/** Vaqt chegarasi: taymer bo'lmasa — chegarasiz kutiladi (avval darhol "javob yo'q" qaytib, Gift Satellite hech ishlamay qolardi). */
+const withTimeout = (p, ms, onTimeout) => (HAS_TIMER ? Promise.race([p, new Promise((r) => setTimeout(() => r(onTimeout), ms))]) : p);
 
 /**
  * Faqat GET so'rov. Navbat yo'q (Gift Satellite chegarasi keng: sekundiga 2–4 ta, natijalar esa 5 daqiqa saqlanadi).
@@ -158,8 +162,7 @@ export async function satMarket(f = {}) {
   }
   const markets = colName === 'all-collections' ? MARKETS.filter((m) => m !== 'tg') : MARKETS;
   // Hamma bozorlardan bir vaqtda (har birining o'z navbati bor). 6 soniyada javob bermagani kutilmaydi.
-  const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false }), ms) : r({ ok: false })));
-  const res = await Promise.all(markets.map((m) => Promise.race([searchMarket(m, colName, f).catch(() => ({ ok: false })), timeout(15000)])));
+  const res = await Promise.all(markets.map((m) => withTimeout(searchMarket(m, colName, f).catch(() => ({ ok: false })), 15000, { ok: false })));
   let items = [], okAny = false, failed = 0;
   for (const r of res) if (r.ok) { okAny = true; items = items.concat(r.items); } else failed++;
   if (!okAny) return null;
@@ -207,10 +210,9 @@ export async function satDebug(attrs) {
   const low = (x) => String(x || '').trim().toLowerCase();
   const qs = [['model + fon', { model: attrs.model, backdrop: attrs.backdrop }], ['model', { model: attrs.model }], ['fon', { backdrop: attrs.backdrop }]]
     .filter(([, q]) => (q.model || q.backdrop) && (!('backdrop' in q) || q.backdrop) && (!('model' in q) || q.model));
-  const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false, to: true }), ms) : r({ ok: false })));
   const out = [`Qidiruv: ${col} · model: ${attrs.model || '—'} · fon: ${attrs.backdrop || '—'}`];
   for (const [label, q] of qs) {
-    const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q).catch((e) => ({ ok: false, status: 'kod', text: String(e && (e.stack || e.message)).slice(0, 160) })), timeout(20000)])));
+    const res = await Promise.all(MARKETS.map((m) => withTimeout(searchMarket(m, col, q).catch((e) => ({ ok: false, status: 'kod', text: String(e && (e.stack || e.message)).slice(0, 160) })), 20000, { ok: false, to: true })));
     res.forEach((r, k) => {
       const name = MARKET_NAME[MARKETS[k]];
       if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (20 soniyada kelmadi)' : r.status != null ? ` (xato ${r.status}${r.text ? ': ' + r.text : ''})` : ''}`); return; }
