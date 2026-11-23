@@ -128,6 +128,20 @@ function loadXlsx() {
     document.head.appendChild(sc);
   });
 }
+/** Jadvalni Excel qilib bot chatiga yuborish: rows — [{ustun: qiymat}], name — fayl nomi. */
+async function sendTableExcel(btn, rows, sheetName, fileName) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = "Tayyorlanmoqda...";
+  try {
+    const X = await loadXlsx();
+    const wb = X.utils.book_new();
+    const ws = X.utils.json_to_sheet(rows.length ? rows : [{ "": "Ma'lumot yo'q" }]);
+    ws["!cols"] = Object.keys(rows[0] || { "": "" }).map((k) => ({ wch: Math.max(10, Math.min(40, k.length + 4)) }));
+    X.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+    await call("sendExport", { file: X.write(wb, { bookType: "xlsx", type: "base64" }), name: fileName });
+    toast("Excel fayl botdagi chatingizga yuborildi");
+  } catch (e) { toast(e.message || "Xato"); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
 async function exportExcel(btn, from, to) {
   btn.disabled = true; const old = btn.textContent; btn.textContent = "Tayyorlanmoqda...";
   try {
@@ -698,7 +712,8 @@ async function own(v) {
   v.innerHTML = `<h1>Mening mahsulotlarim</h1>
     <p class="hint" style="margin-bottom:12px">Bu mahsulotlar mijozga <b>"Reklama"</b> yorlig'i bilan har doim birinchi ko'rinadi: qaysi filtr tanlansa ham.</p>
     <div class="acts" style="margin-bottom:12px"><button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi gift</button>
-      <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button></div>
+      <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button>
+      <button class="btn btn-ghost btn-sm" id="xlOwn" type="button">⬇ Excel</button></div>
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
       <div class="stat"><small>Qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Siz sotib olgan</th><th>Gift</th><th>Ijara</th><th>Lizing / bo'lib to'lash narxi</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
@@ -714,6 +729,13 @@ async function own(v) {
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="8" class="empty">Hali gift yo'q</td></tr>`}
     </tbody></table></div>`;
   $("#new").onclick = () => ownForm({});
+  $("#xlOwn").onclick = (e) => sendTableExcel(e.currentTarget, rows.map((p, k) => ({
+    "№": k + 1, "Sotib olingan sana": p.bought_at ? p.bought_at.split("-").reverse().join(".") : "", "Sotib olingan narxi": p.bought_price != null ? Number(p.bought_price) : "",
+    "Gift": p.name, "Model": p.model || "", "Fon": p.backdrop || "",
+    "Lizing / bo'lib to'lash narxi": p.inst_enabled && p.quote && p.quote.price ? Number(p.quote.price) : "",
+    "Ijara (kuniga, dan)": p.rent_enabled ? (p.rentAuto ? Number(p.rentAuto.perDay) : p.rent_price != null ? Number(p.rent_price) : "") : "",
+    "Qilingan daromad": Number(p.earned) || 0, "Holat": p.visible ? "Ko'rinadi" : "Yashirin",
+  })), "Mening mahsulotlarim", `mahsulotlar_${todayStr()}.xlsx`);
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
   // Hammasi: bittadan ketma-ket (bozorlarni bir vaqtda ko'p so'rov bilan band qilmaslik uchun), jarayon tugmada ko'rinadi
   $("#rfAll").onclick = async (e) => {
@@ -859,8 +881,10 @@ async function report(v) {
     <div class="tbl-wrap"><table><thead><tr>${RCOLS.map(([, l]) => `<th>${esc(l)}</th>`).join("")}</tr></thead><tbody>
     ${rows.map((r) => `<tr>${RCOLS.map(([k, , m]) => `<td${m ? ' class="num"' : ""}>${r[k] == null || r[k] === "" ? "—" : esc(m ? money(r[k]) : r[k])}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${RCOLS.length}" class="empty">Shartnoma yo'q</td></tr>`}
     </tbody></table></div>
-    <button class="btn btn-ghost btn-sm" type="button" style="margin-top:12px" id="back">← Lizing va bo'lib to'lash</button>`;
+    <div class="acts" style="margin-top:12px"><button class="btn btn-primary btn-sm" type="button" id="xl">⬇ Excel</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="back">← Lizing va bo'lib to'lash</button></div>`;
   $("#back").onclick = () => { location.hash = "installments"; };
+  $("#xl").onclick = (e) => sendTableExcel(e.currentTarget, rows.map((r) => Object.fromEntries(RCOLS.map(([k, l]) => [l, r[k] ?? ""]))), "Lizing va bo'lib to'lash", `toliq_jadval_${todayStr()}.xlsx`);
 }
 
 const VIEWS = { report, dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own, listings };
