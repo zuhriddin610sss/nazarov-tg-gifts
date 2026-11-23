@@ -405,7 +405,7 @@ export const actions = {
         day1: Math.ceil(rentPriceTiyin(rentTotalTon(ppd, 1), ownRentFormula(s)) / 100), ppdTon: Number(ppd) / 1e9 } : null;
       out.push({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price), price_manual: som(p.price_manual), down_manual: som(p.down_manual),
         rent_enabled: Boolean(p.rent_enabled), inst_enabled: Boolean(p.inst_enabled), cash_enabled: Boolean(p.cash_enabled), visible: Boolean(p.visible),
-        quote: q, rentAuto, bought_price: som(p.bought_price), earned: som(rentInc[p.id] || 0) });
+        quote: q, rentAuto, bought_price: som(p.bought_price), earned: som(rentInc[p.id] || 0), earned_before: som(p.earned_before) });
     }
     return out;
   },
@@ -438,6 +438,7 @@ export const actions = {
       // Boshlang'ich to'lov har doim avval formula bilan; bu summa faqat formula topilmasa ishlatiladi
       down_mode: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.down_by) ? i.down_by : 'exact',
       down_manual: Number(i.down_manual) > 0 ? toTiyin(num(i.down_manual, { min: 1, name: 'down_manual' })) : null,
+      earned_before: Number(i.earned_before) > 0 ? toTiyin(num(i.earned_before, { min: 0 })) : null,
       bought_at: dateTime(i.bought_at, 'bought_at'), bought_price: Number(i.bought_price) > 0 ? toTiyin(num(i.bought_price, { min: 0 })) : null,
     };
     if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });
@@ -449,13 +450,13 @@ export const actions = {
           rent_enabled=:rent_enabled, rent_price=:rent_price, rent_min=:rent_min, rent_max=:rent_max, inst_enabled=:inst_enabled,
           cash_enabled=:cash_enabled, cash_price=:cash_price, visible=:visible, position=:position,
           price_source=:price_source, price_ton=:price_ton, price_manual=:price_manual, down_mode=:down_mode, down_manual=:down_manual,
-          rent_by=:rent_by, bought_at=:bought_at, bought_price=:bought_price, rent_checked_at=NULL, collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
+          rent_by=:rent_by, bought_at=:bought_at, bought_price=:bought_price, earned_before=:earned_before, rent_checked_at=NULL, collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
       if (r.rowsAffected !== 1) throw fail('NOT_FOUND');
     } else {
       await run(`INSERT INTO own_products (kind, name, image, model, backdrop, symbol, rent_enabled, rent_price, rent_min, rent_max,
-          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual, rent_by, bought_at, bought_price)
+          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual, rent_by, bought_at, bought_price, earned_before)
           VALUES (:kind, :name, :image, :model, :backdrop, :symbol, :rent_enabled, :rent_price, :rent_min, :rent_max,
-          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual, :rent_by, :bought_at, :bought_price)`, { ...p, now: Date.now() });
+          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual, :rent_by, :bought_at, :bought_price, :earned_before)`, { ...p, now: Date.now() });
     }
     await audit(admin, 'own.save', id ? String(id) : p.name);
     return { ok: true };

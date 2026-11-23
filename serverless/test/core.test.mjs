@@ -835,3 +835,9 @@ test("Bir nechta / hammasini o'chirish: buyurtmalar (navbatdagisi bekor qilinib,
   assert.equal((await admin({ action: 'deleteAllInstPayments', id: ag2.id })).done, 1);
   assert.equal((await admin({ action: 'deleteAgreements', ids: [ag1.id, ag2.id] })).done, 2);
 });
+
+test("Botdan oldingi daromad umumiy daromadga qo'shiladi", async () => {
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Before Gift #9', inst_enabled: true, price_source: 'manual_som', price_manual: 300000, bought_price: 290000, earned_before: 45000 });
+  const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Before Gift #9');
+  assert.deepEqual([p.earned, p.earned_before, p.bought_price - p.earned], [45000, 45000, 245000]);
+});

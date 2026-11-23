@@ -341,6 +341,7 @@ export async function ownRentIncome() {
   const orders = await all(`SELECT details, COALESCE(paid_amount, price, 0) AS amt FROM orders
       WHERE status = 'completed' AND payment_method = 'cash' AND details LIKE '%"own":%'`);
   for (const r of orders) add(Number(JSON.parse(r.details || '{}').own) || null, r.amt);
+  for (const p of await all('SELECT id, earned_before FROM own_products WHERE earned_before > 0')) add(Number(p.id), p.earned_before);
   const ags = await all(`SELECT a.own_id, a.down_payment, o.details,
         COALESCE((SELECT SUM(amount) FROM inst_payments p WHERE p.agreement_id = a.id), 0) AS paid_sum
       FROM agreements a LEFT JOIN orders o ON o.id = a.order_id`);

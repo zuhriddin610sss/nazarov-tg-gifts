@@ -804,7 +804,7 @@ async function own(v) {
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
       <div class="stat"><small>Umumiy daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Siz sotib olgan</th><th>Gift</th><th>Ijara</th><th>Lizing / bo'lib to'lash narxi</th><th>Umumiy daromad</th><th>Holat</th><th></th></tr></thead><tbody>
-    ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(dtx(p.bought_at)) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}
+    ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(dtx(p.bought_at)) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b><br><small class="hint">Tushirilgan: ${esc(money(Number(p.bought_price) - (Number(p.earned) || 0)))}</small>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}
         <div class="acts" style="margin-top:8px"><button class="btn btn-primary btn-sm" data-ed="${p.id}" type="button">✏️ Tahrir</button>
         ${p.inst_enabled && p.kind === "gifts" ? `<button class="btn btn-ghost btn-sm" data-rf="${p.id}" type="button">↻ Narx</button>` : ""}</div></td>
       <td>${p.rent_enabled ? (p.rentAuto ? `${esc(money(p.rentAuto.perDay))}/kun dan<br><small class="hint">avto: ${esc(RENTB[p.rent_by] || "")} · 1 kun ${esc(money(p.rentAuto.day1))}</small>`
@@ -881,6 +881,9 @@ function ownForm(p) {
       <div class="full sec2"><span class="sn2">2</span><b>Siz qachon va qanchaga sotib oldingiz?</b></div>
       <div class="field"><label>Sana va soat</label><input class="input" type="datetime-local" name="bought_at" value="${esc(p.bought_at || "")}"></div>
       <div class="field"><label>Narx, so'm</label><input class="input" name="bought_price" inputmode="decimal" value="${esc(p.bought_price ?? "")}" placeholder="1 000 000"></div>
+      <div class="field full"><label>Botdan oldin shu giftdan qilgan daromadingiz, so'm <small class="hint">(ijara va boshqalar, bo'lmasa bo'sh qoldiring)</small></label><input class="input" name="earned_before" inputmode="decimal" value="${esc(p.earned_before ?? "")}" placeholder="0"></div>
+      ${edit ? `<div class="full sumbox"><div><span>Umumiy daromad</span><b>${esc(money(p.earned || 0))}</b></div><div><span>Tushirilgan qiymati</span><b>${p.bought_price != null ? esc(money(Number(p.bought_price) - (Number(p.earned) || 0))) : "—"}</b></div></div>
+        <p class="hint full" style="margin:0">Umumiy daromad = botdan oldingi daromad + botda ijara va lizing/bo'lib to'lashdan tushgan pul. Tushirilgan qiymati = sotib olingan narx − umumiy daromad. Saqlagandan keyin yangilanadi.</p>` : ""}
 
       <div class="full sec2"><span class="sn2">3</span><b>Mijozga qanday beriladi?</b></div>
       <div class="full tgs">${tog("inst_enabled", isNew || p.inst_enabled, "Lizing va bo'lib to'lash", "Narx bozordan o'zi olinadi")}${tog("rent_enabled", p.rent_enabled, "Ijara", "Kunlab beriladi")}</div>
@@ -935,7 +938,7 @@ function ownForm(p) {
       position: n("position"), visible: f.get("visible") === "1",
       price_source: f.get("price_source"), price_ton: Number(String(f.get("price_ton") || "").replace(",", ".")) || null, price_manual: n("price_manual") || null,
       down_manual: n("down_manual") || null, down_by: f.get("down_by"),
-      bought_at: f.get("bought_at") || null, bought_price: n("bought_price") || null,
+      bought_at: f.get("bought_at") || null, bought_price: n("bought_price") || null, earned_before: n("earned_before") || null,
     };
     if (!body.rent_enabled && !body.inst_enabled) {
       const box = $("#ofErr"); const m = "3-qadamda kamida bittasini belgilang: Lizing va bo'lib to'lash yoki Ijara";

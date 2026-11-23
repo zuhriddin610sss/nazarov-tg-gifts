@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -249,4 +249,6 @@ export const COLUMNS = [
   ['agreements', 'cash_price', 'INTEGER'],
   ['agreements', 'monthly_profit', 'INTEGER'],
   ['agreements', 'own_id', 'INTEGER'],
+  // Botdan oldin shu gift olib kelgan daromad (admin yozadi), tiyin
+  ['own_products', 'earned_before', 'INTEGER'],
 ];
