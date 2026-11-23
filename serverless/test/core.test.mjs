@@ -757,3 +757,22 @@ test("Narx: model + fon birlashgan filtrda chiqmasa ham, faqat model qidiruvidan
   const q2 = await admin({ action: 'refreshOwnPrice', id });
   assert.equal(q2.marketPriceTon, 30.6);
 });
+
+test("Gift Satellite: yangi kolleksiya probel bilan ('Jingle Bells') — probelsiz 400 bersa probel bilan qayta so'raladi; Getgems 404 natijani buzmaydi", async () => {
+  await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), satelliteKey: 'K' });
+  await core.run("DELETE FROM portals_cache WHERE k LIKE 'gs:%'");
+  const urls = [];
+  setFetch(async (url) => {
+    const u = decodeURIComponent(String(url)); urls.push(u);
+    if (u.includes('/gift/collections')) return { ok: true, status: 200, text: async () => JSON.stringify([{ name: 'Jingle Bells' }]) };
+    if (u.includes('/search/getgems/')) return { ok: false, status: 404, text: async () => '{"message":"Route GET:/search/getgems/x not found"}' };
+    if (u.includes('/search/') && u.includes('/JingleBells')) return { ok: false, status: 400, text: async () => '{"message":"Неверный формат коллекции"}' };
+    const body = u.includes('/search/tonnel/Jingle Bells') ? [{ market: 'tonnel', slug: 'JingleBells-58498', giftId: 'x', collectionName: 'Jingle Bells', modelName: 'Pinky', backdropName: 'Onyx Black', normalizedPrice: 24.11 }] : [];
+    return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  });
+  const r = await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Jingle Bells #89238', model: 'Polynesia', backdrop: 'Onyx Black', inst_enabled: true, price_source: 'sat_backdrop' });
+  const id = r.id ?? (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Jingle Bells #89238').id;
+  const q = await admin({ action: 'refreshOwnPrice', id });
+  assert.equal(q.marketPriceTon, 24.11);
+  assert.ok(urls.some((u) => u.includes('/search/tonnel/Jingle Bells?')));
+});

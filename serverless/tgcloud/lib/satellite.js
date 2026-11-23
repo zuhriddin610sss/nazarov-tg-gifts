@@ -106,7 +106,18 @@ async function searchMarket(market, colName, f, { fresh = false } = {}) {
   const c = fresh ? null : await cacheGet(k, 300000);
   if (c && c.fresh) return { ok: true, items: c.v };
   // Gift Satellite kolleksiya nomini probelsiz kutadi: "Balls Ice Cream" -> "BallsIceCream", "Durov's Cap" -> "DurovsCap"
-  const r = await request(market, `/search/${market}/${encodeURIComponent(colSlug(colName))}`, q);
+  // Kolleksiya nomi: eski kolleksiyalar probelsiz ("PlushPepe"), yangilari esa ro'yxatdagidek probel bilan ("Jingle Bells").
+  // Avval eslab qolingan usul, keyin ikkinchisi; "Неверный формат коллекции" (400) bo'lsa boshqasini sinaymiz.
+  const known = colName === 'all-collections' ? null : await cacheGet('gs:slug:' + colName, 7 * 86400000);
+  const variants = [...new Set([...(known ? [known.v] : []), colSlug(colName), colName])];
+  let r;
+  for (const v of variants) {
+    r = await request(market, `/search/${market}/${encodeURIComponent(v)}`, q);
+    if (r.ok) { if (colName !== 'all-collections' && (!known || known.v !== v)) await cachePut('gs:slug:' + colName, v); break; }
+    if (!(r.status === 400 && /коллекц|collection/i.test(String(r.text)))) break;
+  }
+  // Bozor yo'li umuman yo'q (404 "Route … not found") — bu bozor qidiruvi ishlamaydi: bo'sh deb olamiz, butun natijani buzmaydi
+  if (!r.ok && r.status === 404 && /route/i.test(String(r.text))) return { ok: true, items: [] };
   if (!r.ok) {
     await logError('satellite', `${r.status} /search/${market}/${colName}: ${String(r.text).slice(0, 200)}`);
     return c ? { ok: true, items: c.v } : { ok: false, status: r.status, text: String(r.text || '').slice(0, 120) };
