@@ -6,7 +6,7 @@
 // buyurtma/chek/to'lov holatini yangilaydi. Har qanday tekshiruv yiqilsa — butun amal bekor bo'ladi.
 // `idem_key` UNIQUE: bir xil amal ikki marta bajarilmaydi.
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 const NOW_MS = "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
@@ -241,4 +241,12 @@ export const COLUMNS = [
   ['own_products', 'rent_by', "TEXT NOT NULL DEFAULT 'manual'"],
   ['own_products', 'rent_ppd_nano', 'TEXT'],
   ['own_products', 'rent_checked_at', 'INTEGER'],
+  // Hisobot: gift qachon va qanchaga sotib olingan (so'm emas, tiyin)
+  ['own_products', 'bought_at', 'TEXT'],
+  ['own_products', 'bought_price', 'INTEGER'],
+  ['agreements', 'bought_at', 'TEXT'],
+  ['agreements', 'bought_price', 'INTEGER'],
+  ['agreements', 'cash_price', 'INTEGER'],
+  ['agreements', 'monthly_profit', 'INTEGER'],
+  ['agreements', 'own_id', 'INTEGER'],
 ];

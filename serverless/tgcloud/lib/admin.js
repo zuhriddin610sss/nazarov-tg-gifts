@@ -1,7 +1,7 @@
 // Admin panel amallari (endpoints/admin.js orqali; faqat ADMIN_IDS dagi akkauntlar).
 import { api, InputFile } from 'sdk';
 import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS, BUILD } from 'lib/core';
-import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
+import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo, agreementReport, ownRentIncome } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
 import { ownSaleQuote, refreshOneStale, monthlyPayment, markupFor, priceSource, ownRentPpd, ownRentFormula, RENT_BASES } from 'lib/calc';
@@ -25,6 +25,7 @@ function orderOut(o) {
 function agreementOut(a) {
   const s = a.summary;
   return { ...a, total_price: som(a.total_price), down_payment: som(a.down_payment), monthly_payment: som(a.monthly_payment), paid_sum: som(a.paid_sum),
+    bought_price: som(a.bought_price), cash_price: som(a.cash_price), monthly_profit: som(a.monthly_profit),
     summary: { ...s, total: som(s.total), paid: som(s.paid), remaining: som(s.remaining), overdueAmount: som(s.overdueAmount) } };
 }
 
@@ -156,10 +157,16 @@ export const actions = {
       startDate: date(i.startDate, 'startDate'), finalDate: date(i.finalDate, 'finalDate'),
       collateral: str(i.collateral, 300), notes: str(i.notes, 2000),
       alreadyPaid: toTiyin(num(i.alreadyPaid || 0, { min: 0 })), status: ['active', 'closed'].includes(i.status) ? i.status : null,
+      // Hisobot uchun (ixtiyoriy)
+      boughtAt: date(i.boughtAt, 'boughtAt'), boughtPrice: Number(i.boughtPrice) > 0 ? toTiyin(num(i.boughtPrice, { min: 0 })) : null,
+      cashPrice: Number(i.cashPrice) > 0 ? toTiyin(num(i.cashPrice, { min: 0 })) : null,
+      monthlyProfit: i.monthlyProfit !== '' && i.monthlyProfit != null && !Number.isNaN(Number(i.monthlyProfit)) ? toTiyin(num(i.monthlyProfit)) : null,
     };
     if (!a.startDate || !a.finalDate) throw fail('VALIDATION', { field: 'dates' });
     return { id: await saveAgreement(a, admin) };
   },
+  /** To'liq jadval (lizing va bo'lib to'lash). */
+  async installmentReport() { return agreementReport(); },
   async installmentPayments(i) {
     const rows = await all('SELECT * FROM inst_payments WHERE agreement_id = :id ORDER BY paid_at', { id: int(i.id, { min: 1 }) });
     return rows.map((p) => ({ ...p, amount: som(p.amount), paid_at: Number(p.paid_at) }));
@@ -293,6 +300,7 @@ export const actions = {
   async ownProducts() {
     const rows = await all('SELECT * FROM own_products ORDER BY position, id DESC');
     const s = await getSettings();
+    const rentInc = await ownRentIncome();
     const out = [];
     await refreshOneStale(rows, s);
     for (const p of rows) {
@@ -303,7 +311,7 @@ export const actions = {
         day1: Math.ceil(rentPriceTiyin(rentTotalTon(ppd, 1), ownRentFormula(s)) / 100), ppdTon: Number(ppd) / 1e9 } : null;
       out.push({ ...p, rent_price: som(p.rent_price), cash_price: som(p.cash_price), price_manual: som(p.price_manual), down_manual: som(p.down_manual),
         rent_enabled: Boolean(p.rent_enabled), inst_enabled: Boolean(p.inst_enabled), cash_enabled: Boolean(p.cash_enabled), visible: Boolean(p.visible),
-        quote: q, rentAuto });
+        quote: q, rentAuto, bought_price: som(p.bought_price), earned: som(rentInc[p.id] || 0) });
     }
     return out;
   },
@@ -336,6 +344,7 @@ export const actions = {
       // Boshlang'ich to'lov har doim avval formula bilan; bu summa faqat formula topilmasa ishlatiladi
       down_mode: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.down_by) ? i.down_by : 'exact',
       down_manual: Number(i.down_manual) > 0 ? toTiyin(num(i.down_manual, { min: 1, name: 'down_manual' })) : null,
+      bought_at: date(i.bought_at, 'bought_at'), bought_price: Number(i.bought_price) > 0 ? toTiyin(num(i.bought_price, { min: 0 })) : null,
     };
     if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });
     if (rentOn && p.rent_max < p.rent_min) throw fail('VALIDATION', { field: 'rent_max' });
@@ -346,13 +355,13 @@ export const actions = {
           rent_enabled=:rent_enabled, rent_price=:rent_price, rent_min=:rent_min, rent_max=:rent_max, inst_enabled=:inst_enabled,
           cash_enabled=:cash_enabled, cash_price=:cash_price, visible=:visible, position=:position,
           price_source=:price_source, price_ton=:price_ton, price_manual=:price_manual, down_mode=:down_mode, down_manual=:down_manual,
-          rent_by=:rent_by, rent_checked_at=NULL, collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
+          rent_by=:rent_by, bought_at=:bought_at, bought_price=:bought_price, rent_checked_at=NULL, collection_address=NULL, mk_checked_at=NULL WHERE id = :id`, { ...p, id });
       if (r.rowsAffected !== 1) throw fail('NOT_FOUND');
     } else {
       await run(`INSERT INTO own_products (kind, name, image, model, backdrop, symbol, rent_enabled, rent_price, rent_min, rent_max,
-          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual, rent_by)
+          inst_enabled, cash_enabled, cash_price, visible, position, created_at, price_source, price_ton, price_manual, down_mode, down_manual, rent_by, bought_at, bought_price)
           VALUES (:kind, :name, :image, :model, :backdrop, :symbol, :rent_enabled, :rent_price, :rent_min, :rent_max,
-          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual, :rent_by)`, { ...p, now: Date.now() });
+          :inst_enabled, :cash_enabled, :cash_price, :visible, :position, :now, :price_source, :price_ton, :price_manual, :down_mode, :down_manual, :rent_by, :bought_at, :bought_price)`, { ...p, now: Date.now() });
     }
     await audit(admin, 'own.save', id ? String(id) : p.name);
     return { ok: true };

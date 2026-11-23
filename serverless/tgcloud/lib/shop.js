@@ -182,19 +182,29 @@ export async function saveAgreement(i, actor) {
   if (i.id) {
     const r = await run(`UPDATE agreements SET client_name = :cn, client_username = :cu, client_phone = :cp, product_name = :pn, installment_type = :it,
         total_price = :tp, down_payment = :dp, monthly_payment = :mp, start_date = :sd, final_date = :fd, collateral = :col, notes = :nt,
+        bought_at = :ba, bought_price = :bp, cash_price = :cpr, monthly_profit = :mpr,
         status = COALESCE(:st, status) WHERE id = :id`,
       { id: i.id, cn: i.clientName, cu: user, cp: i.clientPhone, pn: i.productName, it: i.installmentType, tp: i.totalPrice, dp: i.downPayment,
-        mp: i.monthlyPayment, sd: i.startDate, fd: i.finalDate, col: i.collateral, nt: i.notes, st: i.status ?? null });
+        mp: i.monthlyPayment, sd: i.startDate, fd: i.finalDate, col: i.collateral, nt: i.notes, st: i.status ?? null,
+        ba: i.boughtAt ?? null, bp: i.boughtPrice ?? null, cpr: i.cashPrice ?? null, mpr: i.monthlyProfit ?? null });
     if (r.rowsAffected !== 1) throw fail('AGREEMENT_NOT_FOUND');
     await audit(actor, 'installment.update', String(i.id), i);
     return i.id;
   }
-  let customerId = i.customerId ?? null;
+  let customerId = i.customerId ?? null, ownId = null;
   if (i.orderId) {
-    const o = await get('SELECT customer_id, payment_method FROM orders WHERE id = :id', { id: i.orderId });
+    const o = await get('SELECT customer_id, payment_method, details FROM orders WHERE id = :id', { id: i.orderId });
     if (!o) throw fail('ORDER_NOT_FOUND');
     if (o.payment_method !== 'installment') throw fail('ORDER_NOT_INSTALLMENT');
     customerId = o.customer_id;
+    // Bizning giftimiz bo'lsa: sotib olingan sana/narx va naqd narx shu yerdan (admin yozmagan bo'lsa)
+    const d = JSON.parse(o.details || '{}');
+    if (d.own) {
+      ownId = Number(d.own);
+      const p = await get('SELECT bought_at, bought_price FROM own_products WHERE id = :id', { id: ownId });
+      if (p) { i.boughtAt ??= p.bought_at; i.boughtPrice ??= p.bought_price; }
+    }
+    if (i.cashPrice == null && d.estPrice) i.cashPrice = Math.round(Number(d.estPrice) * 100);
   } else if (!customerId && user) {
     const c = await get('SELECT id FROM customers WHERE lower(username) = lower(:u)', { u: user });
     if (c) customerId = c.id;
@@ -202,10 +212,11 @@ export async function saveAgreement(i, actor) {
   let id;
   try {
     const r = await run(`INSERT INTO agreements (order_id, customer_id, legacy, client_name, client_username, client_phone, product_name, installment_type,
-        total_price, down_payment, monthly_payment, start_date, final_date, collateral, notes)
-      VALUES (:oid, :cid, :lg, :cn, :cu, :cp, :pn, :it, :tp, :dp, :mp, :sd, :fd, :col, :nt) RETURNING id`,
+        total_price, down_payment, monthly_payment, start_date, final_date, collateral, notes, bought_at, bought_price, cash_price, monthly_profit, own_id)
+      VALUES (:oid, :cid, :lg, :cn, :cu, :cp, :pn, :it, :tp, :dp, :mp, :sd, :fd, :col, :nt, :ba, :bp, :cpr, :mpr, :own) RETURNING id`,
       { oid: i.orderId ?? null, cid: customerId, lg: Boolean(i.legacy), cn: i.clientName, cu: user, cp: i.clientPhone, pn: i.productName, it: i.installmentType,
-        tp: i.totalPrice, dp: i.downPayment, mp: i.monthlyPayment, sd: i.startDate, fd: i.finalDate, col: i.collateral, nt: i.notes });
+        tp: i.totalPrice, dp: i.downPayment, mp: i.monthlyPayment, sd: i.startDate, fd: i.finalDate, col: i.collateral, nt: i.notes,
+        ba: i.boughtAt ?? null, bp: i.boughtPrice ?? null, cpr: i.cashPrice ?? null, mpr: i.monthlyProfit ?? null, own: ownId });
     id = Number((r.rows && r.rows[0] && r.rows[0].id) ?? r.lastInsertRowid);
   } catch (e) {
     if (dbCode(e) === 'UNIQUE') throw fail('AGREEMENT_EXISTS');
@@ -312,3 +323,56 @@ export async function leaveReview(customerId, publicId, rating, text) {
   const r = await run('INSERT INTO reviews (order_id, customer_id, rating, text) VALUES (:o, :c, :r, :t) ON CONFLICT (order_id) DO NOTHING', { o: o.id, c: customerId, r: rating, t: text });
   if (r.rowsAffected !== 1) throw fail('REVIEW_EXISTS');
 }
+
+
+// ---------- To'liq hisobot (admin jadvali va Excel) ----------
+const monthDiff = (a, b) => { const x = ymd(a), y = ymd(b); return (y.getUTCFullYear() - x.getUTCFullYear()) * 12 + (y.getUTCMonth() - x.getUTCMonth()); };
+const ddmmyyyy = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('.') : '');
+
+/** Bizning giftlarimizning ijaradan tushgan puli (bajarilgan ijara buyurtmalari), { ownId: tiyin }. */
+export async function ownRentIncome() {
+  const rows = await all(`SELECT details, COALESCE(paid_amount, price, 0) AS amt FROM orders
+      WHERE status = 'completed' AND service IN ('gift_rent','username_rent','number_rent') AND details LIKE '%"own":%'`);
+  const m = {};
+  for (const r of rows) { const d = JSON.parse(r.details || '{}'); if (d.own) m[d.own] = (m[d.own] || 0) + Number(r.amt || 0); }
+  return m;
+}
+
+/**
+ * Lizing va bo'lib to'lash shartnomalari — har biri bitta qator, admin aytgan ustunlar bilan. Pullar so'mda.
+ * Foyda: naqddan = naqd narx − sotib olingan narx; bo'lib to'lashdan = umumiy narx − naqd narx; umumiy = umumiy narx − sotib olingan narx.
+ * "Eski to'lovlar" — shu gift olib kelgan hamma pul: shartnoma bo'yicha to'langani + (bizning gift bo'lsa) ijaradan tushgani.
+ */
+export async function agreementReport(today = new Date()) {
+  const list = await listAgreements({}, today);
+  const rent = await ownRentIncome();
+  const orderOwn = new Map((await all(`SELECT id, details FROM orders WHERE payment_method = 'installment' AND details LIKE '%"own":%'`))
+    .map((o) => [Number(o.id), Number(JSON.parse(o.details || '{}').own) || null]));
+  const S = (t) => (t == null ? null : Math.round(Number(t)) / 100);
+  return list.map((a, k) => {
+    const s = a.summary;
+    const ownId = a.own_id || (a.order_id ? orderOwn.get(Number(a.order_id)) : null) || null;
+    const months = Math.max(1, monthDiff(a.start_date, a.final_date));
+    const bought = a.bought_price != null ? Number(a.bought_price) : null, cash = a.cash_price != null ? Number(a.cash_price) : null;
+    return {
+      n: k + 1, id: a.id, status: a.status, type: a.installment_type,
+      boughtAt: ddmmyyyy(a.bought_at), boughtPrice: S(bought), soldAt: ddmmyyyy(a.start_date),
+      client: a.client_name || '', phone: a.cust_phone || a.client_phone || '', username: (a.cust_username || a.client_username) ? '@' + (a.cust_username || a.client_username) : '',
+      product: a.product_name, cashPrice: S(cash),
+      profitCash: cash != null && bought != null ? S(cash - bought) : null,
+      profitInst: cash != null ? S(s.total - cash) : null,
+      profitTotal: bought != null ? S(s.total - bought) : null,
+      down: S(a.down_payment), credit: S(s.total - Number(a.down_payment)), debt: S(s.remaining),
+      months, monthlyProfit: S(a.monthly_profit), monthly: S(a.monthly_payment), monthsLeft: s.remaining > 0 && Number(a.monthly_payment) > 0 ? Math.ceil(s.remaining / Number(a.monthly_payment)) : 0,
+      finalDate: ddmmyyyy(a.final_date), paid: S(s.paid), allIncome: S(s.paid + (ownId && rent[ownId] ? rent[ownId] : 0)),
+    };
+  });
+}
+/** Excel uchun ustun nomlari (admin aytgan tartibda). */
+export const REPORT_COLS = [
+  ['n', '№'], ['boughtAt', 'Sotib olingan sana'], ['boughtPrice', 'Sotib olingan narxi'], ['soldAt', 'Sotilgan sana'], ['client', 'Mijoz ismi'],
+  ['phone', 'Telefon raqami'], ['username', "Telegram username'si"], ['product', 'Mahsulot'], ['cashPrice', 'Naqdga hisoblangan narxi'],
+  ['profitCash', 'Naqddan foyda'], ['profitInst', "Bo'lib to'lashdan foyda"], ['profitTotal', 'Umumiy foyda'], ['down', "Boshlang'ich to'lov"],
+  ['credit', 'Kredit miqdori'], ['debt', 'Qolgan qarzi'], ['months', 'Muddati (oy)'], ['monthlyProfit', 'Oylik foyda'], ['monthly', "Oylik to'lov"],
+  ['monthsLeft', 'Qolgan muddat (oy)'], ['finalDate', "Oxirgi to'lov sanasi"], ['paid', "To'langan summa"], ['allIncome', "Eski to'lovlar (gift olib kelgan hamma pul)"],
+];

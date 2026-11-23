@@ -3,7 +3,7 @@
 import { api, InputFile } from 'sdk';
 import { all, get, run, claim, logError, adminIds, nowMs, takeLock } from 'lib/core';
 import { buildXlsx } from 'lib/xlsx';
-import { listAgreements } from 'lib/shop';
+import { listAgreements, agreementReport, ownRentIncome, REPORT_COLS } from 'lib/shop';
 import { t, money } from 'lib/texts';
 import { send, tashkent, openAppButton } from 'lib/notify';
 
@@ -67,41 +67,51 @@ const SVC = { nft_gift: "NFT gift", gift_rent: "NFT gift ijarasi", username_rent
 const STATUS = { pending: "To'lanmagan", queued: 'Navbatda', completed: 'Amalga oshirildi', cancelled: 'Bekor qilindi', failed: 'Xato' };
 const som = (tiyin) => (tiyin == null ? '' : Number(tiyin) / 100);
 
-/** Haftalik Excel hisobot: har dushanba (Toshkent vaqti 09:00 dan keyin) o'tgan hafta uchun, adminlarga. */
-export async function sendWeeklyReport(now = nowMs(), force = false) {
+/**
+ * Kunlik Excel hisobot: har kuni (Toshkent vaqti 09:00 dan keyin) adminlarga.
+ * Varaqlar: Xulosa, Kecha (buyurtmalar), Lizing va bo'lib to'lash (to'liq jadval), Mening mahsulotlarim, Barcha buyurtmalar.
+ */
+export async function sendDailyReport(now = nowMs(), force = false) {
   const local = new Date(now + 5 * 3600000);
-  if (!force && (local.getUTCDay() !== 1 || local.getUTCHours() < 9)) return 0;
-  const dayStart = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - 5 * 3600000;
-  const back = (local.getUTCDay() + 6) % 7; // dushanbagacha necha kun
-  const to = dayStart - back * DAY, from = to - 7 * DAY;
-  const label = tashkentDay(from) + '_' + tashkentDay(to - DAY);
-  if (!force && !(await claim('weekly:' + label))) return 0;
-  const orders = await all(`SELECT * FROM orders WHERE status NOT IN ('pending','failed') AND created_at >= :from AND created_at < :to ORDER BY id`, { from, to });
-  const ok = orders.filter((o) => o.status !== 'cancelled');
+  if (!force && local.getUTCHours() < 9) return 0;
+  const to = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - 5 * 3600000, from = to - DAY;
+  const label = tashkentDay(from);
+  if (!force && !(await claim('daily:' + label))) return 0;
+  const orders = await all(`SELECT * FROM orders WHERE status NOT IN ('pending','failed') ORDER BY id DESC LIMIT 5000`);
+  const day = orders.filter((o) => Number(o.created_at) >= from && Number(o.created_at) < to);
+  const ok = day.filter((o) => o.status !== 'cancelled');
   const income = ok.reduce((a, o) => a + Number(o.paid_amount || 0), 0);
-  const bySvc = {};
-  for (const o of ok) { const k = SVC[o.service] || o.service; bySvc[k] ||= { n: 0, sum: 0 }; bySvc[k].n++; bySvc[k].sum += Number(o.paid_amount || 0); }
-  const top = Object.entries(bySvc).sort((a, b) => b[1].n - a[1].n)[0];
+  const ag = await agreementReport(new Date(now));
+  const active = ag.filter((r) => r.status === 'active');
+  const sum = (arr, k) => arr.reduce((a, r) => a + (Number(r[k]) || 0), 0);
   const summary = [
-    { "Ko'rsatkich": 'Davr', "Qiymat": `${tashkentDay(from)} — ${tashkentDay(to - DAY)}` },
-    { "Ko'rsatkich": 'Buyurtmalar', "Qiymat": ok.length },
-    { "Ko'rsatkich": 'Bekor qilingan', "Qiymat": orders.length - ok.length },
-    { "Ko'rsatkich": "Bo'lib to'lash buyurtmalari", "Qiymat": ok.filter((o) => o.payment_method === 'installment').length },
-    { "Ko'rsatkich": "Tushum (balansdan yechilgan), so'm", "Qiymat": income / 100 },
-    { "Ko'rsatkich": 'Eng ko\'p sotilgan xizmat', "Qiymat": top ? `${top[0]} (${top[1].n} ta)` : '—' },
+    { "Ko'rsatkich": 'Sana', "Qiymat": label },
+    { "Ko'rsatkich": 'Kechagi buyurtmalar', "Qiymat": ok.length },
+    { "Ko'rsatkich": "Kechagi tushum (balansdan), so'm", "Qiymat": income / 100 },
+    { "Ko'rsatkich": "Faol lizing / bo'lib to'lash", "Qiymat": active.length },
+    { "Ko'rsatkich": "Qolgan qarz (jami), so'm", "Qiymat": sum(active, 'debt') },
+    { "Ko'rsatkich": "To'langan (jami), so'm", "Qiymat": sum(ag, 'paid') },
+    { "Ko'rsatkich": "Umumiy foyda (jami), so'm", "Qiymat": sum(ag, 'profitTotal') },
   ];
-  const services = Object.entries(bySvc).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => ({ "Xizmat": k, "Buyurtmalar": v.n, "Tushum, so'm": v.sum / 100 }));
-  const list = orders.map((o) => ({ "Raqam": o.public_id, "Sana": tashkent(o.created_at), "Mijoz": o.customer_username ? '@' + o.customer_username : '', "Telefon": o.customer_phone || '',
+  const oRow = (o) => ({ "Raqam": o.public_id, "Sana": tashkent(o.created_at), "Mijoz": o.customer_username ? '@' + o.customer_username : '', "Telefon": o.customer_phone || '',
     "Xizmat": SVC[o.service] || o.service, "Mahsulot": o.title, "To'lov": o.payment_method === 'cash' ? 'Naqd' : "Bo'lib to'lash",
-    "Narx, so'm": som(o.price), "Yechilgan, so'm": som(o.paid_amount), "Holat": STATUS[o.status] || o.status }));
-  const file = buildXlsx([{ name: 'Xulosa', rows: summary }, { name: 'Xizmatlar', rows: services }, { name: 'Buyurtmalar', rows: list }]);
-  const caption = `📊 Haftalik hisobot: ${tashkentDay(from)} — ${tashkentDay(to - DAY)}\nBuyurtmalar: ${ok.length} · Tushum: ${money(income / 100)} so'm${top ? `\nEng ko'p: ${top[0]}` : ''}`;
+    "Narx, so'm": som(o.price), "Yechilgan, so'm": som(o.paid_amount), "Holat": STATUS[o.status] || o.status });
+  const agRows = ag.map((r) => Object.fromEntries(REPORT_COLS.map(([k, l]) => [l, r[k] ?? ''])));
+  const rentInc = await ownRentIncome();
+  const own = (await all('SELECT * FROM own_products ORDER BY position, id DESC')).map((p, k) => ({
+    "№": k + 1, "Sotib olingan sana": p.bought_at ? p.bought_at.split('-').reverse().join('.') : '', "Sotib olingan narxi": som(p.bought_price),
+    "Mahsulot": p.name, "Model": p.model || '', "Fon": p.backdrop || '', "Qilingan daromad (ijaradan)": som(rentInc[p.id] || 0), "Holat": p.visible ? "Ko'rinadi" : 'Yashirin' }));
+  const file = buildXlsx([{ name: 'Xulosa', rows: summary }, { name: 'Kecha', rows: day.map(oRow) },
+    { name: "Lizing va bo'lib to'lash", rows: agRows }, { name: 'Mening mahsulotlarim', rows: own }, { name: 'Barcha buyurtmalar', rows: orders.map(oRow) }]);
+  const caption = `📊 Kunlik hisobot: ${label}\nBuyurtmalar: ${ok.length} · Tushum: ${money(income / 100)} so'm\nFaol shartnomalar: ${active.length} · Qolgan qarz: ${money(sum(active, 'debt'))} so'm`;
   for (const id of adminIds()) {
-    try { await api.sendDocument({ chat_id: id, document: new InputFile(file, `hafta_${label}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), caption }); }
-    catch (e) { await logError('weekly', `${id}: ${e && (e.description || e.message)}`); }
+    try { await api.sendDocument({ chat_id: id, document: new InputFile(file, `hisobot_${label}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), caption }); }
+    catch (e) { await logError('daily', `${id}: ${e && (e.description || e.message)}`); }
   }
   return 1;
 }
+/** Eski nom (admin paneldagi "hisobotni hozir olish" tugmasi). */
+export const sendWeeklyReport = sendDailyReport;
 
 /** Ko'pi bilan 30 daqiqada bir marta ishlaydi; bir vaqtda faqat bitta chaqiruv "yutadi". */
 export async function maybeRunJobs(force = false) {
@@ -114,8 +124,8 @@ export async function maybeRunJobs(force = false) {
     // Mijozni tunda bezovta qilmaslik uchun: Toshkent vaqti bilan 09:00–21:00
     const h = new Date(now + 5 * 3600000).getUTCHours();
     const inst = force || (h >= 9 && h < 21) ? await sendInstallmentReminders(now) : 0;
-    const weekly = await sendWeeklyReport(now);
-    return { rent, inst, weekly };
+    const daily = await sendDailyReport(now);
+    return { rent, inst, daily };
   } catch (e) {
     await logError('jobs', e && (e.message || e.description));
     return null;

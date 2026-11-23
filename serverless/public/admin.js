@@ -216,8 +216,8 @@ async function dashboard(v) {
       <p class="hint">Buyurtmalar (tanlangan sanalar bo'yicha), bo'lib to'lashlar va mijozlar bitta Excel faylga yoziladi. Fayl shu botdagi chatingizga yuboriladi.</p>
       <div class="row2"><input class="input" type="date" id="xFrom" value="${esc(monthStart())}"><input class="input" type="date" id="xTo" value="${esc(todayStr())}"></div>
       <button class="btn btn-primary btn-sm" id="xls" type="button">⬇ Excel</button>
-      <p class="hint" style="margin-top:10px">Har dushanba soat 9:00 dan keyin o'tgan haftaning hisoboti botga o'zi keladi (bot yoki ilovaga birinchi murojaatda).</p>
-      <button class="btn btn-ghost btn-sm" id="weekly" type="button">O'tgan hafta hisobotini hozir olish</button></div>
+      <p class="hint" style="margin-top:10px">Har kuni soat 9:00 dan keyin kunlik Excel hisobot botga o'zi keladi: kechagi buyurtmalar, lizing va bo'lib to'lash to'liq jadvali, mahsulotlar.</p>
+      <button class="btn btn-ghost btn-sm" id="weekly" type="button">Hisobotni hozir olish</button></div>
     <div class="section"><h2>Eslatmalar</h2><p class="hint">Ijara va oylik to'lov eslatmalari bot faol bo'lganda o'zi yuboriladi. Hozir tekshirish uchun bosing.</p>
       <button class="btn btn-ghost btn-sm" id="runJobs" type="button">Eslatmalarni hozir yuborish</button></div>
     ${s.pendingReceipts ? `<p class="alert">Tekshirilmagan cheklar: ${s.pendingReceipts}. <a href="#receipts">Ko'rish</a></p>` : ""}`;
@@ -385,6 +385,7 @@ async function installments(v) {
       <button class="btn btn-ghost btn-sm">Qidirish</button></form>
       <button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi shartnoma</button>
       <button class="btn btn-ghost btn-sm" id="legacy" type="button">+ Eski shartnoma</button>
+      <button class="btn btn-ghost btn-sm" id="fullRep" type="button">📊 To'liq jadval</button>
     </div>
     <div class="tbl-wrap"><table><thead><tr><th>Mijoz</th><th>Mahsulot</th><th>Umumiy</th><th>To'langan</th><th>Qarz</th><th>Oylik</th><th>Boshlanish</th><th>Oxirgi</th><th>Keyingi to'lov</th><th></th></tr></thead><tbody>
     ${rows.map((a) => `<tr><td>${esc(a.client_name || "")} ${a.cust_username || a.client_username ? "@" + esc(a.cust_username || a.client_username) : ""}<br><small class="hint">${esc(a.cust_phone || a.client_phone || "")}${a.legacy ? " · eski" : ""}${a.order_public_id ? " · " + esc(a.order_public_id) : ""}</small></td>
@@ -397,6 +398,7 @@ async function installments(v) {
   $("#flt").onsubmit = (e) => { e.preventDefault(); installments.f = Object.fromEntries(new FormData(e.target)); render(); };
   $("#new").onclick = () => agreementForm({});
   $("#legacy").onclick = () => agreementForm({ legacy: true });
+  $("#fullRep").onclick = () => { location.hash = "report"; };
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => agreementForm(rows.find((a) => String(a.id) === b.dataset.ed))));
   v.querySelectorAll("[data-h]").forEach((b) => (b.onclick = async () => {
     const p = await api(`/api/admin/installments/${b.dataset.h}/payments`);
@@ -444,6 +446,11 @@ function agreementForm(a) {
       <div class="field"><label>Oxirgi to'lov sanasi</label><input class="input" type="date" name="finalDate" required value="${esc(day(a.final_date) === "—" ? "" : day(a.final_date))}"></div>
       ${legacy && !edit ? `<div class="field"><label>Shu kungacha to'langan (boshlang'ichdan tashqari)</label><input class="input" name="alreadyPaid" inputmode="decimal" value="0"></div>` : ""}
       <div class="field"><label>Garov</label><input class="input" name="collateral" value="${val("collateral")}"></div>
+      <div class="field full"><b>Hisobot uchun</b></div>
+      <div class="field"><label>Gift sotib olingan sana</label><input class="input" type="date" name="boughtAt" value="${esc(a.bought_at || "")}"></div>
+      <div class="field"><label>Sotib olingan narxi (so'm)</label><input class="input" name="boughtPrice" inputmode="decimal" value="${val("bought_price")}"></div>
+      <div class="field"><label>Naqdga hisoblangan narxi (so'm)</label><input class="input" name="cashPrice" inputmode="decimal" value="${esc(a.cash_price ?? a._base ?? "")}"></div>
+      <div class="field"><label>Oylik foyda (so'm, ixtiyoriy)</label><input class="input" name="monthlyProfit" inputmode="decimal" value="${val("monthly_profit")}"></div>
       ${edit ? `<div class="field"><label>Holat</label><select class="input" name="status"><option value="active" ${a.status === "active" ? "selected" : ""}>Faol</option><option value="closed" ${a.status === "closed" ? "selected" : ""}>Yopilgan</option></select></div>` : ""}
       <div class="field full"><label>Izoh</label><textarea class="input" name="notes" rows="2">${val("notes")}</textarea></div>
       <button class="btn btn-primary full" type="submit">Saqlash</button>
@@ -471,6 +478,7 @@ function agreementForm(a) {
       productName: f.productName, clientName: f.clientName || null, clientUsername: f.clientUsername || null, clientPhone: f.clientPhone || null,
       installmentType: f.installmentType || null, totalPrice: num(f.totalPrice), downPayment: num(f.downPayment) ?? 0, monthlyPayment: num(f.monthlyPayment),
       startDate: f.startDate, finalDate: f.finalDate, collateral: f.collateral || null, notes: f.notes || null,
+      boughtAt: f.boughtAt || null, boughtPrice: num(f.boughtPrice), cashPrice: num(f.cashPrice), monthlyProfit: f.monthlyProfit === "" ? null : num(f.monthlyProfit),
     };
     try {
       if (edit) await api("/api/admin/installments/" + a.id, { method: "PATCH", body: { ...body, status: f.status } });
@@ -689,17 +697,20 @@ async function own(v) {
     <p class="hint" style="margin-bottom:12px">Bu mahsulotlar mijozga <b>"Reklama"</b> yorlig'i bilan har doim birinchi ko'rinadi: qaysi filtr tanlansa ham.</p>
     <div class="acts" style="margin-bottom:12px"><button class="btn btn-primary btn-sm" id="new" type="button">+ Yangi mahsulot</button>
       <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Holat</th><th></th></tr></thead><tbody>
-    ${rows.map((p) => `<tr><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
+    <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
+      <div class="stat"><small>Ijaradan qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Sotib olingan</th><th>Mahsulot</th><th>Turi</th><th>Ijara</th><th>Bo'lib to'lash</th><th>Naqd</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
+    ${rows.map((p, k) => `<tr><td>${k + 1}</td><td>${p.bought_at ? esc(p.bought_at.split("-").reverse().join(".")) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${esc(KIND[p.kind])}</td>
       <td>${p.rent_enabled ? (p.rentAuto ? `${esc(money(p.rentAuto.perDay))}/kun dan<br><small class="hint">avto: ${esc(RENTB[p.rent_by] || "")} · 1 kun ${esc(money(p.rentAuto.day1))}</small>`
         : p.rent_price ? `${esc(money(p.rent_price))}/kun${p.rent_by !== "manual" ? `<br><small class="hint">qo'lda (Marketapp ijarasida topilmadi)</small>` : ""}` : `<span class="over">ijara narxi topilmadi</span>`)
         + `<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
       <td>${p.inst_enabled ? (p.quote && p.quote.price ? esc(money(p.quote.price)) + (BYL[p.quote.by] ? `<br><small class="hint">${esc(BYL[p.quote.by])}</small>` : "") + (weakBy(p) ? `<br><span class="over">⚠️ ${esc(weakBy(p))}</span>` : "") + (p.quote.src ? `<br><small class="hint">${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""}</small>` : "") + (p.quote.down1 != null ? `<br><small class="hint">1-tur: ${esc(money(p.quote.down1))} (${p.quote.down1By === "formula" ? "formula: " + esc(DOWNB[p.quote.down1Base] || "") + " bo'yicha" : "qo'lda, ijarada yo'q"})</small>` : `<br><small class="hint">1-tur: admin aytadi</small>`) : `<span class="over">narx topilmadi${p.quote && BYERR[p.quote.by] ? ": " + esc(BYERR[p.quote.by]) : p.quote && p.quote.by === null ? ": model / fon bo'yicha sotuvda yo'q" : ""}. Tahrirda qo'lda narx yozing</span>`) : "—"}</td><td>${p.cash_enabled ? esc(money(p.cash_price)) : "—"}</td>
+      <td class="num">${p.earned ? esc(money(p.earned)) : "—"}</td>
       <td>${p.visible ? "Ko'rinadi" : "Yashirin"}</td>
       <td><div class="acts"><button class="btn btn-ghost btn-sm" data-ed="${p.id}" type="button">Tahrir</button>
         ${p.inst_enabled && p.kind === "gifts" ? `<button class="btn btn-ghost btn-sm" data-rf="${p.id}" type="button">Narxni yangilash</button>` : ""}
-        <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">Hali mahsulot yo'q</td></tr>`}
+        <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="10" class="empty">Hali mahsulot yo'q</td></tr>`}
     </tbody></table></div>`;
   $("#new").onclick = () => ownForm({});
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
@@ -762,6 +773,8 @@ function ownForm(p) {
       <div class="field full"><label>1-tur formulasi qaysi ijara narxidan olinsin? (Marketapp, 45 kunlik)</label>${downSel("down_by", p.down_mode)}</div>
       <div class="field full"><label>1-tur boshlang'ich to'lovi, so'm (formula topilmasa). Tanlangan usulda Marketapp ijarasida topilmasa, shu summa olinadi</label><input class="input" name="down_manual" inputmode="decimal" value="${esc(p.down_manual != null ? Number(p.down_manual) : "")}"></div>
       ${p.quote ? `<p class="hint full">Hozirgi hisob: narx ${p.quote.price ? esc(money(p.quote.price)) : "topilmadi"}${p.quote.src ? ` (${esc(p.quote.src)}${p.quote.marketPriceTon ? ", " + esc(p.quote.marketPriceTon) + " TON" : ""})` : p.quote.marketPriceTon ? ` (${esc(p.quote.marketPriceTon)} TON)` : ""} · 1-tur boshlang'ich to'lovi ${p.quote.down1 != null ? esc(money(p.quote.down1)) + (p.quote.down1By === "formula" ? ` (formula: ${esc(DOWNB[p.quote.down1Base] || "")} bo'yicha)` : " (qo'lda, ijarada yo'q)") : "topilmadi: pastga summani yozing"}</p>` : ""}
+      <div class="field"><label>Sotib olingan sana</label><input class="input" type="date" name="bought_at" value="${esc(p.bought_at || "")}"></div>
+      <div class="field"><label>Sotib olingan narxi (so'm)</label><input class="input" name="bought_price" inputmode="decimal" value="${esc(p.bought_price ?? "")}"></div>
       <div class="field"><label>Tartib (kichik raqam tepada)</label><input class="input" name="position" inputmode="numeric" value="${esc(p.position || 0)}"></div>
       <div class="field"><label>Holat</label><select class="input" name="visible"><option value="1" ${p.visible !== false ? "selected" : ""}>Ko'rinadi</option><option value="0" ${p.visible === false ? "selected" : ""}>Yashirin (sotilgan)</option></select></div>
       <p class="alert full" id="ofErr" hidden></p>
@@ -785,6 +798,7 @@ function ownForm(p) {
       position: n("position"), visible: f.get("visible") === "1",
       price_source: f.get("price_source"), price_ton: Number(String(f.get("price_ton") || "").replace(",", ".")) || null, price_manual: n("price_manual") || null,
       down_manual: n("down_manual") || null, down_by: f.get("down_by"),
+      bought_at: f.get("bought_at") || null, bought_price: n("bought_price") || null,
     };
     if (!body.rent_enabled && !body.inst_enabled && !body.cash_enabled) {
       const box = $("#ofErr"); const m = "Kamida bittasini belgilang: Ijaraga olish, Bo'lib to'lab sotib olish yoki Naqd sotib olish";
@@ -802,7 +816,29 @@ function ownForm(p) {
   };
 }
 
-const VIEWS = { dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own, listings };
+const RCOLS = [["n", "№"], ["boughtAt", "Sotib olingan sana"], ["boughtPrice", "Sotib olingan narxi", 1], ["soldAt", "Sotilgan sana"], ["client", "Mijoz ismi"],
+  ["phone", "Telefon raqami"], ["username", "Telegram username"], ["product", "Mahsulot"], ["cashPrice", "Naqdga hisoblangan narxi", 1],
+  ["profitCash", "Naqddan foyda", 1], ["profitInst", "Bo'lib to'lashdan foyda", 1], ["profitTotal", "Umumiy foyda", 1], ["down", "Boshlang'ich to'lov", 1],
+  ["credit", "Kredit miqdori", 1], ["debt", "Qolgan qarzi", 1], ["months", "Muddati (oy)"], ["monthlyProfit", "Oylik foyda", 1], ["monthly", "Oylik to'lov", 1],
+  ["monthsLeft", "Qolgan muddat (oy)"], ["finalDate", "Oxirgi to'lov sanasi"], ["paid", "To'langan summa", 1], ["allIncome", "Eski to'lovlar (hamma pul)", 1]];
+/** Lizing va bo'lib to'lash — to'liq jadval (har bir shartnoma bitta qator). */
+async function report(v) {
+  const rows = await call("installmentReport");
+  const tot = (k) => rows.reduce((t, r) => t + (Number(r[k]) || 0), 0);
+  v.innerHTML = `<h1>To'liq jadval</h1>
+    <p class="hint" style="margin-bottom:12px">Lizing va bo'lib to'lashga berilgan giftlar. Sotib olingan narx, naqd narx va oylik foyda shartnomani <b>Tahrir</b> qilib yoziladi. Shu jadval har kuni Excel bo'lib botga keladi.</p>
+    <div class="stats" style="margin-bottom:12px">
+      <div class="stat"><small>Umumiy foyda</small><b>${esc(money(tot("profitTotal")))}</b></div>
+      <div class="stat"><small>To'langan</small><b>${esc(money(tot("paid")))}</b></div>
+      <div class="stat liab"><small>Qolgan qarz</small><b>${esc(money(tot("debt")))}</b></div></div>
+    <div class="tbl-wrap"><table><thead><tr>${RCOLS.map(([, l]) => `<th>${esc(l)}</th>`).join("")}</tr></thead><tbody>
+    ${rows.map((r) => `<tr>${RCOLS.map(([k, , m]) => `<td${m ? ' class="num"' : ""}>${r[k] == null || r[k] === "" ? "—" : esc(m ? money(r[k]) : r[k])}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${RCOLS.length}" class="empty">Shartnoma yo'q</td></tr>`}
+    </tbody></table></div>
+    <button class="btn btn-ghost btn-sm" type="button" style="margin-top:12px" id="back">← Lizing va bo'lib to'lash</button>`;
+  $("#back").onclick = () => { location.hash = "installments"; };
+}
+
+const VIEWS = { report, dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own, listings };
 async function render() {
   if (!(await ensureAuth())) return;
   const r = location.hash.slice(1) || "dashboard";

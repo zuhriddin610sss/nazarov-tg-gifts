@@ -474,14 +474,13 @@ test("Sotuvda: filtrlar Portals'ga uzatiladi; bo'lib to'lash yoqilsa faqat chega
   assert.deepEqual(await app({ action: 'saleDown1', name: 'Trapped Heart #1' }), { down1: null });
 });
 
-test("haftalik Excel hisobot: dushanba 09:00 dan keyin bir marta, .xlsx fayl", async () => {
+test("kunlik Excel hisobot: ertasi kuni 09:00 dan keyin bir marta, .xlsx fayl (lizing jadvali bilan)", async () => {
   const { sendWeeklyReport } = await import('../tgcloud/lib/jobs.js');
   await withPhone(); await topup(100000);
   await app({ action: 'createOrder', service: 'stars', quantity: 100, recipient: { self: true }, paymentMethod: 'cash', idempotencyKey: key() });
   const created = Number((await admin({ action: 'orders' }))[0].created_at);
-  // Buyurtmadan keyingi dushanba, 10:00 Toshkent
-  let d = new Date(created + 5 * 3600000); let mon = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 5 * 3600000;
-  do { mon += 86400000; } while (new Date(mon + 5 * 3600000).getUTCDay() !== 1);
+  // Buyurtmaning ertasi kuni, Toshkent vaqti
+  const d = new Date(created + 5 * 3600000); const mon = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 5 * 3600000 + 86400000;
   sent.length = 0;
   assert.equal(await sendWeeklyReport(mon + 8 * 3600000), 0); // 08:00 — hali erta
   assert.equal(await sendWeeklyReport(mon + 10 * 3600000), 1);
@@ -775,4 +774,14 @@ test("Gift Satellite: yangi kolleksiya probel bilan ('Jingle Bells') — probels
   const q = await admin({ action: 'refreshOwnPrice', id });
   assert.equal(q.marketPriceTon, 24.11);
   assert.ok(urls.some((u) => u.includes('/search/tonnel/Jingle Bells?')));
+});
+
+test("To'liq jadval: foydalar, kredit, qolgan qarz, gift olib kelgan hamma pul", async () => {
+  const r = await admin({ action: 'saveInstallment', legacy: true, productName: 'Report Gift #1', clientName: 'Ali', clientUsername: 'ali_r', clientPhone: '998901234567',
+    installmentType: 'lease', totalPrice: 2400000, downPayment: 400000, monthlyPayment: 200000, startDate: '2026-01-10', finalDate: '2026-11-10',
+    alreadyPaid: 600000, boughtAt: '2025-12-20', boughtPrice: 1000000, cashPrice: 1500000, monthlyProfit: 50000 });
+  const row = (await admin({ action: 'installmentReport' })).find((x) => x.id === r.id);
+  assert.deepEqual([row.boughtPrice, row.cashPrice, row.profitCash, row.profitInst, row.profitTotal, row.down, row.credit, row.paid, row.debt, row.months, row.monthsLeft, row.monthlyProfit, row.finalDate, row.soldAt, row.username],
+    [1000000, 1500000, 500000, 900000, 1400000, 400000, 2000000, 1000000, 1400000, 10, 7, 50000, '10.11.2026', '10.01.2026', '@ali_r']);
+  assert.equal(row.allIncome, 1000000);
 });

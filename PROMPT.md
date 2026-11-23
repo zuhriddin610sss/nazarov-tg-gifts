@@ -81,7 +81,8 @@ npx.cmd tgcloud push tgcloud/lib tgcloud/handlers tgcloud/endpoints public --for
 
 **Admin panel**
 - Bosh sahifa: "Bugungi ishlar" (kechikkan va yaqin to'lovlar, navbat, cheklar), shartnoma kalkulyatori.
-- Mening mahsulotlarim: "Narxni yangilash" (tekshiruv oynasi — har bir bozor javobi) va "Hammasining narxini yangilash".
+- Lizing va bo'lib to'lash → "📊 To'liq jadval": № · sotib olingan sana/narx · sotilgan sana · mijoz (ism, telefon, username) · mahsulot · naqd narx · naqddan / bo'lib to'lashdan / umumiy foyda · boshlang'ich · kredit · qolgan qarz · muddat · oylik foyda (qo'lda) · oylik to'lov · qolgan muddat · oxirgi to'lov sanasi · to'langan · eski to'lovlar (gift olib kelgan hamma pul, ijara bilan). Har kuni 09:00 dan keyin Excel hisobot botga keladi.
+- Mening mahsulotlarim: sotib olingan sana/narx, "Qilingan daromad" (ijaradan). "Narxni yangilash" (tekshiruv oynasi — har bir bozor javobi) va "Hammasining narxini yangilash".
 - Jurnallar: bozor xatolari (masalan Portals `PARTNER_INVALID_KEY` — kalitni yangilash kerak).
 
 **Boshqa**
