@@ -31,19 +31,65 @@ function agreementOut(a) {
 }
 
 export const actions = {
+  // ---------- Test ma'lumotlarini o'chirish (bittalab) ----------
+  /** Qo'lda kiritilgan to'lovni o'chirish (balansdan to'langani o'chirilmaydi — u mijoz balansiga bog'langan). */
+  async deleteInstPayment(i, admin) {
+    const p = await get('SELECT * FROM inst_payments WHERE id = :id', { id: int(i.id, { min: 1 }) });
+    if (!p) throw fail('NOT_FOUND');
+    if (p.source !== 'manual') throw fail('VALIDATION', { field: 'source' });
+    await run('DELETE FROM inst_payments WHERE id = :id', { id: p.id });
+    await run("UPDATE agreements SET status = 'active' WHERE id = :a", { a: p.agreement_id });
+    await audit(admin, 'installment.payment.delete', String(p.agreement_id), { amount: p.amount });
+    return { ok: true };
+  },
+  /** Shartnomani (va uning qo'lda kiritilgan to'lovlarini) o'chirish. */
+  async deleteAgreement(i, admin) {
+    const id = int(i.id, { min: 1 });
+    const bal = await get("SELECT COUNT(*) AS n FROM inst_payments WHERE agreement_id = :id AND source = 'balance'", { id });
+    if (Number(bal.n)) throw fail('VALIDATION', { field: 'balance_payments' });
+    await run('DELETE FROM inst_payments WHERE agreement_id = :id', { id });
+    const r = await run('DELETE FROM agreements WHERE id = :id', { id });
+    if (r.rowsAffected !== 1) throw fail('NOT_FOUND');
+    await audit(admin, 'installment.delete', String(id));
+    return { ok: true };
+  },
+  /** Buyurtmani o'chirish: faqat balansdan pul yechilmagan bo'lsa (bo'lib to'lash arizasi yoki bekor qilingan, pul qaytarilgan). */
+  async deleteOrder(i, admin) {
+    const o = await get('SELECT * FROM orders WHERE id = :id', { id: int(i.id, { min: 1 }) });
+    if (!o) throw fail('ORDER_NOT_FOUND');
+    const kept = Number(o.paid_amount || 0) - Number(o.refunded || 0);
+    if (kept > 0) throw fail('VALIDATION', { field: 'paid' });
+    if (await get('SELECT id FROM agreements WHERE order_id = :id', { id: o.id })) throw fail('VALIDATION', { field: 'agreement' });
+    await run('DELETE FROM orders WHERE id = :id', { id: o.id });
+    await audit(admin, 'order.delete', o.public_id);
+    return { ok: true };
+  },
+
+  /** Bosh sahifadagi pul hisoblagichlarini nolga tushirish (test pullari). Ma'lumot o'chirilmaydi: shu paytdan keyingilar hisoblanadi. */
+  async resetStats(_i, admin) {
+    const m = await get('SELECT COALESCE(MAX(id), 0) AS p, (SELECT COALESCE(MAX(id), 0) FROM agreements) AS a FROM inst_payments');
+    await run("INSERT INTO meta (key, value) VALUES ('stats_reset', :v) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      { v: JSON.stringify({ at: Date.now(), payId: Number(m.p), agId: Number(m.a) }) });
+    await audit(admin, 'stats.reset', '');
+    return { ok: true };
+  },
+
   async stats() {
+    const rs = await get("SELECT value FROM meta WHERE key = 'stats_reset'");
+    const B = rs ? JSON.parse(rs.value) : { at: 0, payId: 0, agId: 0 };
     const o = await get(`SELECT
         SUM(CASE WHEN created_at >= :today THEN 1 ELSE 0 END) AS today,
         COUNT(*) AS total,
         SUM(status = 'completed') AS completed, SUM(status = 'cancelled') AS cancelled, SUM(status = 'queued') AS queued,
-        COALESCE(SUM(CASE WHEN status = 'completed' THEN paid_amount END), 0) AS cash_revenue,
-        COALESCE(SUM(CASE WHEN status = 'completed' AND payment_method = 'cash' AND cost IS NOT NULL THEN price - cost END), 0) AS rent_profit,
+        COALESCE(SUM(CASE WHEN status = 'completed' AND created_at >= :b THEN paid_amount END), 0) AS cash_revenue,
+        COALESCE(SUM(CASE WHEN status = 'completed' AND created_at >= :b AND payment_method = 'cash' AND cost IS NOT NULL THEN price - cost END), 0) AS rent_profit,
         SUM(service IN ('gift_rent','username_rent','number_rent')) AS rent_orders,
-        COALESCE(SUM(CASE WHEN status = 'completed' AND service IN ('gift_rent','username_rent','number_rent') THEN paid_amount END), 0) AS rent_revenue
-      FROM orders WHERE status NOT IN ('pending','failed')`, { today: startOfTashkentDay() });
+        COALESCE(SUM(CASE WHEN status = 'completed' AND created_at >= :b AND service IN ('gift_rent','username_rent','number_rent') THEN paid_amount END), 0) AS rent_revenue
+      FROM orders WHERE status NOT IN ('pending','failed')`, { today: startOfTashkentDay(), b: Number(B.at) || 0 });
     const c = await get('SELECT COUNT(*) AS customers, COALESCE(SUM(balance), 0) AS liabilities FROM customers');
     const p = await get(`SELECT COALESCE(SUM(amount), 0) AS collected, COALESCE(SUM(CASE WHEN paid_at >= :m THEN amount END), 0) AS this_month,
-        (SELECT COALESCE(SUM(down_payment), 0) FROM agreements) AS down FROM inst_payments`, { m: startOfTashkentMonth() });
+        (SELECT COALESCE(SUM(down_payment), 0) FROM agreements WHERE id > :ag) AS down FROM inst_payments WHERE id > :pi`,
+      { m: startOfTashkentMonth(), pi: Number(B.payId) || 0, ag: Number(B.agId) || 0 });
     const ag = await listAgreements({ status: 'active' });
     const pend = await get(`SELECT (SELECT COUNT(*) FROM receipts WHERE status = 'pending' AND file_id <> '') AS receipts, (SELECT COUNT(*) FROM reviews WHERE status = 'pending') AS reviews`);
     const n = (x) => Number(x || 0);

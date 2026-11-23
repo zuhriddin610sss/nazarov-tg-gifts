@@ -801,3 +801,22 @@ test("Qilingan daromad: bizning gift lizingga sotilib, mijoz to'lamay qo'ysa ham
   const row = (await admin({ action: 'installmentReport' })).find((x) => x.id === ag.id);
   assert.deepEqual([row.boughtPrice, row.cashPrice, row.allIncome], [600000, 1000000, 240000]);
 });
+
+test("Test ma'lumotlarini o'chirish: to'lov, shartnoma, buyurtma; summalarni 0 qilish", async () => {
+  await withPhone();
+  const r = await admin({ action: 'saveInstallment', legacy: true, productName: 'Del Gift #1', installmentType: 'lease', totalPrice: 1000000, downPayment: 100000, monthlyPayment: 100000, startDate: '2026-01-01', finalDate: '2026-10-01', alreadyPaid: 300000 });
+  const before = (await admin({ action: 'stats' })).revenue;
+  const pays = await admin({ action: 'installmentPayments', id: r.id });
+  await admin({ action: 'deleteInstPayment', id: pays[0].id });
+  assert.equal((await admin({ action: 'installmentPayments', id: r.id })).length, 0);
+  assert.equal((await admin({ action: 'stats' })).revenue, before - 300000);
+  await admin({ action: 'deleteAgreement', id: r.id });
+  assert.ok(!(await admin({ action: 'installments' })).some((a) => a.id === r.id));
+  const o = await app({ action: 'createOrder', service: 'cashout', giftLink: 'https://t.me/nft/SnoopDogg-1', amount: 100000, months: 3, paymentMethod: 'installment', idempotencyKey: key() });
+  const ord = (await admin({ action: 'orders', search: o.publicId }))[0];
+  await admin({ action: 'deleteOrder', id: ord.id });
+  assert.equal((await admin({ action: 'orders', search: o.publicId })).length, 0);
+  await admin({ action: 'resetStats' });
+  const s = await admin({ action: 'stats' });
+  assert.deepEqual([s.revenue, s.installments.collected], [0, 0]);
+});

@@ -242,12 +242,20 @@ async function dashboard(v) {
       <button class="btn btn-primary btn-sm" id="xls" type="button">⬇ Excel</button>
       <p class="hint" style="margin-top:10px">Har kuni soat 6:00 dan keyin kunlik Excel hisobot botga o'zi keladi: kechagi buyurtmalar, lizing va bo'lib to'lash to'liq jadvali, mahsulotlar.</p>
       <button class="btn btn-ghost btn-sm" id="weekly" type="button">Hisobotni hozir olish</button></div>
+    <div class="section"><h2>Hisoblagichlar</h2><p class="hint">"Tushum", "Shu oy yig'ilgan", "Foyda" kabi summalarni 0 dan boshlash (masalan test pullari). Hech narsa o'chirilmaydi: shartnomalar, to'lovlar va hisobotlar joyida qoladi — faqat bosh sahifadagi summalar shu paytdan hisoblanadi.</p>
+      <button class="btn btn-ghost btn-sm" id="rst" type="button">Summalarni 0 qilish</button></div>
     <div class="section"><h2>Eslatmalar</h2><p class="hint">Ijara va oylik to'lov eslatmalari bot faol bo'lganda o'zi yuboriladi. Hozir tekshirish uchun bosing.</p>
       <button class="btn btn-ghost btn-sm" id="runJobs" type="button">Eslatmalarni hozir yuborish</button></div>
     ${s.pendingReceipts ? `<p class="alert">Tekshirilmagan cheklar: ${s.pendingReceipts}. <a href="#receipts">Ko'rish</a></p>` : ""}`;
   v.querySelectorAll("[data-tp]").forEach((b) => (b.onclick = () => paySheet(b.dataset.tp, ag.find((a) => String(a.id) === b.dataset.tp))));
   $("#xls").onclick = (e) => exportExcel(e.currentTarget, $("#xFrom").value, $("#xTo").value);
   $("#weekly").onclick = async (e) => { e.currentTarget.disabled = true; try { await call("weeklyReport"); toast("Hisobot botdagi chatingizga yuborildi"); } catch (er) { toast(er.message); } };
+  $("#rst").onclick = async (e) => {
+    const b = e.currentTarget;
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Rostdan 0 qilinsinmi? Yana bosing"; return; }
+    b.disabled = true;
+    try { await call("resetStats"); toast("Summalar 0 qilindi"); render(); } catch (er) { b.disabled = false; toast(er.message); }
+  };
   $("#runJobs").onclick = async (e) => {
     e.currentTarget.disabled = true;
     try { const r = await call("runJobs"); toast(`Yuborildi: ijara ${r.rent}, oylik to'lov ${r.inst}`); }
@@ -279,7 +287,12 @@ function orderSheet(o) {
     ${o.payment_method === "installment" && !o.agreementId ? `<button class="btn ${d.cashout ? "btn-primary" : "btn-ghost"} btn-sm" id="mkAgr" type="button">${d.cashout ? "Pul berildi — shartnoma tuzish" : "Shartnoma tuzish"}</button>` : ""}
     ${o.status === "queued" ? `<textarea class="input" id="note" rows="2" placeholder="Izoh (ixtiyoriy)"></textarea>
       <div class="row2"><button class="btn btn-primary" id="done" type="button">Amalga oshirildi</button>
-      <button class="btn btn-ghost" id="cancel" type="button">Bekor qilish${Number(o.paid_amount) > 0 ? " (pul qaytadi)" : ""}</button></div>` : ""}`);
+      <button class="btn btn-ghost" id="cancel" type="button">Bekor qilish${Number(o.paid_amount) > 0 ? " (pul qaytadi)" : ""}</button></div>` : ""}
+    ${Number(o.paid_amount || 0) - Number(o.refunded || 0) <= 0 && !o.agreementId ? `<button class="btn btn-ghost btn-sm" id="delOrd" type="button" style="color:var(--bad)">Buyurtmani o'chirish (test)</button>` : ""}`);
+  const dOrd = $("#delOrd"); if (dOrd) dOrd.onclick = async () => {
+    if (!dOrd.dataset.sure) { dOrd.dataset.sure = "1"; dOrd.textContent = "Rostdan o'chirilsinmi? Yana bosing"; return; }
+    try { await call("deleteOrder", { id: o.id }); closeSheet(); toast("Buyurtma o'chirildi"); render(); } catch (er) { toast(er.message); }
+  };
   const img = $("#img"); if (img) img.onclick = () => showFile(d.image);
   const tu = $("#topUp"); if (tu) tu.onclick = () => customerSheet(o.customer_id);
   const ds = $("#downSave"); if (ds) ds.onclick = async () => {
@@ -425,8 +438,25 @@ async function installments(v) {
   $("#fullRep").onclick = () => { location.hash = "report"; };
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => agreementForm(rows.find((a) => String(a.id) === b.dataset.ed))));
   v.querySelectorAll("[data-h]").forEach((b) => (b.onclick = async () => {
-    const p = await api(`/api/admin/installments/${b.dataset.h}/payments`);
-    sheet(`<h2>To'lovlar tarixi</h2><div class="det">${p.map((x) => `${dt(x.paid_at)} · ${money(x.amount)} · ${x.source === "balance" ? "balansdan" : "qo'lda"}${x.note ? " · " + x.note : ""}`).map(esc).join("\n") || "To'lov yo'q"}</div>`);
+    const hist = async () => {
+      const p = await api(`/api/admin/installments/${b.dataset.h}/payments`);
+      sheet(`<h2>To'lovlar tarixi</h2>
+        ${p.map((x) => `<div class="hrow"><span>${esc(dt(x.paid_at))} · <b>${esc(money(x.amount))}</b> · ${x.source === "balance" ? "balansdan" : "qo'lda"}${x.note ? " · " + esc(x.note) : ""}</span>
+          ${x.source === "manual" ? `<button class="btn btn-ghost btn-sm" data-dp="${x.id}" type="button">O'chirish</button>` : ""}</div>`).join("") || `<p class="hint">To'lov yo'q</p>`}
+        <p class="hint">Test uchun kiritilgan to'lovni o'chirsangiz, qarz va hisobotlar o'zi qayta hisoblanadi.</p>
+        <button class="btn btn-ghost btn-sm" type="button" id="delAg" style="color:var(--bad)">Shartnomani butunlay o'chirish</button>`);
+      $("#sheet").querySelectorAll("[data-dp]").forEach((d) => (d.onclick = async () => {
+        if (!d.dataset.sure) { d.dataset.sure = "1"; d.textContent = "Rostdanmi?"; return; }
+        try { await call("deleteInstPayment", { id: Number(d.dataset.dp) }); toast("To'lov o'chirildi"); hist(); } catch (er) { toast(er.message); }
+      }));
+      $("#delAg").onclick = async (e) => {
+        const d = e.currentTarget;
+        if (!d.dataset.sure) { d.dataset.sure = "1"; d.textContent = "Rostdan shartnoma va uning to'lovlari o'chirilsinmi? Yana bosing"; return; }
+        try { await call("deleteAgreement", { id: Number(b.dataset.h) }); closeSheet(); toast("Shartnoma o'chirildi"); render(); }
+        catch (er) { toast(er.code === "VALIDATION" ? "Balansdan to'langan to'lovi bor — o'chirib bo'lmaydi" : er.message); }
+      };
+    };
+    hist();
   }));
   v.querySelectorAll("[data-pay]").forEach((b) => (b.onclick = () => paySheet(b.dataset.pay, rows.find((a) => String(a.id) === b.dataset.pay))));
 }
