@@ -17,7 +17,18 @@ const sleep = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? set
  * Faqat GET so'rov. Navbat yo'q (Gift Satellite chegarasi keng: sekundiga 2–4 ta, natijalar esa 5 daqiqa saqlanadi).
  * "Band" (429) yoki vaqtinchalik xato bo'lsa, yarim soniya kutib bir marta qayta urinadi.
  */
-async function request(_lane, path, query) {
+// Gift Satellite chegarasi: har bir bozorga sekundiga ~2 ta (Telegram Market — 1.5 soniyada 1 ta).
+// Bir chaqiruv ichida so'rovlar har bir bozor bo'yicha navbat bilan, oraliq bilan yuboriladi.
+const GAP = { tg: 1600, gift: 1100 };
+const nextAt = {};
+async function slot(lane) {
+  const gap = GAP[lane] || 600;
+  const now = Date.now();
+  const at = Math.max(now, nextAt[lane] || 0);
+  nextAt[lane] = at + gap;
+  if (at > now) await sleep(at - now);
+}
+async function request(lane, path, query) {
   const key = String((await getSecret('satellite_key')) || '').trim();
   if (!key) return { ok: false, status: 0, text: 'Gift Satellite kaliti kiritilmagan' };
   const s = await getSettings();
@@ -27,8 +38,9 @@ async function request(_lane, path, query) {
     .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v))).join('&');
   const url = base + path + (qs ? '?' + qs : '');
   let last = { ok: false, status: 0, text: '' };
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt) await sleep(600 + Math.floor(Math.random() * 300));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await sleep((last.status === 429 ? 1200 : 600) + Math.floor(Math.random() * 300));
+    await slot(lane);
     try {
       const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json', Authorization: `Token ${key}` } });
       last = { ok: res.ok, status: res.status, text: await res.text() };
@@ -147,7 +159,7 @@ export async function satMarket(f = {}) {
   const markets = colName === 'all-collections' ? MARKETS.filter((m) => m !== 'tg') : MARKETS;
   // Hamma bozorlardan bir vaqtda (har birining o'z navbati bor). 6 soniyada javob bermagani kutilmaydi.
   const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false }), ms) : r({ ok: false })));
-  const res = await Promise.all(markets.map((m) => Promise.race([searchMarket(m, colName, f).catch(() => ({ ok: false })), timeout(6000)])));
+  const res = await Promise.all(markets.map((m) => Promise.race([searchMarket(m, colName, f).catch(() => ({ ok: false })), timeout(15000)])));
   let items = [], okAny = false, failed = 0;
   for (const r of res) if (r.ok) { okAny = true; items = items.concat(r.items); } else failed++;
   if (!okAny) return null;
@@ -198,10 +210,10 @@ export async function satDebug(attrs) {
   const timeout = (ms) => new Promise((r) => (typeof setTimeout === 'function' ? setTimeout(() => r({ ok: false, to: true }), ms) : r({ ok: false })));
   const out = [`Qidiruv: ${col} · model: ${attrs.model || '—'} · fon: ${attrs.backdrop || '—'}`];
   for (const [label, q] of qs) {
-    const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q, { fresh: true }).catch((e) => ({ ok: false, status: 'kod', text: String(e && (e.stack || e.message)).slice(0, 160) })), timeout(8000)])));
+    const res = await Promise.all(MARKETS.map((m) => Promise.race([searchMarket(m, col, q).catch((e) => ({ ok: false, status: 'kod', text: String(e && (e.stack || e.message)).slice(0, 160) })), timeout(20000)])));
     res.forEach((r, k) => {
       const name = MARKET_NAME[MARKETS[k]];
-      if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (8 soniyada kelmadi)' : r.status != null ? ` (xato ${r.status}${r.text ? ': ' + r.text : ''})` : ''}`); return; }
+      if (!r.ok) { out.push(`${name} · ${label}: javob yo'q${r.to ? ' (20 soniyada kelmadi)' : r.status != null ? ` (xato ${r.status}${r.text ? ': ' + r.text : ''})` : ''}`); return; }
       const ex = r.items.filter((x) => (!attrs.model || low(x.model) === low(attrs.model)) && (!attrs.backdrop || low(x.backdrop) === low(attrs.backdrop))).sort((a, b) => a.ton - b.ton)[0];
       out.push(`${name} · ${label}: ${r.items.length} ta${ex ? `, aynan mos: ${ex.ton} TON (#${ex.num})` : ''}`);
     });
