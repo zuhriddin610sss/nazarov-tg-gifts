@@ -19,7 +19,19 @@ const toast = (m) => { const el = $("#toast"); el.textContent = m; el.hidden = f
 const sheet = (h) => { $("#sheet").innerHTML = h; $("#modal").hidden = false; };
 const closeSheet = () => { $("#modal").hidden = true; };
 $("#modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeSheet(); });
-$("#menuBtn").addEventListener("click", () => $("#side").classList.toggle("open"));
+// Telefonda — menyu chiqadi/yopiladi; kompyuterda — yon menyu yashiriladi/ko'rsatiladi (tanlov eslab qolinadi)
+const wide = () => window.matchMedia("(min-width:861px)").matches;
+const adm = document.querySelector(".adm");
+try { if (localStorage.getItem("adm_hide_side") === "1") adm.classList.add("hide-side"); } catch (_) { /* yo'q */ }
+const menuLabel = () => { $("#menuBtn").textContent = wide() ? (adm.classList.contains("hide-side") ? "☰ Menyuni ko'rsatish" : "⇤ Menyuni yashirish") : "☰ Menyu"; };
+menuLabel(); window.addEventListener("resize", menuLabel);
+$("#menuBtn").addEventListener("click", () => {
+  if (wide()) {
+    const h = adm.classList.toggle("hide-side");
+    try { localStorage.setItem("adm_hide_side", h ? "1" : "0"); } catch (_) { /* yo'q */ }
+    menuLabel();
+  } else $("#side").classList.toggle("open");
+});
 $("#side").addEventListener("click", (e) => { if (e.target.closest("a")) $("#side").classList.remove("open"); });
 
 const ERR = { ORDER_ALREADY_CLOSED: "Bu buyurtma allaqachon yopilgan.", RECEIPT_ALREADY_REVIEWED: "Bu chek allaqachon ko'rib chiqilgan.",

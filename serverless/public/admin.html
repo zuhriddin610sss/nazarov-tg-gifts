@@ -7,7 +7,7 @@
 <title>Admin · NAZAROVtggifts</title>
 <link rel="icon" href="/assets/logo-mark.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/style.css?v=20261123u">
+<link rel="stylesheet" href="/style.css?v=20261123v">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body{padding-bottom:24px}
@@ -72,7 +72,9 @@ tr:last-child td{border-bottom:0}
 .section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;margin-bottom:16px}
 .det{white-space:pre-wrap;font-size:.85rem;color:var(--muted);word-break:break-word}
 .over{color:var(--bad);font-weight:800}
-.menu-btn{display:none}
+.menu-btn{display:inline-flex;margin-bottom:12px}
+/* Kompyuterda: menyuni yashirish / ko'rsatish (eslab qolinadi) */
+@media (min-width:861px){.adm.hide-side{grid-template-columns:1fr}.adm.hide-side .side{display:none}}
 @media (max-width:860px){
   .adm{grid-template-columns:1fr}
   .side{position:fixed;inset:0 30% 0 0;z-index:20;height:auto;transform:translateX(-105%);transition:transform .2s}
@@ -108,6 +110,6 @@ tr:last-child td{border-bottom:0}
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet" style="max-height:90vh;overflow:auto"></div></div>
-<script src="/admin.js?v=20261123u"></script>
+<script src="/admin.js?v=20261123v"></script>
 </body>
 </html>
