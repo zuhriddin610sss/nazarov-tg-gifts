@@ -1,6 +1,6 @@
 // Admin panel amallari (endpoints/admin.js orqali; faqat ADMIN_IDS dagi akkauntlar).
 import { api, InputFile } from 'sdk';
-import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS } from 'lib/core';
+import { all, get, run, fail, audit, getSettings, saveSettings, setSecret, getSecret, toSom, toTiyin, int, str, num, DATE_RE, KEY_RE, DEFAULT_SETTINGS, BUILD } from 'lib/core';
 import { queueList, closeOrder, approveReceipt, rejectReceipt, adminAdjust, listAgreements, saveAgreement, addManualPayment, savePromo } from 'lib/shop';
 import { notifyOrderClosed, notifyReceiptReviewed } from 'lib/notify';
 import { maybeRunJobs, sendWeeklyReport } from 'lib/jobs';
@@ -52,6 +52,7 @@ export const actions = {
       installments: { collected: som(p.collected), thisMonth: som(p.this_month), outstandingDebt: som(ag.reduce((s, a) => s + a.summary.remaining, 0)),
         overdue: ag.filter((a) => a.summary.overdue).length, active: ag.length },
       pendingReceipts: n(pend.receipts), pendingReviews: n(pend.reviews),
+      build: BUILD,
     };
   },
 
@@ -284,7 +285,7 @@ export const actions = {
     // Tekshiruv: har bir bozor nima qaytardi (faqat "Narxni yangilash" bittalab bosilganda)
     const debug = i.debug && p.kind === 'gifts' && (p.model || p.backdrop) && (await satelliteConfigured())
       ? await satDebug({ collection: splitGiftName(p.name).collection, model: p.model, backdrop: p.backdrop }) : null;
-    return { price: q.price, by: q.by, src: q.src, marketPriceTon: q.marketPriceTon, kept: !after || !after.mk_checked_at, before, debug };
+    return { price: q.price, by: q.by, src: q.src, marketPriceTon: q.marketPriceTon, kept: !after || !after.mk_checked_at, before, debug, build: BUILD };
   },
 
   async ownProducts() {

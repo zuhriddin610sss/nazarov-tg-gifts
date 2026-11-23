@@ -48,7 +48,7 @@ async function api(path, opts = {}) {
     case "stats": {
       const s = await call("stats");
       return { orders: { ...s.orders, cash_revenue: s.revenue, rent_profit: s.rentProfit, rent_orders: s.orders.rentOrders, rent_revenue: s.rentRevenue },
-        customers: s.customers, liabilities: s.liabilities, pendingReceipts: s.pendingReceipts, pendingReviews: s.pendingReviews,
+        customers: s.customers, liabilities: s.liabilities, pendingReceipts: s.pendingReceipts, pendingReviews: s.pendingReviews, build: s.build,
         installments: { inst_collected: 0, down_payments: 0, inst_this_month: s.installments.thisMonth, outstandingDebt: s.installments.outstandingDebt, overdue: s.installments.overdue } };
     }
     case "queue": return call("queue");
@@ -724,6 +724,7 @@ async function own(v) {
         <div class="kv"><span>Narx</span><b>${r.price ? esc(money(r.price)) : "—"}</b><span>Asos</span><b>${esc(BYL[r.by] || r.by || "—")}</b>
           <span>Manba</span><b>${esc(r.src || "—")}${r.marketPriceTon ? ", " + esc(r.marketPriceTon) + " TON" : ""}</b></div>
         ${r.debug ? `<h3 style="margin-top:12px">Bozorlar javobi</h3><div class="det">${esc(r.debug.join("\n"))}</div>` : ""}
+        <p class="hint">Server versiyasi: ${esc(r.build || "eski")}</p>
         <button class="btn btn-primary" type="button" id="dbgOk">Yopish</button>`);
       $("#dbgOk").onclick = () => { closeSheet(); render(); };
     }
@@ -815,6 +816,7 @@ async function render() {
     c.textContent = s.pendingReceipts; c.hidden = !s.pendingReceipts;
     const rv = $("#cRv"); rv.textContent = s.pendingReviews; rv.hidden = !s.pendingReviews;
     const ov = $("#cOv"); ov.textContent = s.installments.overdue; ov.hidden = !s.installments.overdue;
+    const bv = $("#build"); if (bv) bv.textContent = "Server versiyasi: " + (s.build || "eski");
   }).catch(() => {});
 }
 window.addEventListener("hashchange", () => { if (!$("#modal").hidden) closeSheet(); render(); });
