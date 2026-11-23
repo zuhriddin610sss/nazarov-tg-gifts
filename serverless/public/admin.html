@@ -7,7 +7,7 @@
 <title>Admin · NAZAROVtggifts</title>
 <link rel="icon" href="/assets/logo-mark.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/style.css?v=20261123x">
+<link rel="stylesheet" href="/style.css?v=20261123z">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body{padding-bottom:24px}
@@ -83,6 +83,20 @@ tr:last-child td{border-bottom:0}
   .menu-btn{display:inline-flex;margin-bottom:12px}
   .main{padding-left:max(16px,env(safe-area-inset-left,0px))}
 }
+/* Tor ekran: jadval -> kartochkalar (gorizontal surish shart emas) */
+@media (max-width:860px){
+  .tbl-wrap{overflow:visible;background:none;border:0}
+  table.cardify thead{display:none}
+  table.cardify,table.cardify tbody{display:block}
+  table.cardify tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:10px}
+  table.cardify td{display:block;position:relative;border:0;border-bottom:1px dashed var(--line);padding:8px 0 8px 40%;text-align:left;min-height:34px}
+  table.cardify td:last-child{border-bottom:0}
+  table.cardify td::before{content:attr(data-l);position:absolute;left:0;top:9px;width:37%;font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  table.cardify td:not([data-l]),table.cardify td[data-l=""]{padding-left:0}
+  table.cardify td:not([data-l])::before,table.cardify td[data-l=""]::before{display:none}
+  table.cardify td.num{text-align:left}
+  table.cardify td.empty{padding-left:0;text-align:center}
+}
 </style>
 </head>
 <body class="lt">
@@ -111,6 +125,6 @@ tr:last-child td{border-bottom:0}
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet" style="max-height:90vh;overflow:auto"></div></div>
-<script src="/admin.js?v=20261123x"></script>
+<script src="/admin.js?v=20261123z"></script>
 </body>
 </html>

@@ -984,6 +984,14 @@ async function report(v) {
   };
 }
 
+/** Tor ekranda (telefon, kichik oyna) jadval qatorlari kartochka bo'ladi: har bir katakka ustun nomi yoziladi. */
+function cardify(root) {
+  root.querySelectorAll(".tbl-wrap table").forEach((t) => {
+    const heads = [...t.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+    t.querySelectorAll("tbody tr").forEach((tr) => [...tr.children].forEach((td, i) => { if (heads[i] && !td.dataset.l) td.dataset.l = heads[i]; }));
+    t.classList.add("cardify");
+  });
+}
 const VIEWS = { report, dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own, listings };
 async function render() {
   if (!(await ensureAuth())) return;
@@ -992,6 +1000,7 @@ async function render() {
   const v = $("#view");
   v.innerHTML = `<div class="spin"></div>`;
   try { await (VIEWS[r] || dashboard)(v); } catch (e) { v.innerHTML = `<p class="alert">${esc(e.message)}</p>`; }
+  cardify(v);
   api("/api/admin/stats").then((s) => {
     const q = $("#cQueue"), c = $("#cRc");
     q.textContent = s.orders.queued; q.hidden = !s.orders.queued;
