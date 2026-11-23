@@ -327,7 +327,8 @@ export async function leaveReview(customerId, publicId, rating, text) {
 
 // ---------- To'liq hisobot (admin jadvali va Excel) ----------
 const monthDiff = (a, b) => { const x = ymd(a), y = ymd(b); return (y.getUTCFullYear() - x.getUTCFullYear()) * 12 + (y.getUTCMonth() - x.getUTCMonth()); };
-const ddmmyyyy = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('.') : '');
+/** "2026-08-24T20:20" -> "20:20 24.08.2026", "2026-08-24" -> "24.08.2026" */
+export const ddmmyyyy = (s) => { if (!s) return ''; const d = String(s).slice(0, 10).split('-').reverse().join('.'); const t = String(s).slice(11, 16); return t ? `${t} ${d}` : d; };
 
 /**
  * Bizning giftlarimiz olib kelgan hamma pul, { ownId: tiyin }:

@@ -3,7 +3,18 @@
 import { api, InputFile } from 'sdk';
 import { all, get, run, claim, logError, adminIds, nowMs, takeLock } from 'lib/core';
 import { buildXlsx } from 'lib/xlsx';
-import { listAgreements, agreementReport, ownRentIncome, REPORT_COLS } from 'lib/shop';
+import { listAgreements, agreementReport, ownRentIncome, REPORT_COLS, ddmmyyyy } from 'lib/shop';
+import { getSettings } from 'lib/core';
+import { ownSaleQuote } from 'lib/calc';
+const SUMS = ['boughtPrice', 'cashPrice', 'profitCash', 'profitInst', 'profitTotal', 'down', 'credit', 'debt', 'monthlyProfit', 'monthly', 'paid', 'allIncome'];
+/** Jadval oxiridagi "Jami" qatori. */
+function totalRow(rows, cols) {
+  const first = Object.keys(rows[0] || {})[0];
+  const r = Object.fromEntries(Object.keys(rows[0] || {}).map((k) => [k, '']));
+  if (first) r[first] = 'Jami';
+  for (const c of cols) r[c] = Math.round(rows.reduce((t, x) => t + (Number(x[c]) || 0), 0) * 100) / 100;
+  return r;
+}
 import { t, money } from 'lib/texts';
 import { send, tashkent, openAppButton } from 'lib/notify';
 
@@ -97,10 +108,19 @@ export async function sendDailyReport(now = nowMs(), force = false) {
     "Xizmat": SVC[o.service] || o.service, "Mahsulot": o.title, "To'lov": o.payment_method === 'cash' ? 'Naqd' : "Bo'lib to'lash",
     "Narx, so'm": som(o.price), "Yechilgan, so'm": som(o.paid_amount), "Holat": STATUS[o.status] || o.status });
   const agRows = ag.map((r) => Object.fromEntries(REPORT_COLS.map(([k, l]) => [l, r[k] ?? ''])));
+  if (agRows.length) agRows.push(totalRow(agRows, REPORT_COLS.filter(([k]) => SUMS.includes(k)).map(([, l]) => l)));
   const rentInc = await ownRentIncome();
-  const own = (await all('SELECT * FROM own_products ORDER BY position, id DESC')).map((p, k) => ({
-    "№": k + 1, "Sotib olingan sana": p.bought_at ? p.bought_at.split('-').reverse().join('.') : '', "Sotib olingan narxi": som(p.bought_price),
-    "Mahsulot": p.name, "Model": p.model || '', "Fon": p.backdrop || '', "Qilingan daromad": som(rentInc[p.id] || 0), "Holat": p.visible ? "Ko'rinadi" : 'Yashirin' }));
+  const sett = await getSettings();
+  const ownRows = await all('SELECT * FROM own_products ORDER BY position, id DESC');
+  const own = [];
+  for (const [k, p] of ownRows.entries()) {
+    const earned = rentInc[p.id] || 0, bought = p.bought_price != null ? Number(p.bought_price) : null;
+    const q = p.kind === 'gifts' ? await ownSaleQuote(p, sett, { cached: true }) : { price: null, down1: null };
+    const cash = q.price != null ? q.price * 100 : null;
+    own.push({ "№": k + 1, "Sotib olingan sana": ddmmyyyy(p.bought_at), "Sotib olingan narxi": som(bought), "Tushirilgan qiymati": bought != null ? som(bought - earned) : '',
+      "Mahsulot": p.name, "Naqdga hisoblangan narxi": som(cash), "Umumiy daromad": som(earned), "Boshlang'ich to'lov": q.down1 != null ? q.down1 : '' });
+  }
+  own.push(totalRow(own, ["Sotib olingan narxi", "Tushirilgan qiymati", "Naqdga hisoblangan narxi", "Umumiy daromad", "Boshlang'ich to'lov"]));
   const file = buildXlsx([{ name: 'Xulosa', rows: summary }, { name: 'Kecha', rows: day.map(oRow) },
     { name: "Lizing va bo'lib to'lash", rows: agRows }, { name: 'Mening mahsulotlarim', rows: own }, { name: 'Barcha buyurtmalar', rows: orders.map(oRow) }]);
   const caption = `📊 Kunlik hisobot: ${label}\nBuyurtmalar: ${ok.length} · Tushum: ${money(income / 100)} so'm\nFaol shartnomalar: ${active.length} · Qolgan qarz: ${money(sum(active, 'debt'))} so'm`;

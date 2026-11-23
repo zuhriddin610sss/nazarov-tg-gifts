@@ -128,6 +128,16 @@ function loadXlsx() {
     document.head.appendChild(sc);
   });
 }
+/** "2026-08-24T20:20" -> "20:20 24.08.2026" */
+const dtx = (v) => { const d = String(v).slice(0, 10).split("-").reverse().join("."); const t = String(v).slice(11, 16); return t ? `${t} ${d}` : d; };
+/** Excel oxiridagi "Jami" qatori. */
+function totalRow(rows, cols) {
+  const keys = Object.keys(rows[0] || {});
+  const r = Object.fromEntries(keys.map((k) => [k, ""]));
+  if (keys[0]) r[keys[0]] = "Jami";
+  for (const c of cols) r[c] = Math.round(rows.reduce((t, x) => t + (Number(x[c]) || 0), 0) * 100) / 100;
+  return r;
+}
 /** Jadvalni Excel qilib bot chatiga yuborish: rows — [{ustun: qiymat}], name — fayl nomi. */
 async function sendTableExcel(btn, rows, sheetName, fileName) {
   btn.disabled = true; const old = btn.textContent; btn.textContent = "Tayyorlanmoqda...";
@@ -461,7 +471,7 @@ function agreementForm(a) {
       ${legacy && !edit ? `<div class="field"><label>Shu kungacha to'langan (boshlang'ichdan tashqari)</label><input class="input" name="alreadyPaid" inputmode="decimal" value="0"></div>` : ""}
       <div class="field"><label>Garov</label><input class="input" name="collateral" value="${val("collateral")}"></div>
       <div class="field full"><b>Hisobot uchun</b></div>
-      <div class="field"><label>Gift sotib olingan sana</label><input class="input" type="date" name="boughtAt" value="${esc(a.bought_at || "")}"></div>
+      <div class="field"><label>Gift sotib olingan sana</label><input class="input" type="datetime-local" name="boughtAt" value="${esc(a.bought_at || "")}"></div>
       <div class="field"><label>Sotib olingan narxi (so'm)</label><input class="input" name="boughtPrice" inputmode="decimal" value="${val("bought_price")}"></div>
       <div class="field"><label>Naqdga hisoblangan narxi (so'm)</label><input class="input" name="cashPrice" inputmode="decimal" value="${esc(a.cash_price ?? a._base ?? "")}"></div>
       <div class="field"><label>Oylik foyda (so'm, ixtiyoriy)</label><input class="input" name="monthlyProfit" inputmode="decimal" value="${val("monthly_profit")}"></div>
@@ -715,9 +725,9 @@ async function own(v) {
       <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button>
       <button class="btn btn-ghost btn-sm" id="xlOwn" type="button">⬇ Excel</button></div>
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
-      <div class="stat"><small>Qilingan daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
-    <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Siz sotib olgan</th><th>Gift</th><th>Ijara</th><th>Lizing / bo'lib to'lash narxi</th><th>Qilingan daromad</th><th>Holat</th><th></th></tr></thead><tbody>
-    ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(p.bought_at.split("-").reverse().join(".")) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
+      <div class="stat"><small>Umumiy daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Siz sotib olgan</th><th>Gift</th><th>Ijara</th><th>Lizing / bo'lib to'lash narxi</th><th>Umumiy daromad</th><th>Holat</th><th></th></tr></thead><tbody>
+    ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(dtx(p.bought_at)) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}</td>
       <td>${p.rent_enabled ? (p.rentAuto ? `${esc(money(p.rentAuto.perDay))}/kun dan<br><small class="hint">avto: ${esc(RENTB[p.rent_by] || "")} · 1 kun ${esc(money(p.rentAuto.day1))}</small>`
         : p.rent_price ? `${esc(money(p.rent_price))}/kun${p.rent_by !== "manual" ? `<br><small class="hint">qo'lda (Marketapp ijarasida topilmadi)</small>` : ""}` : `<span class="over">ijara narxi topilmadi</span>`)
         + `<br><small class="hint">${p.rent_min}–${p.rent_max} kun</small>` : "—"}</td>
@@ -729,13 +739,16 @@ async function own(v) {
         <button class="btn btn-ghost btn-sm" data-del="${p.id}" type="button">O'chirish</button></div></td></tr>`).join("") || `<tr><td colspan="8" class="empty">Hali gift yo'q</td></tr>`}
     </tbody></table></div>`;
   $("#new").onclick = () => ownForm({});
-  $("#xlOwn").onclick = (e) => sendTableExcel(e.currentTarget, rows.map((p, k) => ({
-    "№": k + 1, "Sotib olingan sana": p.bought_at ? p.bought_at.split("-").reverse().join(".") : "", "Sotib olingan narxi": p.bought_price != null ? Number(p.bought_price) : "",
-    "Gift": p.name, "Model": p.model || "", "Fon": p.backdrop || "",
-    "Lizing / bo'lib to'lash narxi": p.inst_enabled && p.quote && p.quote.price ? Number(p.quote.price) : "",
-    "Ijara (kuniga, dan)": p.rent_enabled ? (p.rentAuto ? Number(p.rentAuto.perDay) : p.rent_price != null ? Number(p.rent_price) : "") : "",
-    "Qilingan daromad": Number(p.earned) || 0, "Holat": p.visible ? "Ko'rinadi" : "Yashirin",
-  })), "Mening mahsulotlarim", `mahsulotlar_${todayStr()}.xlsx`);
+  $("#xlOwn").onclick = (e) => {
+    const list = rows.map((p, k) => {
+      const bought = p.bought_price != null ? Number(p.bought_price) : null, earned = Number(p.earned) || 0;
+      return { "№": k + 1, "Sotib olingan sana": p.bought_at ? dtx(p.bought_at) : "", "Sotib olingan narxi": bought ?? "", "Tushirilgan qiymati": bought != null ? bought - earned : "",
+        "Mahsulot": p.name, "Naqdga hisoblangan narxi": p.quote && p.quote.price ? Number(p.quote.price) : "", "Umumiy daromad": earned,
+        "Boshlang'ich to'lov": p.quote && p.quote.down1 != null ? Number(p.quote.down1) : "" };
+    });
+    list.push(totalRow(list, ["Sotib olingan narxi", "Tushirilgan qiymati", "Naqdga hisoblangan narxi", "Umumiy daromad", "Boshlang'ich to'lov"]));
+    sendTableExcel(e.currentTarget, list, "Mening mahsulotlarim", `mahsulotlar_${todayStr()}.xlsx`);
+  };
   v.querySelectorAll("[data-ed]").forEach((b) => (b.onclick = () => ownForm(rows.find((p) => String(p.id) === b.dataset.ed))));
   // Hammasi: bittadan ketma-ket (bozorlarni bir vaqtda ko'p so'rov bilan band qilmaslik uchun), jarayon tugmada ko'rinadi
   $("#rfAll").onclick = async (e) => {
@@ -789,7 +802,7 @@ function ownForm(p) {
       <div class="field"><label>Fon</label><input class="input" name="backdrop" value="${esc(p.backdrop || "")}" placeholder="Steel Grey"></div>
 
       <div class="full sec2"><span class="sn2">2</span><b>Siz qachon va qanchaga sotib oldingiz?</b></div>
-      <div class="field"><label>Sana</label><input class="input" type="date" name="bought_at" value="${esc(p.bought_at || "")}"></div>
+      <div class="field"><label>Sana va soat</label><input class="input" type="datetime-local" name="bought_at" value="${esc(p.bought_at || "")}"></div>
       <div class="field"><label>Narx, so'm</label><input class="input" name="bought_price" inputmode="decimal" value="${esc(p.bought_price ?? "")}" placeholder="1 000 000"></div>
 
       <div class="full sec2"><span class="sn2">3</span><b>Mijozga qanday beriladi?</b></div>
@@ -884,7 +897,11 @@ async function report(v) {
     <div class="acts" style="margin-top:12px"><button class="btn btn-primary btn-sm" type="button" id="xl">⬇ Excel</button>
       <button class="btn btn-ghost btn-sm" type="button" id="back">← Lizing va bo'lib to'lash</button></div>`;
   $("#back").onclick = () => { location.hash = "installments"; };
-  $("#xl").onclick = (e) => sendTableExcel(e.currentTarget, rows.map((r) => Object.fromEntries(RCOLS.map(([k, l]) => [l, r[k] ?? ""]))), "Lizing va bo'lib to'lash", `toliq_jadval_${todayStr()}.xlsx`);
+  $("#xl").onclick = (e) => {
+    const list = rows.map((r) => Object.fromEntries(RCOLS.map(([k, l]) => [l, r[k] ?? ""])));
+    if (list.length) list.push(totalRow(list, RCOLS.filter(([, , m]) => m).map(([, l]) => l)));
+    sendTableExcel(e.currentTarget, list, "Lizing va bo'lib to'lash", `toliq_jadval_${todayStr()}.xlsx`);
+  };
 }
 
 const VIEWS = { report, dashboard, queue, orders, receipts, customers, installments, promos, reviews, settings, logs, own, listings };

@@ -15,6 +15,7 @@ import { encode, decode } from 'lib/b64';
 const SERVICES = ['nft_gift', 'gift_rent', 'username_rent', 'number_rent', 'premium', 'stars'];
 const TOGGLES = [...SERVICES, 'cashout'];
 const som = (x) => toSom(x);
+const dateTime = (v, name) => { if (v == null || v === '') return null; if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(String(v))) throw fail('VALIDATION', { field: name }); return String(v); };
 const date = (v, name) => { if (v == null || v === '') return null; if (!DATE_RE.test(String(v))) throw fail('VALIDATION', { field: name }); return String(v); };
 const key = (v) => { if (!KEY_RE.test(String(v || ''))) throw fail('VALIDATION', { field: 'idempotencyKey' }); return String(v); };
 
@@ -158,7 +159,7 @@ export const actions = {
       collateral: str(i.collateral, 300), notes: str(i.notes, 2000),
       alreadyPaid: toTiyin(num(i.alreadyPaid || 0, { min: 0 })), status: ['active', 'closed'].includes(i.status) ? i.status : null,
       // Hisobot uchun (ixtiyoriy)
-      boughtAt: date(i.boughtAt, 'boughtAt'), boughtPrice: Number(i.boughtPrice) > 0 ? toTiyin(num(i.boughtPrice, { min: 0 })) : null,
+      boughtAt: dateTime(i.boughtAt, 'boughtAt'), boughtPrice: Number(i.boughtPrice) > 0 ? toTiyin(num(i.boughtPrice, { min: 0 })) : null,
       cashPrice: Number(i.cashPrice) > 0 ? toTiyin(num(i.cashPrice, { min: 0 })) : null,
       monthlyProfit: i.monthlyProfit !== '' && i.monthlyProfit != null && !Number.isNaN(Number(i.monthlyProfit)) ? toTiyin(num(i.monthlyProfit)) : null,
     };
@@ -344,7 +345,7 @@ export const actions = {
       // Boshlang'ich to'lov har doim avval formula bilan; bu summa faqat formula topilmasa ishlatiladi
       down_mode: ['exact', 'model_backdrop', 'model', 'backdrop'].includes(i.down_by) ? i.down_by : 'exact',
       down_manual: Number(i.down_manual) > 0 ? toTiyin(num(i.down_manual, { min: 1, name: 'down_manual' })) : null,
-      bought_at: date(i.bought_at, 'bought_at'), bought_price: Number(i.bought_price) > 0 ? toTiyin(num(i.bought_price, { min: 0 })) : null,
+      bought_at: dateTime(i.bought_at, 'bought_at'), bought_price: Number(i.bought_price) > 0 ? toTiyin(num(i.bought_price, { min: 0 })) : null,
     };
     if (p.image && !/^https:\/\/\S+$/i.test(p.image)) throw fail('VALIDATION', { field: 'image' });
     if (rentOn && p.rent_max < p.rent_min) throw fail('VALIDATION', { field: 'rent_max' });
