@@ -1451,6 +1451,7 @@ function viewPlan(v) {
   if (!pl) { location.hash = "gifts"; return; }
   const lease = pl.itype === "lease";
   // Turi (Oddiy / 1-tur / Uzum): bo'lib to'lashda pl.itype, lizingda pl.lt (ustama — lizingniki)
+  if (pl.itype === "lease" && pl.lt === "uzum") pl.lt = "plan2";
   const ty = lease ? (pl.lt ||= "plan2") : pl.itype;
   const fixedDown = ty === "plan1";
   const down = () => (fixedDown ? Number(pl.down1 || 0) : pl.dp === "yes" ? Number(pl.dpAmt) || 0 : 0);
@@ -1470,15 +1471,16 @@ function viewPlan(v) {
     const mm = { plan2: b > 0 ? planMonthly(b, 0, WHEEL_MAX, mk("plan2")) : null, plan1: b > 0 && pl.down1 != null && pl.down1 < b ? planMonthly(b, pl.down1, WHEEL_MAX, mk("plan1")) : null, uzum: b > 0 ? planMonthly(b, 0, 12, mk("uzum")) : null };
     const dn = { plan2: t("cmp_opt"), plan1: pl.down1 != null ? money(pl.down1) : t("cmp_admin"), uzum: t("cmp_opt") };
     const tr = { plan2: t("cmp_240"), plan1: t("cmp_240"), uzum: "3 · 6 · 12" };
-    const K = ["plan2", "plan1", "uzum"];
+    const K = TYK;
     return `<table><thead><tr><th></th>${K.map((k) => `<th${ty === k ? ' class="on"' : ""}>${esc(TY[k][0])}</th>`).join("")}</tr></thead><tbody>
       <tr><td>${esc(t("cmp_down"))}</td>${K.map((k) => `<td${ty === k ? ' class="on"' : ""}>${esc(dn[k])}</td>`).join("")}</tr>
       <tr><td>${esc(t("cmp_term"))}</td>${K.map((k) => `<td${ty === k ? ' class="on"' : ""}>${esc(tr[k])}</td>`).join("")}</tr>
       <tr><td>${esc(t("cmp_month"))}</td>${K.map((k) => `<td${ty === k ? ' class="on"' : ""}>${mm[k] ? esc(money(mm[k])) + "+" : "—"}</td>`).join("")}</tr></tbody></table>
       <p class="hint" style="margin:6px 0 0">${esc(t("cmp_note"))}</p>`;
   };
+  const TYK = lease ? ["plan2", "plan1"] : ["plan2", "plan1", "uzum"]; // lizingda Uzum yo'q
   const typeHtml = inst ? `<div class="box"><div class="fh"><span>${sn(1)}${esc(t("ty_q"))}</span></div>
-      <div class="seg4" style="grid-template-columns:1fr 1fr 1fr;margin:0">${Object.keys(TY).map((k) => `<button type="button" class="${ty === k ? "on" : ""}" data-ty="${k}">${esc(TY[k][0])}</button>`).join("")}</div>
+      <div class="seg4" style="grid-template-columns:${TYK.map(() => "1fr").join(" ")};margin:0">${TYK.map((k) => `<button type="button" class="${ty === k ? "on" : ""}" data-ty="${k}">${esc(TY[k][0])}</button>`).join("")}</div>
       <ul class="pe-l ty-l">${tyInfo(ty).map((x) => `<li><i>✓</i>${esc(x)}</li>`).join("")}</ul>
       <details class="cmp"><summary>${esc(t("cmp_title"))}</summary>${cmpHtml()}</details></div>` : "";
 

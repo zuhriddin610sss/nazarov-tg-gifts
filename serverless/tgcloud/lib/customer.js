@@ -396,7 +396,7 @@ export const actions = {
     if (method === 'installment' && o.installmentType) {
       const months = int(i.months, { min: 1, max: 240, name: 'months' });
       // Lizingda ham tur tanlanadi: Oddiy (plan2), 1-tur (plan1), Uzum — ustama lizingniki
-      const leaseType = o.installmentType === 'lease' && ['plan2', 'plan1', 'uzum'].includes(i.leaseType) ? i.leaseType : null;
+      const leaseType = o.installmentType === 'lease' && ['plan2', 'plan1'].includes(i.leaseType) ? i.leaseType : null; // lizingda Uzum yo'q
       const sub = leaseType || o.installmentType;
       if (sub === 'uzum' && ![3, 6, 12].includes(months)) throw fail('VALIDATION', { field: 'months' });
       o.details = { ...(o.details || {}), months, ...(leaseType ? { leaseType } : {}) };
