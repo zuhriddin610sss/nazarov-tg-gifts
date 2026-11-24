@@ -802,7 +802,9 @@ async function own(v) {
       <button class="btn btn-ghost btn-sm" id="rfAll" type="button">↻ Hammasining narxini yangilash</button>
       <button class="btn btn-ghost btn-sm" id="xlOwn" type="button">⬇ Excel</button></div>
     <div class="stats" style="margin-bottom:12px"><div class="stat"><small>Giftlarga sarflangan</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.bought_price) || 0), 0)))}</b></div>
-      <div class="stat"><small>Umumiy daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div></div>
+      <div class="stat"><small>Umumiy daromad</small><b>${esc(money(rows.reduce((t, p) => t + (Number(p.earned) || 0), 0)))}</b></div>
+      <div class="stat"><small>Sotuvdagi giftlar narxi (jami)</small><b>${esc(money(rows.filter((p) => p.visible && p.inst_enabled && p.quote && p.quote.price).reduce((t, p) => t + Number(p.quote.price), 0)))}</b>
+        <small style="text-transform:none;letter-spacing:0;font-weight:500">${rows.filter((p) => p.visible && p.inst_enabled && p.quote && p.quote.price).length} ta gift · lizing / bo'lib to'lash narxi bo'yicha</small></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>№</th><th>Siz sotib olgan</th><th>Gift</th><th>Ijara</th><th>Lizing / bo'lib to'lash narxi</th><th>Umumiy daromad</th><th>Holat</th><th></th></tr></thead><tbody>
     ${rows.map((p, k) => `<tr${failedPrice(p) ? ' style="background:#FFF6EC"' : ""}><td>${k + 1}${failedPrice(p) ? "<br>⚠️" : ""}</td><td>${p.bought_at ? esc(dtx(p.bought_at)) : "—"}${p.bought_price ? `<br><b>${esc(money(p.bought_price))}</b><br><small class="hint">Tushirilgan: ${esc(money(Number(p.bought_price) - (Number(p.earned) || 0)))}</small>` : ""}</td><td><b>${esc(p.name)}</b>${p.model ? `<br><small class="hint">${esc(p.model)}${p.backdrop ? " · " + esc(p.backdrop) : ""}</small>` : ""}
         <div class="acts" style="margin-top:8px"><button class="btn btn-primary btn-sm" data-ed="${p.id}" type="button">✏️ Tahrir</button>
