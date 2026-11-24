@@ -866,3 +866,13 @@ test("Bir nechta giftni birga lizingga olish: narxlar qo'shiladi, bitta buyurtma
   assert.deepEqual([o.details.estPrice, o.details.multi.length], [300000, 2]);
   assert.match(sent.map((m) => m.params.text || m.params.caption || '').join('\n'), /Giftlar \(2 ta\)[\s\S]*Jami: 300 000/);
 });
+
+test("Lizingda ham tur: 1-tur boshlang'ich to'lovi belgilangan, Uzum 3/6/12 oy", async () => {
+  await withPhone();
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Lease Type #1', inst_enabled: true, price_source: 'manual_som', price_manual: 1200000, down_manual: 200000 });
+  const own = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Lease Type #1');
+  const r = await app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', leaseType: 'plan1', months: 10, downPayment: 0, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.deepEqual([o.installment_type, o.details.leaseType, o.details.downPayment], ['lease', 'plan1', 200000]);
+  await assert.rejects(app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', leaseType: 'uzum', months: 10, idempotencyKey: key() }), /VALIDATION/);
+});

@@ -343,7 +343,7 @@ export const actions = {
       const ty = itype(['lease', 'plan1', 'plan2', 'uzum']);
       o = { service: 'nft_gift', title: `${label} — sotib olish`, installmentType: ty,
         price: method === 'cash' ? toTiyin(price) : null, estBase: toTiyin(price),
-        down1: ty === 'plan1' ? await giftDown1(label, { model: it.model, backdrop: it.backdrop, symbol: it.symbol }, s) : null,
+        down1: ty === 'plan1' || (ty === 'lease' && i.leaseType === 'plan1') ? await giftDown1(label, { model: it.model, backdrop: it.backdrop, symbol: it.symbol }, s) : null,
         details: { ...(listing ? { listing: listing.id, seller: seller && seller.username ? '@' + seller.username : (seller && seller.phone) || `mijoz #${listing.customer_id}`, link: listing.link }
           : it.market ? { market: MARKET_NAME[it.market] || it.market, ton: it.ton, link: it.link || undefined, slug: String(id).split(':').slice(2).join(':') }
           : { portals: it.id, ton: it.ton }), name: label, model: it.model || undefined, backdrop: it.backdrop || undefined, symbol: it.symbol || undefined, sale: true,
@@ -395,15 +395,18 @@ export const actions = {
 
     if (method === 'installment' && o.installmentType) {
       const months = int(i.months, { min: 1, max: 240, name: 'months' });
-      if (o.installmentType === 'uzum' && ![3, 6, 12].includes(months)) throw fail('VALIDATION', { field: 'months' });
-      o.details = { ...(o.details || {}), months };
+      // Lizingda ham tur tanlanadi: Oddiy (plan2), 1-tur (plan1), Uzum — ustama lizingniki
+      const leaseType = o.installmentType === 'lease' && ['plan2', 'plan1', 'uzum'].includes(i.leaseType) ? i.leaseType : null;
+      const sub = leaseType || o.installmentType;
+      if (sub === 'uzum' && ![3, 6, 12].includes(months)) throw fail('VALIDATION', { field: 'months' });
+      o.details = { ...(o.details || {}), months, ...(leaseType ? { leaseType } : {}) };
       // Lizing: ustama 0%, boshlang'ich to'lov ixtiyoriy (bo'lsa — mijoz yozgan summa)
       if (['plan2', 'uzum', 'lease', 'cashout'].includes(o.installmentType)) {
         const dp = Number(i.downPayment || 0);
         if (!Number.isFinite(dp) || dp < 0 || dp > 1000000000) throw fail('VALIDATION', { field: 'downPayment' });
         o.details.downPayment = Math.round(dp);
       }
-      if (o.installmentType === 'plan1') o.details.downPayment = o.down1 != null ? o.down1 : null;
+      if (sub === 'plan1') o.details.downPayment = o.down1 != null ? o.down1 : null;
       // Taxminiy oylik to'lov (narxi ma'lum bo'lsa)
       if (o.estBase && o.details.downPayment != null) {
         const base = Math.ceil(Number(o.estBase) / 100);

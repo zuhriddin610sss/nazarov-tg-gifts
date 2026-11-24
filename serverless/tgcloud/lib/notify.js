@@ -45,6 +45,7 @@ export async function notifyNewOrder(orderId) {
     det.market ? `Bozor: ${det.market} · narxi ${det.ton} TON${det.slug ? ` · ${det.slug}` : ''}. Avval hali sotuvdaligini tekshiring.` : null,
     det.portals ? `Portals narxi: ${det.ton} TON (ID: ${det.portals}). Avval Portals'da hali sotuvdaligini tekshiring.` : null,
     `To'lov: ${o.payment_method === 'cash' ? 'Naqd (balansdan yechildi)' : o.installment_type === 'lease' ? 'Lizing' : "Bo'lib to'lash" + (o.installment_type ? ' — ' + (ITYPE[o.installment_type] || o.installment_type) : '')}`,
+    det.leaseType ? `Lizing turi: ${ITYPE[det.leaseType] || det.leaseType}` : null,
     det.months ? `Muddat: ${det.months} oy` : null,
     det.downPayment != null ? `Boshlang'ich to'lov: ${det.downPayment > 0 ? money(det.downPayment) + " so'm" : "yo'q"}`
       : o.installment_type === 'plan1' ? "Boshlang'ich to'lov: admin belgilaydi" : null,
