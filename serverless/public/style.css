@@ -614,3 +614,15 @@ body.lt .balhero .lbl{color:#C9D2CA;letter-spacing:.16em;font-size:.64rem}
 /* Telefon: bosish tez va aniq bo'lsin */
 a,button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .ways2 .way:active,.ptc:active,.cxs:active{transform:scale(.98)}
+
+/* Bir nechta giftni belgilash */
+.multi-on{float:right;border:1px solid var(--line-2);background:var(--card);color:var(--sage);font:700 .78rem Inter,system-ui,sans-serif;padding:6px 10px;border-radius:999px;cursor:pointer}
+.msel .gcard{position:relative}
+.msel .gimg{position:relative}
+.mck{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.85);border:2px solid var(--line-2);color:transparent;font-weight:900}
+.msel .gcard.picked{border-color:var(--sage);box-shadow:0 0 0 3px rgba(30,61,47,.15)}
+.msel .gcard.picked .mck{background:var(--sage);border-color:var(--sage);color:#F3E3B5}
+.mbar{position:sticky;bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0;padding:12px 14px;border-radius:16px;background:var(--card);border:1px solid var(--line);box-shadow:0 12px 26px -12px rgba(20,32,26,.45)}
+.mbar:empty{display:none}
+.mbar b{display:block}.mbar small{color:var(--muted);font-size:.8rem}
+.mbar .btn{white-space:nowrap}

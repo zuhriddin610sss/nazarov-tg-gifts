@@ -852,3 +852,17 @@ test("Narxlar navbatma-navbat avtomatik: eng eski bitta gift, 4 daqiqada bir mar
   assert.equal(await maybeRefreshPrice(), id);
   assert.equal(await maybeRefreshPrice(), null); // 4 daqiqa o'tmagan
 });
+
+test("Bir nechta giftni birga lizingga olish: narxlar qo'shiladi, bitta buyurtma", async () => {
+  await withPhone();
+  for (const [n, pr] of [['Multi A #1', 100000], ['Multi B #2', 200000]]) await admin({ action: 'saveOwnProduct', kind: 'gifts', name: n, inst_enabled: true, price_source: 'manual_som', price_manual: pr });
+  const own = await admin({ action: 'ownProducts' });
+  const ids = ['Multi A #1', 'Multi B #2'].map((n) => own.find((x) => x.name === n).id);
+  await assert.rejects(app({ action: 'createOrder', service: 'own_multi', ownIds: [ids[0]], paymentMethod: 'installment', installmentType: 'lease', months: 12, idempotencyKey: key() }), /VALIDATION/);
+  sent.length = 0;
+  const r = await app({ action: 'createOrder', service: 'own_multi', ownIds: ids, expectedTotal: 300000, paymentMethod: 'installment', installmentType: 'lease', months: 12, downPayment: 0, idempotencyKey: key() });
+  const o = (await admin({ action: 'orders', search: r.publicId }))[0];
+  assert.equal(o.title, '2 ta gift — sotib olish');
+  assert.deepEqual([o.details.estPrice, o.details.multi.length], [300000, 2]);
+  assert.match(sent.map((m) => m.params.text || m.params.caption || '').join('\n'), /Giftlar \(2 ta\)[\s\S]*Jami: 300 000/);
+});

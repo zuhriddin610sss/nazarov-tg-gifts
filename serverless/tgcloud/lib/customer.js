@@ -259,7 +259,7 @@ export const actions = {
   async createOrder(i, c) {
     const s = await getSettings();
     const service = i.service;
-    if (service !== 'own' && service !== 'portals' && !s.services_enabled[service]) throw fail(service in s.services_enabled ? 'SERVICE_DISABLED' : 'VALIDATION');
+    if (service !== 'own' && service !== 'own_multi' && service !== 'portals' && !s.services_enabled[service]) throw fail(service in s.services_enabled ? 'SERVICE_DISABLED' : 'VALIDATION');
     const method = i.paymentMethod === 'cash' ? 'cash' : i.paymentMethod === 'installment' ? 'installment' : null;
     if (!method) throw fail('VALIDATION', { field: 'paymentMethod' });
     const key = idemKey(i.idempotencyKey);
@@ -299,6 +299,24 @@ export const actions = {
           price: method === 'cash' ? Number(p.cash_price) : null,
           details: { own: p.id, sale: true, kind: p.kind, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined } };
       } else throw fail('VALIDATION', { field: 'ownMode' });
+    } else if (service === 'own_multi') {
+      // Bir nechta bizning giftimiz birga (lizing / bo'lib to'lash): narxlar qo'shiladi, bitta oylik to'lov
+      if (method !== 'installment') throw fail('VALIDATION', { field: 'paymentMethod' });
+      const ids = [...new Set((Array.isArray(i.ownIds) ? i.ownIds : []).map((x) => int(x, { min: 1, name: 'ownIds' })))].slice(0, 20);
+      if (ids.length < 2) throw fail('VALIDATION', { field: 'ownIds' });
+      const items = [];
+      for (const id of ids) {
+        const p = await get('SELECT * FROM own_products WHERE id = :id AND visible = 1 AND inst_enabled = 1', { id });
+        if (!p) throw fail('NOT_FOUND');
+        const q = await ownSaleQuote(p, s, { cached: true });
+        if (!q.price) throw fail('VALIDATION', { field: 'price' });
+        items.push({ own: p.id, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined, price: q.price });
+      }
+      const total = items.reduce((t2, x) => t2 + x.price, 0);
+      if (i.expectedTotal != null && Math.abs(Number(i.expectedTotal) - total) > 1) throw fail('PRICE_CHANGED', { price: total });
+      o = { service: 'nft_gift', title: `${items.length} ta gift — sotib olish`, installmentType: itype(['lease', 'plan1', 'plan2', 'uzum']),
+        estBase: toTiyin(total), down1: null, price: null,
+        details: { multi: items, sale: true, kind: 'gifts', name: items.map((x) => x.name).join(', ') } };
     } else if (service === 'portals') {
       // "Sotuvda" bo'limidagi gift: Portals'dagi yoki mijoz e'loni ("u123"). Narx buyurtma paytida qayta tekshiriladi.
       if (!s.services_enabled.nft_gift) throw fail('SERVICE_DISABLED');

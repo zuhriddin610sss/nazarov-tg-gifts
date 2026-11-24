@@ -1156,7 +1156,44 @@ async function viewSale(v, head, bindTabs, mode, tail = "") {
   const searching = `<div class="spin"></div><p class="hint" style="text-align:center">${esc(t("sale_searching"))}</p>`;
   const sortChip = `<button type="button" class="fchip ic" data-f="sort" aria-label="${esc(t("sort_title"))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>`;
   const ownLine = (it) => buyPriceHtml(mode === "cash" ? it.cashPrice : it.salePrice, mode);
-  const ownGrid = () => ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null, mode === "lease" ? "our_lease" : mode === "inst" ? "our_inst" : "our_cash", mode === "cash");
+  // Bir nechta giftni belgilab, birga olish (faqat lizing / bo'lib to'lash, bizning giftlar)
+  const canMulti = mode !== "cash" && st.own.filter((x) => x.salePrice > 0).length > 1;
+  const sel = () => (S.multi && S.multi.mode === mode ? S.multi : null);
+  const ownGrid = () => {
+    const m = sel();
+    if (!m) return ownSection("gifts", st.own.map((it) => ({ ...it, buyLine: ownLine(it) })), null, mode === "lease" ? "our_lease" : mode === "inst" ? "our_inst" : "our_cash", mode === "cash")
+      .replace('<div class="ownsec-h">', `<div class="ownsec-h">${canMulti ? `<button type="button" class="multi-on" id="multiOn">☑ ${esc(t("multi_on"))}</button>` : ""}`);
+    const list = st.own.filter((x) => x.salePrice > 0);
+    return `<section class="ownsec"><div class="ownsec-h"><button type="button" class="multi-on" id="multiOff">✕ ${esc(t("multi_off"))}</button><h2>${esc(t("multi_title"))}</h2></div>
+      <div class="grid3 msel">${list.map((it) => `<button type="button" class="gcard own${m.ids.includes(it.id) ? " picked" : ""}" data-m="${it.id}">
+        <span class="gimg">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy">` : imgTag("gifts", it.name)}<span class="mck">✓</span></span>
+        <span class="gb"><b>${esc(shortName(it.name))}</b><span class="gp">${ownLine(it)}</span></span></button>`).join("")}</div></section>
+      <div class="mbar" id="mbar"></div>
+      <div class="sect-h"><h2>${esc(t("all_gifts"))}</h2></div>`;
+  };
+  const multiBar = () => {
+    const m = sel(), bar = $("#mbar", v); if (!m || !bar) return;
+    const items = st.own.filter((x) => m.ids.includes(x.id)), sum = items.reduce((t2, x) => t2 + Number(x.salePrice), 0);
+    const per = sum > 0 ? (mode === "lease" ? leaseMin(sum) : minMonthly(sum)) : 0;
+    bar.innerHTML = items.length ? `<span><b>${esc(t("multi_n", { n: items.length }))}</b><small>${esc(t("per_month"))} ≈ ${esc(money(per))} ${esc(t("som_from"))}</small></span>
+      <button type="button" class="btn btn-primary" id="mGo" ${items.length < 2 ? "disabled" : ""}>${esc(t(items.length < 2 ? "multi_more" : "next"))} →</button>` : `<span><small>${esc(t("multi_hint"))}</small></span>`;
+    const go = $("#mGo", v); if (go) go.onclick = () => {
+      const k = key(), first = items.find((x) => x.image) || items[0];
+      openPlan({ name: t("multi_n", { n: items.length }), img: first && first.image ? `<img src="${esc(first.image)}" alt="">` : imgTag("gifts", first.name), base: sum,
+        itype: mode === "lease" ? "lease" : "plan2", down1: null, key: k,
+        build: (x) => ({ service: "own_multi", ownIds: items.map((y) => y.id), expectedTotal: sum, paymentMethod: "installment", idempotencyKey: k, ...x }) });
+    };
+  };
+  const bindMulti = () => {
+    const on = $("#multiOn", v); if (on) on.onclick = (e) => { e.stopPropagation(); S.multi = { mode, ids: [] }; render(); };
+    const off = $("#multiOff", v); if (off) off.onclick = () => { S.multi = null; render(); };
+    v.querySelectorAll(".gcard[data-m]").forEach((c) => (c.onclick = () => {
+      const m = sel(), id = Number(c.dataset.m);
+      m.ids = m.ids.includes(id) ? m.ids.filter((x) => x !== id) : m.ids.concat(id);
+      c.classList.toggle("picked", m.ids.includes(id)); multiBar();
+    }));
+    multiBar();
+  };
   // 1-ekran: kolleksiyalar (rasm, nom, "… so'mdan")
   const drawCols = () => {
     const q = String(st.colQ || "").trim().toLowerCase();
@@ -1177,7 +1214,7 @@ async function viewSale(v, head, bindTabs, mode, tail = "") {
       reload();
       st.attrs = await saleAttrs(c.dataset.col);
     }));
-    bindOwn();
+    bindOwn(); bindMulti();
     const retry = $("#retry", v); if (retry) retry.onclick = () => { st.colErr = null; st.colList = null; loadCols(); };
     const cq = $("#cQ", v);
     cq.addEventListener("input", () => { st.colQ = cq.value; const pos = cq.selectionStart; drawCols(); const n = $("#cQ", v); n.focus(); n.setSelectionRange(pos, pos); });
@@ -1215,7 +1252,7 @@ async function viewSale(v, head, bindTabs, mode, tail = "") {
             ${it.model ? `<small>${esc(it.model)}</small>` : ""}
             <span class="gp">${buyPriceHtml(it.price, "cash")}</span></span></button>`).join("")}</div>`
         : `<p class="empty">${esc(t("find_none"))}</p>`) : ""}` + tail;
-    bindTabs(); bindOwn();
+    bindTabs(); bindOwn(); bindMulti();
     const mx = $("#qMax", v); mx.addEventListener("input", () => { q.max = Number(mx.value) || null; });
     v.querySelectorAll(".pickbtn[data-q]").forEach((b) => b.addEventListener("click", async () => {
       const k = b.dataset.q;

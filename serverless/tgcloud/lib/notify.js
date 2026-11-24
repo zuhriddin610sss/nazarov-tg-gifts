@@ -39,6 +39,7 @@ export async function notifyNewOrder(orderId) {
     `Mahsulot: ${o.title}`,
     o.recipient ? `Qabul qiluvchi: @${o.recipient}` : null,
     det.model || det.backdrop ? [det.model ? `Model: ${det.model === 'any' ? "Farqi yo'q" : det.model}` : null, det.backdrop ? `Fon: ${det.backdrop === 'any' ? "Farqi yo'q" : det.backdrop}` : null].filter(Boolean).join(' · ') : null,
+    det.multi ? `Giftlar (${det.multi.length} ta):\n` + det.multi.map((x, k) => `${k + 1}) ${x.name}${x.model ? ' · ' + x.model : ''}${x.backdrop ? ' · ' + x.backdrop : ''} — ${money(x.price)} so'm`).join('\n') + `\nJami: ${money(det.multi.reduce((t2, x) => t2 + x.price, 0))} so'm` : null,
     det.link ? `Havola: ${det.link}` : null,
     det.listing ? `Sotuvchi (gift egasi): ${det.seller}. Unga yozib, giftni oling. E'lon "Sotildi" deb belgilandi.` : null,
     det.market ? `Bozor: ${det.market} · narxi ${det.ton} TON${det.slug ? ` · ${det.slug}` : ''}. Avval hali sotuvdaligini tekshiring.` : null,
