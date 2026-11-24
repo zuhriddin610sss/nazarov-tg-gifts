@@ -1182,6 +1182,7 @@ async function viewSale(v, head, bindTabs, mode, tail = "") {
       openPlan({ name: t("multi_n", { n: items.length }), img: first && first.image ? `<img src="${esc(first.image)}" alt="">` : imgTag("gifts", first.name), base: sum,
         // 1-tur: har bir giftning boshlang'ich to'lovi qo'shiladi (birortasi noma'lum bo'lsa — admin aytadi)
         itype: mode === "lease" ? "lease" : "plan2", down1: items.every((y) => y.down1 != null) ? items.reduce((t2, y) => t2 + Number(y.down1), 0) : null, key: k,
+        noDown: items.filter((y) => y.down1 == null).map((y) => shortName(y.name)),
         build: (x) => ({ service: "own_multi", ownIds: items.map((y) => y.id), expectedTotal: sum, paymentMethod: "installment", idempotencyKey: k, ...x }) });
     };
   };
@@ -1463,7 +1464,8 @@ function viewPlan(v) {
   const TY = { plan2: [t("ty_plan2"), t("ty_plan2_d")], plan1: [t("plan1"), pl.down1 != null ? t("inst_p1_d", { d: money(pl.down1) }) : t("down_by_admin")], uzum: [t("uzum"), t("uzum_d2")] };
   // Har bir bo'lib to'lash turi haqida 3 qator va taqqoslash jadvali
   const tyInfo = (k) => k === "plan2" ? [t("ty2_1"), t("ty2_2"), t("ty2_3")]
-    : k === "plan1" ? (pl.down1 != null ? [t("ty1_1", { d: money(pl.down1) }), t("ty1_2"), t("ty2_3")] : [t("down_by_admin"), t("ty1_3"), t("ty2_3")])
+    : k === "plan1" ? (pl.down1 != null ? [t("ty1_1", { d: money(pl.down1) }), t("ty1_2"), t("ty2_3")]
+      : pl.noDown && pl.noDown.length ? [t("ty1_miss", { g: pl.noDown.join(", ") }), t("ty1_miss2"), t("ty2_3")] : [t("down_by_admin"), t("ty1_3"), t("ty2_3")])
     : [t("tyu_1"), t("tyu_2"), t("tyu_3")];
   const cmpHtml = () => {
     const b = pl.base;
