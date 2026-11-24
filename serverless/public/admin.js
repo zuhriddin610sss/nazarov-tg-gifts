@@ -253,7 +253,7 @@ async function dashboard(v) {
   ].filter(Boolean);
   const hour = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Tashkent", hour: "numeric", hour12: false }));
   v.innerHTML = `<div class="hello"><div><small>${esc(uzDate())}</small>
-      <h1>${hour < 12 ? "Xayrli tong" : hour < 18 ? "Xayrli kun" : "Xayrli kech"}</h1></div></div>
+      <h1>${hour < 12 ? "Xayrli tong" : hour < 18 ? "Xayrli kun" : "Xayrli kech"}</h1></div><small>Versiya: ${esc(s.build || "eski")}</small></div>
     <div class="section"><h2>Bugungi ishlar</h2>
       ${todo.length ? `<div class="todo">${todo.join("")}</div>` : `<p class="hint">Hammasi joyida — kechikkan to'lov va navbatdagi ish yo'q.</p>`}
       ${late.length > 8 || due.length > 8 ? `<a class="link" href="#installments">Hammasini ko'rish →</a>` : ""}</div>

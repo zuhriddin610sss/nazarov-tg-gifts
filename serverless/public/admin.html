@@ -7,7 +7,7 @@
 <title>Admin · NAZAROVtggifts</title>
 <link rel="icon" href="/assets/logo-mark.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="/style.css?v=20261124g">
+<link rel="stylesheet" href="/style.css?v=20261124h">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 body{padding-bottom:24px}
@@ -78,7 +78,7 @@ tr:last-child td{border-bottom:0}
 @media (min-width:861px){.adm.hide-side{grid-template-columns:1fr}.adm.hide-side .side{display:none}}
 @media (max-width:860px){
   .adm{grid-template-columns:1fr}
-  .side{position:fixed;inset:0 30% 0 0;z-index:20;height:auto;transform:translateX(-105%);transition:transform .2s}
+  .side{position:fixed;inset:0 30% 0 0;z-index:20;height:auto;transform:translateX(-105%);transition:transform .2s;overflow-y:auto}
   .side.open{transform:none}
   .menu-btn{display:inline-flex;margin-bottom:12px}
   .main{padding-left:max(16px,env(safe-area-inset-left,0px))}
@@ -125,6 +125,6 @@ tr:last-child td{border-bottom:0}
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet" style="max-height:90vh;overflow:auto"></div></div>
-<script src="/admin.js?v=20261124g"></script>
+<script src="/admin.js?v=20261124h"></script>
 </body>
 </html>
