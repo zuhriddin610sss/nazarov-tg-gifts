@@ -2,6 +2,7 @@
 import { EndpointError } from 'sdk';
 import { ensureSchema, isAdmin, logError } from 'lib/core';
 import { actions } from 'lib/admin';
+import { maybeRefreshPrice } from 'lib/jobs';
 
 export default async function (input, ctx) {
   const user = ctx.initData && ctx.initData.user;
@@ -15,5 +16,7 @@ export default async function (input, ctx) {
     if (e instanceof EndpointError) throw e;
     await logError('admin.' + input.action, e && (e.stack || e.message || e.description));
     throw new EndpointError('INTERNAL', { code: 'INTERNAL' });
+  } finally {
+    if (!['refreshOwnPrice'].includes(input.action)) await maybeRefreshPrice();
   }
 }

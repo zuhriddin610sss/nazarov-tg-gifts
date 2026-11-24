@@ -841,3 +841,14 @@ test("Botdan oldingi daromad umumiy daromadga qo'shiladi", async () => {
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Before Gift #9');
   assert.deepEqual([p.earned, p.earned_before, p.bought_price - p.earned], [45000, 45000, 245000]);
 });
+
+test("Narxlar navbatma-navbat avtomatik: eng eski bitta gift, 4 daqiqada bir marta", async () => {
+  const { maybeRefreshPrice } = await import('../tgcloud/lib/jobs.js');
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Auto Gift #1', inst_enabled: true, price_source: 'manual_som', price_manual: 100000 });
+  const id = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Auto Gift #1').id;
+  await core.run("DELETE FROM meta WHERE key = 'price_tick'");
+  await core.run("UPDATE own_products SET mk_checked_at = :t", { t: Date.now() });
+  await core.run('UPDATE own_products SET mk_checked_at = 5 WHERE id = :id', { id });
+  assert.equal(await maybeRefreshPrice(), id);
+  assert.equal(await maybeRefreshPrice(), null); // 4 daqiqa o'tmagan
+});

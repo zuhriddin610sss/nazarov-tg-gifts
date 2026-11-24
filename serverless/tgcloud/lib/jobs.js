@@ -6,6 +6,7 @@ import { buildXlsx } from 'lib/xlsx';
 import { listAgreements, agreementReport, ownRentIncome, REPORT_COLS, ddmmyyyy } from 'lib/shop';
 import { getSettings } from 'lib/core';
 import { ownSaleQuote } from 'lib/calc';
+import { satBudget } from 'lib/satellite';
 const SUMS = ['boughtPrice', 'cashPrice', 'profitCash', 'profitInst', 'profitTotal', 'down', 'credit', 'debt', 'monthlyProfit', 'monthly', 'paid', 'allIncome'];
 /** Jadval oxiridagi "Jami" qatori. */
 function totalRow(rows, cols) {
@@ -132,6 +133,22 @@ export async function sendDailyReport(now = nowMs(), force = false) {
 }
 /** Eski nom (admin paneldagi "hisobotni hozir olish" tugmasi). */
 export const sendWeeklyReport = sendDailyReport;
+
+/**
+ * Narxlarni navbatma-navbat avtomatik yangilash: ko'pi bilan 4 daqiqada bir marta, har safar ENG ESKI bitta gift
+ * (oxirgi tekshiruvdan 1 soatdan ko'p o'tgan). Bozorlarga ko'pi bilan 5 soniya — foydalanuvchi deyarli sezmaydi.
+ */
+export async function maybeRefreshPrice(now = nowMs()) {
+  try {
+    if (!(await takeLock('price_tick', 4 * 60000))) return null;
+    const p = await get(`SELECT * FROM own_products WHERE kind = 'gifts' AND inst_enabled = 1 AND visible = 1
+        AND COALESCE(mk_checked_at, 0) < :old ORDER BY COALESCE(mk_checked_at, 0) LIMIT 1`, { old: now - 60 * 60000 });
+    if (!p) return null;
+    satBudget(5000);
+    try { await ownSaleQuote(p, await getSettings(), { fresh: true, noRent: true }); } finally { satBudget(0); }
+    return p.id;
+  } catch (e) { await logError('narx.auto', e && (e.message || e.description)); return null; }
+}
 
 /** Ko'pi bilan 30 daqiqada bir marta ishlaydi; bir vaqtda faqat bitta chaqiruv "yutadi". */
 export async function maybeRunJobs(force = false) {

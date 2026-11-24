@@ -2,7 +2,7 @@
 import { EndpointError } from 'sdk';
 import { ensureSchema, logError } from 'lib/core';
 import { actions, upsertCustomer } from 'lib/customer';
-import { maybeRunJobs } from 'lib/jobs';
+import { maybeRunJobs, maybeRefreshPrice } from 'lib/jobs';
 
 export default async function (input, ctx) {
   const user = ctx.initData && ctx.initData.user;
@@ -19,5 +19,6 @@ export default async function (input, ctx) {
     throw new EndpointError('INTERNAL', { code: 'INTERNAL' });
   } finally {
     await maybeRunJobs();
+    await maybeRefreshPrice();
   }
 }

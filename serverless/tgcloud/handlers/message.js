@@ -4,7 +4,7 @@ import { ensureSchema, get, all, run, getSettings, isAdmin, logError } from 'lib
 import { upsertCustomer } from 'lib/customer';
 import { t, money } from 'lib/texts';
 import { openAppButton, adminPanelButton } from 'lib/notify';
-import { maybeRunJobs } from 'lib/jobs';
+import { maybeRunJobs, maybeRefreshPrice } from 'lib/jobs';
 import { handleAdminText, ADMIN_HELP } from 'lib/admintools';
 
 const reply = (chat, text, extra = {}) => api.sendMessage({ chat_id: chat, text, ...extra });
@@ -61,5 +61,6 @@ export default async function (message, ctx) {
     await logError('handler.message', e && (e.stack || e.message || e.description));
   } finally {
     await maybeRunJobs();
+    await maybeRefreshPrice();
   }
 }
