@@ -1180,7 +1180,8 @@ async function viewSale(v, head, bindTabs, mode, tail = "") {
     const go = $("#mGo", v); if (go) go.onclick = () => {
       const k = key(), first = items.find((x) => x.image) || items[0];
       openPlan({ name: t("multi_n", { n: items.length }), img: first && first.image ? `<img src="${esc(first.image)}" alt="">` : imgTag("gifts", first.name), base: sum,
-        itype: mode === "lease" ? "lease" : "plan2", down1: null, key: k,
+        // 1-tur: har bir giftning boshlang'ich to'lovi qo'shiladi (birortasi noma'lum bo'lsa — admin aytadi)
+        itype: mode === "lease" ? "lease" : "plan2", down1: items.every((y) => y.down1 != null) ? items.reduce((t2, y) => t2 + Number(y.down1), 0) : null, key: k,
         build: (x) => ({ service: "own_multi", ownIds: items.map((y) => y.id), expectedTotal: sum, paymentMethod: "installment", idempotencyKey: k, ...x }) });
     };
   };

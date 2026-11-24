@@ -310,12 +310,12 @@ export const actions = {
         if (!p) throw fail('NOT_FOUND');
         const q = await ownSaleQuote(p, s, { cached: true });
         if (!q.price) throw fail('VALIDATION', { field: 'price' });
-        items.push({ own: p.id, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined, price: q.price });
+        items.push({ own: p.id, name: p.name, model: p.model || undefined, backdrop: p.backdrop || undefined, price: q.price, down1: q.down1 });
       }
       const total = items.reduce((t2, x) => t2 + x.price, 0);
       if (i.expectedTotal != null && Math.abs(Number(i.expectedTotal) - total) > 1) throw fail('PRICE_CHANGED', { price: total });
       o = { service: 'nft_gift', title: `${items.length} ta gift — sotib olish`, installmentType: itype(['lease', 'plan1', 'plan2', 'uzum']),
-        estBase: toTiyin(total), down1: null, price: null,
+        estBase: toTiyin(total), down1: items.every((x) => x.down1 != null) ? items.reduce((t2, x) => t2 + x.down1, 0) : null, price: null,
         details: { multi: items, sale: true, kind: 'gifts', name: items.map((x) => x.name).join(', ') } };
     } else if (service === 'portals') {
       // "Sotuvda" bo'limidagi gift: Portals'dagi yoki mijoz e'loni ("u123"). Narx buyurtma paytida qayta tekshiriladi.
