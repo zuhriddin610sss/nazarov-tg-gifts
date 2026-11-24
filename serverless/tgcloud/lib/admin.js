@@ -112,6 +112,9 @@ export const actions = {
     return { done: r.rowsAffected };
   },
 
+  /** Admin panel ochiq turganda har bir necha daqiqada chaqiriladi: narx yangilash (finally'da) shu bilan ishga tushadi. */
+  async ping() { return { ok: true, at: Date.now() }; },
+
   /** Bosh sahifadagi pul hisoblagichlarini nolga tushirish (test pullari). Ma'lumot o'chirilmaydi: shu paytdan keyingilar hisoblanadi. */
   async resetStats(_i, admin) {
     const m = await get('SELECT COALESCE(MAX(id), 0) AS p, (SELECT COALESCE(MAX(id), 0) FROM agreements) AS a FROM inst_payments');

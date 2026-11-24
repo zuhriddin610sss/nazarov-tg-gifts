@@ -1012,6 +1012,8 @@ async function render() {
     const bv = $("#build"); if (bv) bv.textContent = "Server versiyasi: " + (s.build || "eski");
   }).catch(() => {});
 }
+// Admin panel ochiq tursa (masalan kompyuterda), har 4 daqiqada serverni "uyg'otadi" — narxlar navbat bilan yangilanadi
+setInterval(() => { call("ping").catch(() => {}); }, 4 * 60000);
 window.addEventListener("hashchange", () => { if (!$("#modal").hidden) closeSheet(); render(); });
 render();
 })();
