@@ -181,6 +181,8 @@ export async function ownSaleQuote(p, s, { fresh = false, cached = false, noRent
   let down1 = null, down1By = null;
   const down1Base = downBase(p.down_mode);
   if (mkPpd) { down1 = downByFormula(mkPpd, s); down1By = 'formula'; }
+  // 1-tur usulida topilmasa, lekin giftning ijara narxi topilgan bo'lsa (masalan "fon" bo'yicha) — shu ijaradan hisoblanadi
+  else if (p.rent_ppd_nano) { down1 = downByFormula(p.rent_ppd_nano, s); down1By = 'formula'; }
   else if (p.down_manual) { down1 = Math.ceil(Number(p.down_manual) / 100); down1By = 'manual'; }
   const tonR = mkPrice != null ? Math.round(Number(mkPrice) * 100) / 100 : null;
   return { price, down1, down1By, down1Base, marketPriceTon: usesMarketPrice ? tonR : null, by, src: usesMarketPrice && !String(by).startsWith('fallback') ? mkSrc : null };

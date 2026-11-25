@@ -877,3 +877,11 @@ test("Lizingda ham tur: 1-tur boshlang'ich to'lovi belgilangan, Uzum yo'q", asyn
   const r2 = await app({ action: 'createOrder', service: 'own', ownId: own.id, ownMode: 'buy', paymentMethod: 'installment', installmentType: 'lease', leaseType: 'uzum', months: 10, idempotencyKey: key() });
   assert.equal((await admin({ action: 'orders', search: r2.publicId }))[0].details.leaseType, undefined); // lizingda Uzum yo'q
 });
+
+test("1-tur: o'z usulida topilmasa, giftning ijara narxidan (masalan fon bo'yicha) hisoblanadi", async () => {
+  await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Down Rent #1', inst_enabled: true, price_source: 'manual_som', price_manual: 500000 });
+  const id = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Down Rent #1').id;
+  await core.run("UPDATE own_products SET rent_ppd_nano = '100000000', mk_ppd_nano = NULL, mk_checked_at = :t WHERE id = :id", { id, t: Date.now() });
+  const own = (await app({ action: 'ownList', category: 'gifts' })).find((x) => x.name === 'Down Rent #1');
+  assert.ok(own.down1 > 0);
+});
