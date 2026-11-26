@@ -315,7 +315,7 @@ test("admin bot: sovg'a havolasi bo'yicha bozor narxi, ijara va 1-tur boshlang'i
   assert.ok(!sent.some((m) => /oyiga/.test(m.params.text || '')), 'mijozga kalkulyator ishlamaydi');
 });
 
-test("o'z gifti narxi: eski 'Marketapp' manbasi 'barcha bozorlar'ga o'tadi; model + fon topilmasa model bo'yicha; + 0.3", async () => {
+test("o'z gifti narxi: eski 'Marketapp' manbasi 'barcha bozorlar'ga o'tadi; model + fon topilmasa kengroq usulga o'tilmaydi", async () => {
   await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), portalsKey: 'portals_K' });
   setFetch(async (url) => {
     const u = decodeURIComponent(String(url));
@@ -327,8 +327,8 @@ test("o'z gifti narxi: eski 'Marketapp' manbasi 'barcha bozorlar'ga o'tadi; mode
   await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Trapped Heart #19604', model: 'Crime Scene', backdrop: 'Persimmon', inst_enabled: true, price_source: 'model_backdrop' });
   const p = (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Trapped Heart #19604');
   assert.equal(p.price_source, 'sat_model_backdrop');
-  assert.equal(p.quote.price, Math.ceil(40.3 * 17000)); // (40 + 0.3) × 17 000
-  assert.equal(p.quote.by, 'sat_model');
+  // Faqat belgilangan usul (model + fon): topilmasa model bo'yicha arzonroq narxga tushmaydi
+  assert.equal(p.quote.price, null);
 });
 
 test("Portals (sinov): kalit saqlanadi, /portals javobni ko'rsatadi (kalitsiz), 'eng arzoni' Marketapp va Portals'ni solishtiradi", async () => {
@@ -726,7 +726,7 @@ test("Pul olish (gift sotilmaydi): havola + summa + muddat, oylik lizing ustamas
   await admin({ action: 'saveSettings', ...st });
 });
 
-test("Narx: model + fon birlashgan filtrda chiqmasa ham, faqat model qidiruvidan aynan shu fon topiladi; bozor javob bermasa arzonroqqa tushmaydi", async () => {
+test("Narx: model + fon birgalikda qidiriladi, aynan mosi olinadi; bozor javob bermasa arzonroqqa tushmaydi", async () => {
   await admin({ action: 'saveSettings', ...(await admin({ action: 'settings' })), satelliteKey: 'K' });
   await core.run("DELETE FROM portals_cache WHERE k LIKE 'gs:%'");
   let mrktDown = false;
@@ -740,14 +740,14 @@ test("Narx: model + fon birlashgan filtrda chiqmasa ham, faqat model qidiruvidan
       const L = (m, slug, model, bd, ton) => ({ market: m, slug, giftId: slug, collectionName: 'JingleBells', modelName: model, backdropName: bd, normalizedPrice: ton });
       if (u.includes('/search/portals/') && u.includes('models=Polynesia') && !both) body = [L('portals', 'JingleBells-91329', 'Polynesia', 'Black', 12.9)];
       // birlashgan filtr MRKT'da natija bermaydi, faqat model bo'yicha esa aynan shu fon bor
-      if (u.includes('/search/mrkt/') && !both && u.includes('models=Polynesia')) body = [L('mrkt', 'JingleBells-10665', 'Polynesia', 'Onyx Black', 30.6)];
+      if (u.includes('/search/mrkt/') && u.includes('models=Polynesia')) body = [L('mrkt', 'JingleBells-10665', 'Polynesia', 'Onyx Black', 30.6)];
     }
     return { ok: true, status: 200, text: async () => JSON.stringify(body) };
   });
   const r = await admin({ action: 'saveOwnProduct', kind: 'gifts', name: 'Jingle Bells #89238', model: 'Polynesia', backdrop: 'Onyx Black', inst_enabled: true, price_source: 'sat_model_backdrop' });
   const id = r.id ?? (await admin({ action: 'ownProducts' })).find((x) => x.name === 'Jingle Bells #89238').id;
   const q = await admin({ action: 'refreshOwnPrice', id, debug: true });
-  assert.ok(q.debug.some((x) => /MRKT · model: 1 ta, aynan mos: 30.6 TON/.test(x)));
+  assert.ok(q.debug.some((x) => /MRKT · model + fon: 1 ta, aynan mos: 30.6 TON/.test(x)));
   assert.equal(q.marketPriceTon, 30.6);
   assert.equal(q.by, 'sat_model_backdrop');
   // MRKT javob bermasa: model + fon "topilmadi" deyilmaydi, narx o'zgarmaydi (12.9 ga tushmaydi)

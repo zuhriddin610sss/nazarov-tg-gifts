@@ -131,7 +131,8 @@ export async function ownSaleQuote(p, s, { fresh = false, cached = false, noRent
   const attrs = { model: p.model, backdrop: p.backdrop, symbol: p.symbol };
   const src = priceSource(p.price_source);
   // Zanjir: tanlangan usulda topilmasa kengroq usul. Butun kolleksiyaning eng arzoniga tushilmaydi.
-  const CHAIN = { model_backdrop: ['model_backdrop', 'model', 'backdrop'], model: ['model', 'backdrop'], backdrop: ['backdrop'] };
+  // Faqat admin belgilagan usul bo'yicha (kengroq usulga o'tilmaydi). Topilmasa — qo'lda yozilgan narx.
+  const CHAIN = { model_backdrop: ['model_backdrop'], model: ['model'], backdrop: ['backdrop'] };
   const usesMarketPrice = src.startsWith('sat_');
   let mkPrice = p.mk_price_ton, mkPpd = p.mk_ppd_nano, mkBy = p.mk_by || null, mkSrc = p.mk_src || null;
   const stale = !cached && (!p.mk_checked_at || nowMs() - Number(p.mk_checked_at) > 30 * 60000);

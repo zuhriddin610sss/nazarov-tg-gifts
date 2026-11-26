@@ -213,9 +213,8 @@ export async function satFloor(attrs) {
   const low = (x) => String(x || '').trim().toLowerCase();
   // Model + fon: bozorning birlashgan filtri ba'zan aynan shu giftni qaytarmaydi. Shuning uchun uch xil qidiramiz
   // (model + fon, faqat model, faqat fon) va natijalardan aynan model + fon mos kelganini o'zimiz ajratamiz.
-  const qs = attrs.model && attrs.backdrop
-    ? [{ model: attrs.model }, { backdrop: attrs.backdrop }]
-    : [{ model: attrs.model || null, backdrop: attrs.backdrop || null }];
+  // Belgilangan usulning o'zi: model + fon bo'lsa — bitta birgalikdagi qidiruv
+  const qs = [{ model: attrs.model || null, backdrop: attrs.backdrop || null }];
   // Ketma-ket: avval model bo'yicha; aynan mos (model + fon) topilsa — eng arzoni shu (fon bo'yicha qidirish shart emas)
   const rs = [];
   for (const q of qs) {
@@ -241,8 +240,8 @@ export async function satDebug(attrs) {
   if (col === undefined) return ["Gift Satellite: kolleksiyalar ro'yxati kelmadi (kalit yoki internet)"];
   if (!col) return [`Gift Satellite: "${attrs.collection}" kolleksiyasi topilmadi`];
   const low = (x) => String(x || '').trim().toLowerCase();
-  const qs = [['model', { model: attrs.model }], ['fon', { backdrop: attrs.backdrop }]]
-    .filter(([, q]) => (q.model || q.backdrop) && (!('backdrop' in q) || q.backdrop) && (!('model' in q) || q.model));
+  const qs = [[attrs.model && attrs.backdrop ? 'model + fon' : attrs.model ? 'model' : 'fon', { model: attrs.model || null, backdrop: attrs.backdrop || null }]]
+    .filter(([, q]) => q.model || q.backdrop);
   const out = [`Qidiruv: ${col} · model: ${attrs.model || '—'} · fon: ${attrs.backdrop || '—'}`];
   for (const [label, q] of qs) {
     const res = MARKETS.map((m) => lastSearch.get(sKey(m, col, q)) || { ok: false, skipped: true });

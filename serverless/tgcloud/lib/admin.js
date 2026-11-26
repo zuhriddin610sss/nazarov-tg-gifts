@@ -390,7 +390,7 @@ export const actions = {
     const after = await get('SELECT mk_checked_at FROM own_products WHERE id = :id', { id: p.id });
     // Tekshiruv: har bir bozor nima qaytardi (faqat "Narxni yangilash" bittalab bosilganda)
     const debug = i.debug && p.kind === 'gifts' && (p.model || p.backdrop) && (await satelliteConfigured())
-      ? await satDebug({ collection: splitGiftName(p.name).collection, model: p.model, backdrop: p.backdrop }) : null;
+      ? await satDebug({ collection: splitGiftName(p.name).collection, model: /model/.test(priceSource(p.price_source)) ? p.model : null, backdrop: /backdrop/.test(priceSource(p.price_source)) ? p.backdrop : null }) : null;
     return { price: q.price, by: q.by, src: q.src, marketPriceTon: q.marketPriceTon, kept: !after || Number(after.mk_checked_at) <= 1, before, debug, build: BUILD };
   },
 
