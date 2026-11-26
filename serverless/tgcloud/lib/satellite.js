@@ -35,7 +35,9 @@ const GAP = { tg: 1600, gift: 1100 };
 const nextAt = {};
 const chain = {};
 /** Bir bozorga so'rovlar qat'iy navbat bilan (bir vaqtda faqat bittasi), taymer bo'lsa oraliq bilan. */
-function lock(lane) {
+function lock(lane0) {
+  // Taymer bo'lmasa kutib bo'lmaydi: hamma bozorga so'rovlar bitta navbatda (sekin, lekin chegaradan oshmaydi)
+  const lane = HAS_TIMER ? lane0 : 'all';
   const prev = chain[lane] || Promise.resolve();
   let release;
   chain[lane] = new Promise((r) => (release = r));
@@ -214,7 +216,13 @@ export async function satFloor(attrs) {
   const qs = attrs.model && attrs.backdrop
     ? [{ model: attrs.model }, { backdrop: attrs.backdrop }]
     : [{ model: attrs.model || null, backdrop: attrs.backdrop || null }];
-  const rs = await Promise.all(qs.map((q) => satMarket({ collection: attrs.collection, ...q }).catch(() => null)));
+  // Ketma-ket: avval model bo'yicha; aynan mos (model + fon) topilsa — eng arzoni shu (fon bo'yicha qidirish shart emas)
+  const rs = [];
+  for (const q of qs) {
+    const x = await satMarket({ collection: attrs.collection, ...q }).catch(() => null);
+    rs.push(x);
+    if (x && !x.partial && x.items.some((y) => (!attrs.model || low(y.model) === low(attrs.model)) && (!attrs.backdrop || low(y.backdrop) === low(attrs.backdrop)))) break;
+  }
   if (rs.every((x) => !x)) return { status: 'error' };
   const r = { items: rs.filter(Boolean).flatMap((x) => x.items).sort((a, b) => a.ton - b.ton), partial: rs.some((x) => !x || x.partial) };
   const it = r.items.find((x) => (!attrs.model || low(x.model) === low(attrs.model)) && (!attrs.backdrop || low(x.backdrop) === low(attrs.backdrop)));

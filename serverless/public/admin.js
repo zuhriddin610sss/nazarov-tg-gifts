@@ -838,6 +838,7 @@ async function own(v) {
       b.textContent = `Tekshirilmoqda… ${k + 1} / ${ids.length}`;
       const name = (rows.find((p) => p.id === ids[k]) || {}).name || "#" + ids[k];
       try { const r = await call("refreshOwnPrice", { id: ids[k] }); if (r.price && !r.kept) ok++; else bad.push(name); } catch (_) { bad.push(name); }
+      if (k + 1 < ids.length) await new Promise((r) => setTimeout(r, 3000)); // bozorlar chegarasi oshmasin
     }
     if (!bad.length) { toast(`Hammasi yangilandi: ${ok} ta`); render(); return; }
     sheet(`<h2>Natija</h2><p>✅ Yangilandi: <b>${ok} ta</b></p>
