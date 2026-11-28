@@ -235,9 +235,34 @@ async function ensurePhone() {
 }
 
 /** Buyurtmani yuboradi. Naqd bo'lsa — avval tasdiqlash oynasi. */
+/** Har bir buyurtmada: bog'lanish uchun username va telefon (oldingisi bilan to'ldirilgan, o'zgartirsa bo'ladi). */
+function askContact() {
+  const last = (() => { try { return JSON.parse(store.get("ng_contact") || "{}"); } catch { return {}; } })();
+  const u0 = last.u || (S.me && S.me.username ? "@" + S.me.username : ""), p0 = last.p || (S.me && S.me.phone ? "+" + String(S.me.phone).replace(/^\+/, "") : "");
+  return new Promise((resolve) => {
+    sheet(`<h2>${esc(t("ct_title"))}</h2><p class="hint">${esc(t("ct_text"))}</p>
+      <div class="field"><label>${esc(t("ct_user"))}</label><input class="input" id="ctU" value="${esc(u0)}" placeholder="@username" autocapitalize="off" autocomplete="off"></div>
+      <div class="field"><label>${esc(t("ct_phone"))}</label><input class="input" id="ctP" value="${esc(p0)}" placeholder="+998 90 123 45 67" inputmode="tel"></div>
+      <p class="err" id="ctErr" hidden></p>
+      <button class="btn btn-primary" id="ctOk" type="button">${esc(t("next"))}</button>`);
+    $("#ctOk").onclick = () => {
+      const u = $("#ctU").value.trim(), ph = $("#ctP").value.trim();
+      const okU = /^@?[A-Za-z][A-Za-z0-9_]{3,31}$/.test(u), okP = String(ph).replace(/\D/g, "").length >= 9;
+      if (!okU || !okP) { const e = $("#ctErr"); e.textContent = t(!okU ? "ct_bad_user" : "ct_bad_phone"); e.hidden = false; return; }
+      store.set("ng_contact", JSON.stringify({ u, p: ph }));
+      closeSheet(); resolve({ contactUsername: u.replace(/^@/, ""), contactPhone: ph });
+    };
+    $("#modal").addEventListener("click", function h(e) { if (e.target.id === "modal") { $("#modal").removeEventListener("click", h); resolve(null); } });
+  });
+}
 async function placeOrder(body, cashAmount) {
   if (!(await needLogin())) return;
   if (!(await ensurePhone())) return;
+  if (!body.contactUsername) {
+    const ct = await askContact();
+    if (!ct) return;
+    body = { ...body, ...ct };
+  }
   const go = async (btn) => {
     if (btn) btn.disabled = true;
     try {

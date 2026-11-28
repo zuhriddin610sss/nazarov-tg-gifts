@@ -416,6 +416,11 @@ export const actions = {
         }
       }
     }
+    { // Har buyurtmada mijoz yozgan bog'lanish ma'lumoti (Telegram akkauntidan alohida)
+      const cu = String(i.contactUsername || '').trim().replace(/^@/, '').slice(0, 40);
+      const cp = String(i.contactPhone || '').trim().slice(0, 30);
+      if (cu || cp) o.details = { ...(o.details || {}), contact: { username: cu || null, phone: cp || null } };
+    }
     const afterCreate = o.afterCreate;
     delete o.estBase; delete o.down1; delete o.afterCreate;
 

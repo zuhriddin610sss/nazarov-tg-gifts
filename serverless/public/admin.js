@@ -195,7 +195,7 @@ async function exportExcel(btn, from, to) {
     const [X, d] = await Promise.all([loadXlsx(), call("exportData", { from, to })]);
     const dts = (ms) => (ms ? new Date(Number(ms)).toLocaleString("ru-RU", { timeZone: "Asia/Tashkent" }) : "");
     const orders = d.orders.map((o) => ({
-      "Raqam": o.public_id, "Sana": dts(o.created_at), "Mijoz": o.customer_username ? "@" + o.customer_username : "", "Telefon": o.customer_phone || "",
+      "Raqam": o.public_id, "Sana": dts(o.created_at), "Mijoz": o.customer_username ? "@" + o.customer_username : "", "Telefon": o.customer_phone || "", "Bog'lanish": ((c) => c ? [c.username ? "@" + c.username : "", c.phone || ""].filter(Boolean).join(" · ") : "")((() => { try { const x = typeof o.details === "string" ? JSON.parse(o.details) : o.details; return x && x.contact; } catch { return null; } })()),
       "Xizmat": SVC[o.service] || o.service, "Mahsulot": o.title, "To'lov": o.payment_method === "cash" ? "Naqd" : "Bo'lib to'lash",
       "Bo'lib to'lash turi": o.installment_type ? IT[o.installment_type] || o.installment_type : "",
       "Muddat (oy)": (o.details && o.details.months) || "", "Boshlang'ich to'lov": (o.details && o.details.downPayment) || "",
@@ -303,7 +303,7 @@ async function dashboard(v) {
 const DK = { months: "Muddat (oy)", downPayment: "Boshlang'ich to'lov (so'm)", estMonthly: "Taxminiy oylik (so'm)", estPrice: "Hisob narxi (so'm)", name: "Nomi", link: "Havola", model: "Model", backdrop: "Fon", days: "Kun", quantity: "Soni", plan: "Tarif", portals: "Portals ID", market: "Bozor", slug: "Gift", listing: "E'lon raqami", seller: "Sotuvchi", quotedPrice: "Narx (tiyin)", ton: "Portals narxi (TON)", symbol: "Belgi", sale: "Sotuv" };
 function orderSheet(o) {
   const d = o.details || {};
-  const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
+  const lines = Object.entries(d).filter(([k, val]) => val != null && k !== "attributes" && k !== "formula" && k !== "contact").map(([k, val]) => `${DK[k] || k}: ${typeof val === "object" ? JSON.stringify(val) : val}`).join("\n");
   sheet(`<h2>${esc(o.public_id)} · ${esc(o.title)}</h2>
     <div class="kv"><span>Holat</span><b>${esc(ST[o.status])}${o.position ? ` · navbat #${String(o.position).padStart(2, "0")}` : ""}</b>
       <span>Xizmat</span><b>${esc(SVC[o.service])}</b>
@@ -312,7 +312,8 @@ function orderSheet(o) {
       ${o.cost != null ? `<span>Tannarx</span><b>${esc(money(o.cost))}</b><span>Foyda</span><b>${o.price != null ? esc(money(Number(o.price) - Number(o.cost))) : "—"}</b>` : ""}
       ${Number(o.discount) > 0 ? `<span>Promo-kod</span><b>${esc(o.promo_code)} · −${esc(money(o.discount))}</b>` : ""}
       <span>Yechilgan</span><b>${esc(money(o.paid_amount))}</b>
-      <span>Mijoz</span><b>${o.customer_username ? "@" + esc(o.customer_username) : "—"} · ${esc(o.customer_phone || "—")}</b>
+      ${(o.details || {}).contact ? `<span>Bog'lanish uchun</span><b>${o.details.contact.username ? "@" + esc(o.details.contact.username) : "—"} · ${esc(o.details.contact.phone || "—")}</b>` : ""}
+      <span>Yozgan akkaunt</span><b>${o.customer_username ? "@" + esc(o.customer_username) : "—"} · ${esc(o.customer_phone || "—")}</b>
       ${o.recipient ? `<span>Qabul qiluvchi</span><b>@${esc(o.recipient)}</b>` : ""}
       <span>Sana</span><b>${esc(dt(o.created_at))}</b></div>
     ${lines ? `<div class="det">${esc(lines)}</div>` : ""}

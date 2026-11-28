@@ -33,7 +33,8 @@ export async function notifyNewOrder(orderId) {
   const lines = [
     `🆕 Yangi buyurtma ${o.public_id}`,
     `Navbat: #${String(pos || '-').padStart(2, '0')}`,
-    `Mijoz: ${o.customer_username ? '@' + o.customer_username : "(username yo'q)"} · ${o.customer_phone || '-'}`,
+    det.contact ? `📞 Bog'lanish uchun: ${det.contact.username ? '@' + det.contact.username : '-'} · ${det.contact.phone || '-'}` : null,
+    `Yozgan akkaunt: ${o.customer_username ? '@' + o.customer_username : "(username yo'q)"} · ${o.customer_phone || '-'}`,
     det.cashout ? `💵 PUL OLISH: mijoz giftini sotmasdan ${money(det.amount)} so'm so'rayapti. Giftni tekshiring, summani tasdiqlang, pulni bering va admin panelda "Pul berildi — shartnoma" tugmasini bosing.` : null,
     det.cashout ? null : `Xizmat: ${det.market ? `${det.market}'dagi giftni sotib olish` : det.portals ? "Portals'dagi giftni sotib olish" : det.listing ? "Mijoz e'lonidan sotib olish" : det.sale ? "Sotuv (o'z mahsulotingiz)" : (SERVICE[o.service] || o.service) + (det.own ? " (o'z mahsulotingiz)" : '')}`,
     `Mahsulot: ${o.title}`,
